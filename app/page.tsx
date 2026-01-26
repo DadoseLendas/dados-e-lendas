@@ -88,7 +88,7 @@ export default function Page() {
         </p>
       </footer>
 
-      {/* MODAL (IGUAL AO PRINT DA IMAGEM) */}
+      {/* MODAL  */}
       {isModalOpen && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.95)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
           <div style={{ backgroundColor: '#1a1a1a', width: '400px', border: '1px solid #333' }}>
