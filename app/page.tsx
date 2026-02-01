@@ -1090,16 +1090,24 @@ export default function DadosLendas() {
         </div>
       )}
 
-      {/* Modal */}
-      {showModal && (
-        <div className="modal show" onClick={(e) => e.target.classList.contains('modal') && toggleModal(false)}>
-          <div className="modal-content">
-            <div className="modal-header">
-              <h2>Criar Campanha</h2>
+      {/* FOOTER */}
+      <footer style={{ backgroundColor: '#051a08', padding: '60px 20px', textAlign: 'center', marginTop: '100px', borderTop: '1px solid #111' }}>
+        <p style={{ color: '#a5c6a5', fontStyle: 'italic', marginBottom: '20px' }}>Dados e lendas footer</p>
+        <p style={{ maxWidth: '800px', margin: '0 auto', fontSize: '0.65rem', color: '#4d6b55', letterSpacing: '1px', lineHeight: '1.6' }}>
+          LOREM IPSUM DOLOR SIT AMET, CONSECTETUR ADIPISCING ELIT. PHASELLUS MATTIS, LIBERO VEL CONVALLIS LACINIA, DUI ANTE VIVRRA ANTE, AT ELEMENTUM MAGNA EX AT NIBH.
+        </p>
+      </footer>
+
+      {/* MODAL  */}
+      {isModalOpen && (
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.95)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
+          <div style={{ backgroundColor: '#1a1a1a', width: '400px', border: '1px solid #333' }}>
+            <div style={{ backgroundColor: '#333', padding: '15px', textAlign: 'center', borderBottom: '1px solid #111' }}>
+              <h2 style={{ margin: 0, fontSize: '1.4rem', color: 'black', fontWeight: 'bold' }}>Criar Campanha</h2>
             </div>
-            <div className="modal-body">
-              <div className="input-group">
-                <label>Nome da campanha</label>
+            <form onSubmit={handleCriar} style={{ padding: '30px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                <label style={{ color: '#888', fontSize: '1.1rem' }}>Nome da campanha</label>
                 <input 
                   type="text" 
                   value={campaignName}
