@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
+import type { ChangeEvent } from 'react';
 
 export default function DadosLendas() {
   // Estados da aplicação
@@ -28,8 +29,8 @@ export default function DadosLendas() {
 
   // Fechar dropdown ao clicar fora
   useEffect(() => {
-    function handleClickOutside(event) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setDropdownOpen(null);
       }
     }
@@ -39,8 +40,8 @@ export default function DadosLendas() {
 
   // Fechar modal com ESC
   useEffect(() => {
-    function handleEsc(event) {
-      if (event.key === 'Escape') {
+    function handleEsc(event: KeyboardEvent) {
+      if ((event as KeyboardEvent).key === 'Escape') {
         setShowModal(false);
       }
     }
@@ -153,23 +154,23 @@ export default function DadosLendas() {
   };
 
   // Upload de imagem
-  const handleImageUpload = (event, isCharacter = false) => {
-    const file = event.target.files[0];
+  const handleImageUpload = (event: ChangeEvent<HTMLInputElement>, isCharacter = false) => {
+    const file = event.target.files?.[0];
     if (file && file.type.startsWith('image/')) {
       const reader = new FileReader();
       reader.onload = (e) => {
         if (isCharacter) {
-          setTempCharacterImg(e.target.result);
+          setTempCharacterImg(e.target?.result as string);
           setTempCharacterImgFile(file);
         } else {
-          setCampaignImg(e.target.result);
+          setCampaignImg(e.target?.result as string);
           setCampaignImgFile(file);
         }
       };
       reader.readAsDataURL(file);
     } else {
       alert('Por favor, selecione apenas arquivos de imagem.');
-      event.target.value = '';
+      if (event.target) (event.target as HTMLInputElement).value = '';
     }
   };
 
@@ -1099,13 +1100,13 @@ export default function DadosLendas() {
       </footer>
 
       {/* MODAL  */}
-      {isModalOpen && (
+      {showModal && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.95)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
           <div style={{ backgroundColor: '#1a1a1a', width: '400px', border: '1px solid #333' }}>
             <div style={{ backgroundColor: '#333', padding: '15px', textAlign: 'center', borderBottom: '1px solid #111' }}>
               <h2 style={{ margin: 0, fontSize: '1.4rem', color: 'black', fontWeight: 'bold' }}>Criar Campanha</h2>
             </div>
-            <form onSubmit={handleCriar} style={{ padding: '30px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <form onSubmit={(e) => { e.preventDefault(); addCampaign(); }} style={{ padding: '30px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
                 <label style={{ color: '#888', fontSize: '1.1rem' }}>Nome da campanha</label>
                 <input 
@@ -1151,14 +1152,14 @@ export default function DadosLendas() {
               </div>
               
               <div className="btn-submit-container">
-                <button className="btn-submit" onClick={addCampaign}>
+                <button type="submit" className="btn-submit">
                   Criar campanha
                 </button>
               </div>
               <div className="btn-cancel" onClick={() => toggleModal(false)}>
                 Cancelar
               </div>
-            </div>
+            </form>
           </div>
         </div>
       )}
