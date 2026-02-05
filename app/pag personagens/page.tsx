@@ -1,11 +1,9 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import type { ChangeEvent } from 'react';
-import Navbar from '@/components/Navbar';
-import Card from '@/components/ui/card';
-import { Modal, ImageUpload } from '@/components/ui/modal';
+import Card from '@/app/components/ui/card';
+import { Modal, ImageUpload } from '@/app/components/ui/modal';
 import { ArrowLeft, Sword, Plus, User } from 'lucide-react';
-import Footer from '@/components/Footer';
 
 export default function PersonagensPage() {
   // Estados da aplicação
@@ -342,9 +340,7 @@ export default function PersonagensPage() {
   };
 
   return (
-    <main className="min-h-screen bg-[#050a05] text-white font-sans">
-      <Navbar />
-
+    <>
       <div className="max-w-[1000px] mx-auto py-12 px-6">
 
         <div className="bg-[#0a120a] border border-[#1a2a1a] rounded-xl p-10 shadow-[0_0_50px_rgba(0,0,0,0.5)]">
@@ -405,7 +401,6 @@ export default function PersonagensPage() {
           Cancelar
         </button>
       </Modal>
-      <Footer />
-    </main>
+    </>
   );
 }
