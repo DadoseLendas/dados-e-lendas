@@ -137,3 +137,27 @@ export function ModalButtons({
     </div>
   );
 }
+ // Funções de modal
+  const toggleModal = (show) => {
+    setShowModal(show);
+    if (!show) {
+      setCampaignName('');
+      setCampaignImg('');
+      setCampaignImgFile(null);
+    }
+  };
+
+  const toggleEditModal = (show) => {
+    setShowEditModal(show);
+    if (!show) {
+      setCampaignName('');
+      setCampaignImg('');
+      setCampaignImgFile(null);
+      setEditingCampaign(null);
+    }
+  };
+
+  const toggleJoinModal = (show) => {
+    setShowJoinModal(show);
+    if (!show) setJoinCode('');
+  };

@@ -12,17 +12,24 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata = {
-  title: 'Dados e Lendas',
-  description: 'Sistema de gerenciamento de campanhas e personagens de RPG',
-}
+export const metadata: Metadata = {
+  title: "Dados e Lendas | D&D 5e VTT",
+  description: "A plataforma brasileira completa para mestres e jogadores de D&D 5e.",
+  icons: {
+    icon: "/ola.png",
+  },
+};
 
-import type { ReactNode } from 'react';
-
-export default function RootLayout({ children }: { children: ReactNode }) {
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
   return (
-    <html lang="pt-BR">
-      <body>{children}</body>
+    <html lang="pt-br">
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-[#050a05]`}>
+        {children}
+      </body>
     </html>
-  )
+  );
 }

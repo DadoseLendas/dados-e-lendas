@@ -1,11 +1,11 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import type { ChangeEvent } from 'react';
-import Link from 'next/link';
 import Navbar from '@/components/Navbar';
 import Card from '@/components/ui/card';
 import { FormModal, TextInput, ImageUpload, ModalButtons } from '@/components/ui/modal';
 import { ArrowLeft, Users, Plus } from 'lucide-react';
+import Footer from '@/components/Footer';
 
 export default function CampanhasPage() {
   // Estados da aplicação
@@ -39,10 +39,6 @@ export default function CampanhasPage() {
       <Navbar />
 
       <div className="max-w-[800px] mx-auto py-12 px-6">
-        <Link href="/dashboard" className="flex items-center gap-2 text-[#4a5a4a] hover:text-[#00ff66] text-xs font-bold mb-8 transition-colors group">
-          <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" />
-          VOLTAR AO DASHBOARD
-        </Link>
 
         <div className="bg-[#0a120a] border border-[#1a2a1a] rounded-xl p-10 shadow-[0_0_50px_rgba(0,0,0,0.5)]">
           <h2 className="text-[#f1e5ac] text-2xl font-serif text-center mb-10 tracking-[0.2em] uppercase italic">
@@ -289,31 +285,6 @@ export default function CampanhasPage() {
     }
   };
 
-  // Funções de modal
-  const toggleModal = (show) => {
-    setShowModal(show);
-    if (!show) {
-      setCampaignName('');
-      setCampaignImg('');
-      setCampaignImgFile(null);
-    }
-  };
-
-  const toggleEditModal = (show) => {
-    setShowEditModal(show);
-    if (!show) {
-      setCampaignName('');
-      setCampaignImg('');
-      setCampaignImgFile(null);
-      setEditingCampaign(null);
-    }
-  };
-
-  const toggleJoinModal = (show) => {
-    setShowJoinModal(show);
-    if (!show) setJoinCode('');
-  };
-
   // Funções de campanha
   const joinCampaign = () => {
     if (!joinCode.trim()) {
@@ -436,64 +407,6 @@ export default function CampanhasPage() {
     toggleEditModal(false);
   };
 
-  // Criar personagem
-  const createCharacter = () => {
-    const newCharacter = {
-      id: Date.now(),
-      name: 'Novo Personagem',
-      playerName: '',
-      class: 'Guerreiro',
-      level: 1,
-      background: '',
-      race: '',
-      alignment: '',
-      experiencePoints: 0,
-      img: '',
-      stats: { str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 },
-      inspiration: false,
-      proficiencyBonus: 2,
-      savingThrows: { str: false, dex: false, con: false, int: false, wis: false, cha: false },
-      skills: {
-        acrobacia: false, arcanismo: false, atletismo: false, atuacao: false,
-        enganacao: false, furtividade: false, historia: false, intimidacao: false,
-        intuicao: false, investigacao: false, lidarAnimais: false, medicina: false,
-        natureza: false, percepcao: false, persuasao: false, prestidigitacao: false,
-        religiao: false, sobrevivencia: false
-      }
-    };
-    setCharacters([...characters, newCharacter]);
-    setActiveCharacter(newCharacter);
-    setCurrentView('character-sheet');
-  };
-
-  const openCharacterSheet = (characterId) => {
-    setActiveCharacter(characters.find(c => c.id === characterId));
-    setCurrentView('character-sheet');
-  };
-
-  const backToCharacters = () => {
-    setCurrentView('personagens');
-    setActiveCharacter(null);
-  };
-
-  const toggleDropdown = (itemId) => {
-    setDropdownOpen(dropdownOpen === itemId ? null : itemId);
-  };
-
-  const deleteCampaign = (campaignId) => {
-    if (confirm('Tem certeza que deseja excluir esta campanha?')) {
-      setCampaigns(campaigns.filter(c => c.id !== campaignId));
-      setDropdownOpen(null);
-    }
-  };
-
-  const deleteCharacter = (characterId) => {
-    if (confirm('Tem certeza que deseja excluir este personagem?')) {
-      setCharacters(characters.filter(c => c.id !== characterId));
-      setDropdownOpen(null);
-      if (activeCharacter?.id === characterId) backToCharacters();
-    }
-  };
 
   const getModifier = (value) => Math.floor((value - 10) / 2);
 
@@ -1411,13 +1324,7 @@ export default function CampanhasPage() {
         </div>
       )}
 
-      {/* FOOTER */}
-      <footer style={{ backgroundColor: '#051a08', padding: '60px 20px', textAlign: 'center', marginTop: '100px', borderTop: '1px solid #111' }}>
-        <p style={{ color: '#a5c6a5', fontStyle: 'italic', marginBottom: '20px' }}>Dados e lendas footer</p>
-        <p style={{ maxWidth: '800px', margin: '0 auto', fontSize: '0.65rem', color: '#4d6b55', letterSpacing: '1px', lineHeight: '1.6' }}>
-          LOREM IPSUM DOLOR SIT AMET, CONSECTETUR ADIPISCING ELIT. PHASELLUS MATTIS, LIBERO VEL CONVALLIS LACINIA, DUI ANTE VIVRRA ANTE, AT ELEMENTUM MAGNA EX AT NIBH.
-        </p>
-      </footer>
+      <Footer />
 
       {/* MODAL  */}
       {showModal && (

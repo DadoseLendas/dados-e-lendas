@@ -1,11 +1,11 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import type { ChangeEvent } from 'react';
-import Link from 'next/link';
 import Navbar from '@/components/Navbar';
 import Card from '@/components/ui/card';
 import { Modal, ImageUpload } from '@/components/ui/modal';
 import { ArrowLeft, Sword, Plus, User } from 'lucide-react';
+import Footer from '@/components/Footer';
 
 export default function PersonagensPage() {
   // Estados da aplicação
@@ -28,6 +28,8 @@ export default function PersonagensPage() {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  
 
   // Função para criar novo personagem
   const createCharacter = () => {
@@ -344,10 +346,6 @@ export default function PersonagensPage() {
       <Navbar />
 
       <div className="max-w-[1000px] mx-auto py-12 px-6">
-        <Link href="/dashboard" className="flex items-center gap-2 text-[#4a5a4a] hover:text-[#00ff66] text-xs font-bold mb-8 transition-colors group">
-          <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" />
-          VOLTAR AO DASHBOARD
-        </Link>
 
         <div className="bg-[#0a120a] border border-[#1a2a1a] rounded-xl p-10 shadow-[0_0_50px_rgba(0,0,0,0.5)]">
           {!activeCharacter ? (
@@ -407,6 +405,7 @@ export default function PersonagensPage() {
           Cancelar
         </button>
       </Modal>
+      <Footer />
     </main>
   );
 }
