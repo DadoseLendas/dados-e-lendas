@@ -16,7 +16,7 @@ export const metadata: Metadata = {
   title: "Dados e Lendas | D&D 5e VTT",
   description: "A plataforma brasileira completa para mestres e jogadores de D&D 5e.",
   icons: {
-    icon: "/ola.png",
+    icon: "logo.png",
   },
 };
 
