@@ -17,7 +17,7 @@
 
 ## ⚔️ Sobre o Projeto
 
-**Dados & Lendas** é uma aplicação web moderna desenvolvida para facilitar a gestão de mesas de RPG (com foco em D&D 5e). O projeto combina uma experiência de usuário imersiva (Dark Fantasy UI) com uma arquitetura robusta de autenticação e banco de dados em tempo real.
+**Dados & Lendas** é uma aplicação web moderna desenvolvida para facilitar a gestão de mesas de RPG (com foco em D&D 5e).
 
 
 ## ✨ Funcionalidades Principais
