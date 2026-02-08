@@ -1,8 +1,11 @@
 "use client";
-import { useRef } from 'react';
+import { useState, useRef } from 'react';
+import Navbar from '@/app/components/ui/navbar';
+import Footer from '@/app/components/ui/footer';
 import { User, Camera } from 'lucide-react';
 
 export default function PerfilView() {
+  const [abaAtiva, setAbaAtiva] = useState('perfil');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleUploadClick = () => {
@@ -10,7 +13,9 @@ export default function PerfilView() {
   };
 
   return (
-    <div className="max-w-[600px] mx-auto animate-in fade-in zoom-in duration-300">
+    <>
+      <Navbar abaAtiva={abaAtiva} setAbaAtiva={setAbaAtiva} isLoggedIn />
+      <div className="max-w-[600px] mx-auto animate-in fade-in zoom-in duration-300 py-12 px-6">
       <div className="bg-[#0a120a] border border-[#1a2a1a] rounded-xl p-10 shadow-[0_0_50px_rgba(0,0,0,0.5)]">
         <h2 className="text-[#f1e5ac] text-2xl font-serif text-center mb-10 tracking-[0.2em] uppercase italic">Meu Perfil</h2>
 
@@ -58,6 +63,8 @@ export default function PerfilView() {
           </button>
         </div>
       </div>
-    </div>
+      </div>
+      <Footer />
+    </>
   );
 }

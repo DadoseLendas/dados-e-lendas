@@ -1,5 +1,4 @@
 "use client";
-import { Dices } from 'lucide-react';
 import Link from 'next/link';
 
 export default function Footer() {
@@ -9,8 +8,8 @@ export default function Footer() {
         
         {/*memsa logo da haeader mudar depois pro trem da prima*/}
         <div className="mb-8 group">
-          <div className="bg-[#00ff66] p-3 rounded-xl text-black shadow-[0_0_30px_rgba(0,255,102,0.3)] inline-block transition-transform group-hover:scale-110">
-            <Dices size={32} strokeWidth={2.5} />
+          <div className="p-3 rounded-xl text-black inline-block transition-transform group-hover:scale-110 bg-transparent">
+            <img src="/logo.png" alt="Dados e Lendas" className="w-16 h-16 rounded-full object-cover filter drop-shadow-[0_0_32px_rgba(0,255,102,0.55)]" />
           </div>
           <h2 className="text-white font-serif text-2xl tracking-[0.3em] uppercase mt-6 italic">
             Dados e Lendas
