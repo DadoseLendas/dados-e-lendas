@@ -127,6 +127,12 @@ export default function LoginPage() {
               placeholder="••••••••"
             />
           </div>
+
+          <div className="text-right">
+            <Link href="/esqueci-senha" className="text-xs text-[#01fe66] hover:underline">
+              Esqueci minha senha
+            </Link>
+          </div>
           
           <button
             type="submit"
