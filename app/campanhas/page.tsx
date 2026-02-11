@@ -7,10 +7,20 @@ import Card from '@/app/components/ui/card';
 import { FormModal, TextInput, ImageUpload, ModalButtons } from '@/app/components/ui/modal';
 import { ArrowLeft, Users, Plus } from 'lucide-react';
 
+//Define campanha
+type Campaign = {
+  id: number | string;
+  name: string;
+  date: string;
+  code: string;
+  img: string;
+  isOwner: boolean;
+}
+
 export default function CampanhasPage() {
   const [abaAtiva, setAbaAtiva] = useState('campanhas');
   // Estados da aplicação
-  const [campaigns, setCampaigns] = useState([]);
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showJoinModal, setShowJoinModal] = useState(false);
