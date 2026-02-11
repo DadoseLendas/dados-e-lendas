@@ -138,7 +138,7 @@ export function ModalButtons({
   );
 }
  // Funções de modal
-  const toggleModal = (show) => {
+  const toggleModal = (show: boolean) => {
     setShowModal(show);
     if (!show) {
       setCampaignName('');
