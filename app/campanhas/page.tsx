@@ -25,12 +25,11 @@ export default function CampanhasPage() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [joinCode, setJoinCode] = useState('');
-  const [selectedCampaign, setSelectedCampaign] = useState(null);
-  const [editingCampaign, setEditingCampaign] = useState(null);
-  const [campaignName, setCampaignName] = useState('');
+  //const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null);
+  const [editingCampaign, setEditingCampaign] = useState<Campaign | null>(null);  const [campaignName, setCampaignName] = useState('');
   const [campaignImg, setCampaignImg] = useState('');
-  const [campaignImgFile, setCampaignImgFile] = useState(null);
-  const [dropdownOpen, setDropdownOpen] = useState(null);
+  //const [campaignImgFile, setCampaignImgFile] = useState(null);
+  const [dropdownOpen, setDropdownOpen] = useState<string | null>(null);
 
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -140,7 +139,7 @@ export default function CampanhasPage() {
             if (campaigns.length >= 6) return alert('Limite de 6 campanhas atingido');
 
             const newCampaign = {
-              id: Date.now(),
+              id: Date.now().toString(),
               name: campaignName.trim(),
               date: new Date().toLocaleDateString('pt-BR'),
               code: Math.random().toString(36).substr(2, 8).toUpperCase(),
@@ -191,7 +190,7 @@ export default function CampanhasPage() {
             if (!joinCode.trim()) return alert('Digite o código da campanha');
 
             const newCampaign = {
-              id: Date.now(),
+              id: Date.now().toString(),
               name: `Campanha ${joinCode.trim().toUpperCase()}`,
               date: new Date().toLocaleDateString('pt-BR'),
               code: joinCode.trim().toUpperCase(),
