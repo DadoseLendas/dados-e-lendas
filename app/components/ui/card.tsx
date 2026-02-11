@@ -19,7 +19,7 @@ interface CardProps {
   showCopyOption?: boolean;
   deleteLabel?: string;
   accessLabel?: string;
-  dropdownRef?: React.RefObject<HTMLDivElement>;
+  dropdownRef?: React.RefObject<HTMLDivElement | null>;
 }
 
 export default function Card({ 
