@@ -22,7 +22,7 @@ export default function CampanhasPage() {
   const [campaignImgFile, setCampaignImgFile] = useState(null);
   const [dropdownOpen, setDropdownOpen] = useState(null);
 
-  const dropdownRef = useRef(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Fechar dropdown ao clicar fora
   useEffect(() => {
