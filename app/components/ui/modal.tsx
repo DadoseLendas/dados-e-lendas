@@ -137,6 +137,7 @@ export function ModalButtons({
     </div>
   );
 }
+/*
  // Funções de modal
   const toggleModal = (show: boolean) => {
     setShowModal(show);
@@ -161,3 +162,5 @@ export function ModalButtons({
     setShowJoinModal(show);
     if (!show) setJoinCode('');
   };
+
+  */
