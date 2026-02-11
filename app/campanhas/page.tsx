@@ -225,6 +225,9 @@ export default function CampanhasPage() {
           title="Editar Campanha"
           onSubmit={(e) => {
             e.preventDefault();
+            
+            if (!editingCampaign) return;
+
             if (!campaignName.trim()) return alert('Digite um nome para a campanha');
 
             setCampaigns(campaigns.map(c => c.id === editingCampaign.id ? { ...c, name: campaignName.trim(), img: campaignImg || c.img } : c));
