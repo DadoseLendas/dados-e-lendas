@@ -5,19 +5,39 @@ import Navbar from '@/app/components/ui/navbar';
 import Footer from '@/app/components/ui/footer';
 import { Sword, Plus, ArrowLeft } from 'lucide-react';
 
+type Character = {
+  id: number;
+  name: string;
+  class: string;
+  level: number;
+  race: string;
+  background: string;
+  alignment: string;
+  experiencePoints: number;
+  proficiencyBonus: number;
+  inspiration: boolean;
+  stats: {
+    str: number; dex: number; con: number; int: number; wis: number; cha: number;
+  };
+  savingThrows: Record<string, boolean>;
+  skills: Record<string, boolean>;
+  inventory: { id: number; name: string }[];
+  img: string;
+}
+
 export default function PersonagensPage() {
   // Estados da aplicação
   const [abaAtiva, setAbaAtiva] = useState('personagens');
-  const [characters, setCharacters] = useState([]);
-  const [activeCharacter, setActiveCharacter] = useState(null);
-  const [dropdownOpen, setDropdownOpen] = useState(null);
+  const [characters, setCharacters] = useState<Character[]>([]);
+  const [activeCharacter, setActiveCharacter] = useState<Character | null>(null);
+  const [dropdownOpen, setDropdownOpen] = useState<string | null>(null);
   const [editingCharacterImg, setEditingCharacterImg] = useState(false);
   const [tempCharacterImg, setTempCharacterImg] = useState('');
-  const [tempCharacterImgFile, setTempCharacterImgFile] = useState(null);
+  const [tempCharacterImgFile, setTempCharacterImgFile] = useState<File | null>(null);  
   const [showInventoryModal, setShowInventoryModal] = useState(false);
   const [newInventoryItem, setNewInventoryItem] = useState('');
   
-  const dropdownRef = useRef(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Fechar dropdown ao clicar fora
   useEffect(() => {
@@ -39,7 +59,7 @@ export default function PersonagensPage() {
       return;
     }
 
-    const newCharacter = {
+    const newCharacter: Character = {
       id: Date.now(),
       name: 'Novo Personagem',
       class: 'Lutador',
@@ -266,7 +286,11 @@ export default function PersonagensPage() {
 
   const getSkillModifier = (skill: string, attr: string) => {
     if (!activeCharacter) return 0;
+    // 'as keyof typeof' para garantir que acessaremos apenas propriedades existentes, ou seja, que 'attr' é uma chave válida de 'stats'.
+    const statKey = attr as keyof typeof activeCharacter.stats; 
     const baseModifier = getModifier(activeCharacter.stats[attr as keyof typeof activeCharacter.stats] || 10);
+    //Garantir que a string 'skill' existe no objeto 'skills'
+    const skillKey = skill as keyof typeof activeCharacter.skills; //
     const proficient = activeCharacter.skills[skill as keyof typeof activeCharacter.skills] || false;
     return proficient ? baseModifier + activeCharacter.proficiencyBonus : baseModifier;
   };
@@ -474,6 +498,9 @@ export default function PersonagensPage() {
                 <h4 className="text-[#f1e5ac] text-sm font-serif uppercase tracking-wider mb-3">Salvaguardas</h4>
                 <div className="space-y-2">
                   {Object.entries(statNames).map(([stat, name]) => {
+                    // Força a tipagem para as chaves específicas de 'stats' e 'savingThrows' para evitar acesso a propriedades indefinidas.
+                    const statKey = stat as keyof typeof activeCharacter.stats;
+                    const saveKey = stat as keyof typeof activeCharacter.savingThrows;
                     const modifier = getModifier(activeCharacter.stats[stat as keyof typeof activeCharacter.stats] || 10);
                     const proficient = activeCharacter.savingThrows?.[stat as keyof typeof activeCharacter.savingThrows] || false;
                     const totalBonus = proficient ? modifier + activeCharacter.proficiencyBonus : modifier;
