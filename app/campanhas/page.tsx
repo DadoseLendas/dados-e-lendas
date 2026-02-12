@@ -1,11 +1,48 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
+import { createClient } from '@/utils/supabase/client';
 import Navbar from '@/app/components/ui/navbar';
 import Footer from '@/app/components/ui/footer';
 import type { ChangeEvent } from 'react';
 import Card from '@/app/components/ui/card';
 import { FormModal, TextInput, ImageUpload, ModalButtons } from '@/app/components/ui/modal';
-import { ArrowLeft, Users, Plus } from 'lucide-react';
+import { ArrowLeft, Users, Plus, ShieldAlert } from 'lucide-react'; 
+import Link from 'next/link'; 
+
+// TELA DE ACESSO NEGADO
+function UnauthorizedState() {
+  return (
+    <div className="min-h-screen bg-[#050a05] flex flex-col items-center justify-center p-6 text-center font-sans">
+      <div className="bg-[#0a120a] border border-red-900/30 p-12 rounded-2xl shadow-[0_0_50px_rgba(255,0,0,0.1)] max-w-lg w-full">
+        <div className="mx-auto w-20 h-20 bg-red-900/20 rounded-full flex items-center justify-center mb-6 text-red-500 border border-red-500/50">
+          <ShieldAlert size={40} />
+        </div>
+        <h1 className="text-3xl font-serif text-white mb-4 italic tracking-wide">ACESSO NEGADO</h1>
+        <p className="text-[#8a9a8a] mb-8 leading-relaxed">
+          Para gerenciar campanhas, você precisa se identificar na guilda.
+        </p>
+        <div className="flex flex-col gap-3">
+          <Link href="/login" className="w-full bg-[#00ff66] text-black font-black py-4 rounded-lg uppercase tracking-widest hover:bg-[#00cc52] transition-colors">
+            Fazer Login
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// TELA DE CARREGAMENTO
+function LoadingState() {
+  return (
+    <div className="min-h-screen bg-[#050a05] flex items-center justify-center">
+      <div className="flex flex-col items-center gap-4">
+        <div className="w-12 h-12 border-4 border-[#1a2a1a] border-t-[#00ff66] rounded-full animate-spin"></div>
+        <p className="text-[#00ff66] text-xs uppercase tracking-[0.3em] font-bold animate-pulse">Carregando Campanhas...</p>
+      </div>
+    </div>
+  );
+}
 
 //Define campanha
 type Campaign = {
@@ -18,6 +55,13 @@ type Campaign = {
 }
 
 export default function CampanhasPage() {
+  const router = useRouter();
+  const supabase = createClient();
+
+  // Estados de Auth
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [loadingAuth, setLoadingAuth] = useState(true);
+
   const [abaAtiva, setAbaAtiva] = useState('campanhas');
   // Estados da aplicação
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
@@ -33,6 +77,20 @@ export default function CampanhasPage() {
 
   const dropdownRef = useRef<HTMLDivElement>(null);
 
+  // Verificação de Login
+  useEffect(() => {
+    const checkUser = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        setIsAuthenticated(false);
+      } else {
+        setIsAuthenticated(true);
+      }
+      setLoadingAuth(false);
+    };
+    checkUser();
+  }, [supabase]);
+
   // Fechar dropdown ao clicar fora
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -44,9 +102,13 @@ export default function CampanhasPage() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  if (loadingAuth) return <LoadingState />;
+  if (!isAuthenticated) return <UnauthorizedState />;
+
   return (
     <>
-      <Navbar abaAtiva={abaAtiva} setAbaAtiva={setAbaAtiva} isLoggedIn />
+      <Navbar abaAtiva={abaAtiva} setAbaAtiva={setAbaAtiva} />
+      
       <div className="max-w-[800px] mx-auto py-12 px-6">
 
           <div className="bg-[#0a120a] border border-[#1a2a1a] rounded-xl p-10 shadow-[0_0_50px_rgba(0,0,0,0.5)]">
@@ -267,4 +329,3 @@ export default function CampanhasPage() {
     </>
   );
 }
-

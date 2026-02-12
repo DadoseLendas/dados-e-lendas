@@ -1,12 +1,98 @@
 "use client";
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { createClient } from '@/utils/supabase/client';
 import Navbar from '@/app/components/ui/navbar';
 import Footer from '@/app/components/ui/footer';
-import { FileText, Dices, Map, ChevronRight } from 'lucide-react';
+import { FileText, Dices, Map, ChevronRight, ShieldAlert } from 'lucide-react';
+import Link from 'next/link';
 
-export default function Home() {
+// Verificação se está logado
+function UnauthorizedState() {
+  return (
+    <div className="min-h-screen bg-[#050a05] flex flex-col items-center justify-center p-6 text-center font-sans">
+      <div className="bg-[#0a120a] border border-red-900/30 p-12 rounded-2xl shadow-[0_0_50px_rgba(255,0,0,0.1)] max-w-lg w-full">
+        <div className="mx-auto w-20 h-20 bg-red-900/20 rounded-full flex items-center justify-center mb-6 text-red-500 border border-red-500/50">
+          <ShieldAlert size={40} />
+        </div>
+        
+        <h1 className="text-3xl font-serif text-white mb-4 italic tracking-wide">
+          ACESSO NEGADO
+        </h1>
+        
+        <p className="text-[#8a9a8a] mb-8 leading-relaxed">
+          Alto lá, viajante! Este domínio é protegido por magias antigas. 
+          Apenas aventureiros registrados na guilda podem acessar o painel de controle.
+        </p>
+
+        <div className="flex flex-col gap-3">
+          <Link 
+            href="/login" 
+            className="w-full bg-[#00ff66] text-black font-black py-4 rounded-lg uppercase tracking-widest hover:bg-[#00cc52] transition-colors"
+          >
+            Fazer Login
+          </Link>
+          <Link 
+            href="/cadastro" 
+            className="w-full border border-[#1a2a1a] text-[#8a9a8a] font-bold py-4 rounded-lg uppercase tracking-widest hover:text-white hover:border-white transition-colors"
+          >
+            Criar Conta
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Loading
+function LoadingState() {
+  return (
+    <div className="min-h-screen bg-[#050a05] flex items-center justify-center">
+      <div className="flex flex-col items-center gap-4">
+        <div className="w-12 h-12 border-4 border-[#1a2a1a] border-t-[#00ff66] rounded-full animate-spin"></div>
+        <p className="text-[#00ff66] text-xs uppercase tracking-[0.3em] font-bold animate-pulse">Conjurando Dashboard...</p>
+      </div>
+    </div>
+  );
+}
+
+// Dashboard
+export default function Dashboard() {
+  const router = useRouter();
+  const supabase = createClient();
+  
+  // Estados para controlar a verificação
+  const [loading, setLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [abaAtiva, setAbaAtiva] = useState('home'); // Estado para controlar a navbar
+
+  // Efeito para verificar autenticação ao carregar a página
+  useEffect(() => {
+    const checkUser = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        setIsAuthenticated(false);
+      } else {
+        setIsAuthenticated(true);
+      }
+      setLoading(false);
+    };
+
+    checkUser();
+  }, [supabase]);
+
+  // Se estiver verificando mostra Loading
+  if (loading) return <LoadingState />;
+
+  // Se verificou e NÃO tem sessão mostra Não Autorizado
+  if (!isAuthenticated) return <UnauthorizedState />;
+
+  // 3. Se tem sessão mostra o Dashboard completo
   return (
     <main className="bg-[#050a05] text-white overflow-x-hidden font-sans">
-      <Navbar abaAtiva="home" setAbaAtiva={() => {}} />
+      
+      <Navbar abaAtiva={abaAtiva} setAbaAtiva={setAbaAtiva} />
       
       {/*incial*/}
       <section className="h-[70vh] flex flex-col items-center justify-center text-center px-5 border-b border-[#1a2a1a]/30">

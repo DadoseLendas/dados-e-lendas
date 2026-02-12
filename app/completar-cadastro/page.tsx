@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-// Importamos do NOSSO utilitário Client
 import { createClient } from '@/utils/supabase/client' 
 import { useRouter } from 'next/navigation'
 import { Playfair_Display, Inter } from 'next/font/google'
@@ -11,29 +10,46 @@ const inter = Inter({ subsets: ['latin'] })
 
 export default function CompleteProfilePage() {
   const router = useRouter()
-  const supabase = createClient() // Cliente Navegador
+  const supabase = createClient()
   
-  const [formData, setFormData] = useState({
-    nickname: '',
-    displayName: ''
+  const [formData, setFormData] = useState({ 
+    nickname: '', 
+    displayName: '',
+    password: '',
+    confirmPassword: ''
   })
+  
   const [loading, setLoading] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
+  const [nicknameError, setNicknameError] = useState(false)
 
-  // Verifica sessão
+  // Verifica se o usuário chegou aqui logado (via Google ou Link Mágico)
   useEffect(() => {
     const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession()
-      if (!session) {
-        router.push('/login')
-      }
+      if (!session) router.push('/login')
     }
     checkSession()
   }, [supabase, router])
 
-  const validateNickname = (nick: string) => {
-    const regex = /^[a-zA-Z0-9_-]+$/;
-    return regex.test(nick);
+  const nicknameRegex = /^[a-zA-Z0-9_-]+$/;
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target
+    setFormData({ ...formData, [name]: value })
+    if (name === 'nickname' && nicknameError) setNicknameError(false)
+  }
+
+  const handleNicknameBlur = () => {
+    if (formData.nickname.length > 0 && !nicknameRegex.test(formData.nickname)) {
+      setNicknameError(true)
+    }
+  }
+
+  const validatePassword = (pass: string) => {
+    // Validação de força de senha no Frontend (UX)
+    const strongRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[.,/:@#$%!^&*()_+\-=\[\]{};'"\\|<>\?]).{8,}$/;
+    return strongRegex.test(pass);
   }
 
   const handleCompleteProfile = async (e: React.FormEvent) => {
@@ -41,27 +57,53 @@ export default function CompleteProfilePage() {
     setErrorMsg(null)
     setLoading(true)
 
-    // Validações
-    if (!validateNickname(formData.nickname)) {
+    // Validação Visual do Nickname
+    if (!nicknameRegex.test(formData.nickname)) {
+      setNicknameError(true)
       setErrorMsg("Nickname inválido. Use apenas letras, números, '-' ou '_'.")
       setLoading(false)
       return
     }
 
-    // Pega usuário atual
-    const { data: { user } } = await supabase.auth.getUser()
+    // Lógica de Senha
+    if (formData.password) {
+      if (formData.password !== formData.confirmPassword) {
+        setErrorMsg("As senhas não conferem.")
+        setLoading(false)
+        return
+      }
+      if (!validatePassword(formData.password)) {
+        setErrorMsg("Senha fraca. Mínimo 8 caracteres, 1 Maiúscula, 1 Número e 1 Especial.")
+        setLoading(false)
+        return
+      }
 
+      // Atualiza a senha do usuário LOGADO
+      const { error: passwordError } = await supabase.auth.updateUser({
+        password: formData.password
+      })
+
+      if (passwordError) {
+        setErrorMsg(`Erro ao definir senha: ${passwordError.message}`)
+        setLoading(false)
+        return
+      }
+    }
+
+    // Obter dados do usuário para vincular ao perfil
+    const { data: { user } } = await supabase.auth.getUser()
+    
     if (!user) {
-      setErrorMsg("Erro de autenticação. Tente fazer login novamente.")
+      setErrorMsg("Sessão expirada. Faça login novamente.")
       setLoading(false)
       return
     }
 
-    // Insere no banco
+    // Criar o Perfil Público
     const { error } = await supabase
       .from('profiles')
       .insert({
-        id: user.id,
+        id: user.id, 
         nickname: formData.nickname,
         display_name: formData.displayName,
         avatar_url: user.user_metadata.avatar_url,
@@ -69,10 +111,12 @@ export default function CompleteProfilePage() {
       })
 
     if (error) {
+      // Tratamento de erro de banco de dados (Ex: Nickname duplicado)
       if (error.code === '23505') { 
-        setErrorMsg("Este nickname já está sendo usado.")
+        setErrorMsg("Este nickname já está sendo usado por outro aventureiro.")
+        setNicknameError(true)
       } else {
-        setErrorMsg(error.message)
+        setErrorMsg(`Erro ao salvar perfil: ${error.message}`)
       }
       setLoading(false)
     } else {
@@ -82,64 +126,108 @@ export default function CompleteProfilePage() {
   }
 
   return (
-    <div className={`flex min-h-screen flex-col items-center justify-center bg-[#060c06] p-4 text-[#e4e8e1] ${inter.className}`}>
+    <div className={`flex min-h-screen flex-col items-center justify-center bg-[#050a05] p-4 text-white ${inter.className}`}>
       
-      <div className="w-full max-w-md space-y-8 rounded-xl border border-[#219246]/30 bg-[#060c06]/80 p-8 backdrop-blur-md shadow-2xl">
+      <div className="w-full max-w-md space-y-8 rounded-xl border border-[#1a2a1a] bg-[#0a120a] p-8 shadow-[0_0_50px_rgba(0,0,0,0.5)]">
         
         <div className="text-center flex flex-col items-center">
           <div className="relative mb-6 h-20 w-20">
             <img 
               src="/logo.png" 
               alt="Logo" 
-              className="h-full w-full object-contain drop-shadow-[0_0_15px_rgba(1,254,102,0.4)] rounded-full"
+              className="h-full w-full object-contain drop-shadow-[0_0_15px_rgba(0,255,102,0.4)] rounded-full"
             />
           </div>
           
-          <h1 className={`text-2xl font-bold italic text-[#01fe66] ${playfair.className} mb-2`}>
-            QUASE LÁ, HERÓI!
+          <h1 className={`text-2xl font-bold italic text-[#00ff66] ${playfair.className} mb-2`}>
+            QUASE LÁ, AVENTUREIRO!
           </h1>
-          <p className="text-[#80887e] text-sm">
-            O Oráculo precisa saber como devemos lhe chamar.
+          <p className="text-[#8a9a8a] text-sm">
+            Finalize seu cadastro definindo sua identidade.
           </p>
         </div>
 
         {errorMsg && (
-          <div className="rounded border border-red-500/50 bg-red-900/20 p-3 text-sm text-red-200 text-center animate-pulse">
-            {errorMsg}
+          <div className="rounded border border-red-500/50 bg-red-900/20 p-3 text-sm text-red-200 text-center animate-pulse border-l-4 border-l-red-500">
+            ⚠️ {errorMsg}
           </div>
         )}
 
         <form onSubmit={handleCompleteProfile} className="space-y-5">
+          {/* Nickname */}
           <div>
-            <label className="block text-xs font-medium text-[#80887e] mb-1">NICKNAME (ÚNICO)</label>
+            <label className="block text-xs font-black text-[#4a5a4a] uppercase tracking-[0.2em] mb-2 ml-1">NICKNAME</label>
             <input
+              name="nickname"
               type="text"
               required
-              placeholder="@gandalf"
+              placeholder="@meunickname"
               value={formData.nickname}
-              onChange={(e) => setFormData({...formData, nickname: e.target.value})}
-              className="w-full rounded bg-[#003a07] border border-[#219246] p-3 text-[#e4e8e1] focus:border-[#01fe66] focus:outline-none transition-colors"
+              onChange={handleChange}
+              onBlur={handleNicknameBlur}
+              className={`w-full rounded bg-[#050a05] border p-3 text-white focus:outline-none transition-colors ${
+                nicknameError 
+                  ? 'border-red-500 focus:border-red-500 text-red-100 placeholder-red-300/50' 
+                  : 'border-[#1a2a1a] focus:border-[#00ff66] placeholder-[#1a2a1a]'
+              }`}
             />
+            {nicknameError && (
+              <span className="text-red-400 text-[10px] mt-1 ml-1 block font-bold">
+                Apenas letras, números, '-' ou '_'. Sem espaços.
+              </span>
+            )}
           </div>
           
+          {/* Nome de Exibição */}
           <div>
-            <label className="block text-xs font-medium text-[#80887e] mb-1">NOME DE EXIBIÇÃO</label>
+            <label className="block text-xs font-black text-[#4a5a4a] uppercase tracking-[0.2em] mb-2 ml-1">NOME DE EXIBIÇÃO</label>
             <input
+              name="displayName"
               type="text"
               required
-              placeholder="Mago Cinzento"
+              placeholder="Nome de exibição"
               value={formData.displayName}
-              onChange={(e) => setFormData({...formData, displayName: e.target.value})}
-              className="w-full rounded bg-[#003a07] border border-[#219246] p-3 text-[#e4e8e1] focus:border-[#01fe66] focus:outline-none transition-colors"
+              onChange={handleChange}
+              className="w-full rounded bg-[#050a05] border border-[#1a2a1a] p-3 text-white focus:border-[#00ff66] focus:outline-none transition-colors placeholder-[#1a2a1a]"
+            />
+          </div>
+
+          {/* Senha */}
+          <div>
+            <label className="block text-xs font-black text-[#4a5a4a] uppercase tracking-[0.2em] mb-2 ml-1">SENHA</label>
+            <input
+              name="password"
+              type="password"
+              placeholder="••••••••"
+              value={formData.password}
+              onChange={handleChange}
+              className="w-full rounded bg-[#050a05] border border-[#1a2a1a] p-3 text-white focus:border-[#00ff66] focus:outline-none transition-colors placeholder-[#1a2a1a]"
+            />
+          </div>
+
+           {/* Confirmar Senha */}
+           <div>
+            <label className="block text-xs font-black text-[#4a5a4a] uppercase tracking-[0.2em] mb-2 ml-1">CONFIRMAR SENHA</label>
+            <input
+              name="confirmPassword"
+              type="password"
+              placeholder="••••••••"
+              value={formData.confirmPassword}
+              onChange={handleChange}
+              className={`w-full rounded bg-[#050a05] border p-3 text-white focus:outline-none transition-colors placeholder-[#1a2a1a] ${
+                formData.password && formData.confirmPassword && formData.password !== formData.confirmPassword 
+                  ? 'border-red-500' 
+                  : 'border-[#1a2a1a] focus:border-[#00ff66]'
+              }`}
             />
           </div>
           
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded bg-[#01fe66] py-3 font-bold text-[#060c06] uppercase tracking-wider hover:bg-[#1cef6f] disabled:opacity-50"
+            className="w-full rounded bg-[#00ff66] py-3 font-bold text-black uppercase tracking-widest hover:bg-[#00cc52] shadow-[0_0_15px_rgba(0,255,102,0.3)] disabled:opacity-50 mt-4 transition-all"
           >
-            {loading ? 'Salvando...' : 'Concluir Cadastro >'}
+            {loading ? 'Salvando...' : 'Concluir Cadastro'}
           </button>
         </form>
       </div>
