@@ -207,10 +207,11 @@ export default function PerfilView() {
   if (!isAuthenticated) return <UnauthorizedState />;
 
   return (
-    <>
+    <div className="min-h-screen bg-[#050a05] flex flex-col font-sans text-white">
+      
       <Navbar abaAtiva={abaAtiva} setAbaAtiva={setAbaAtiva} />
       
-      <div className="max-w-[1000px] mx-auto animate-in fade-in zoom-in duration-300 py-12 px-6">
+      <main className="flex-grow w-full max-w-[1000px] mx-auto animate-in fade-in zoom-in duration-300 py-12 px-6">
         
         <div className="mb-8 border-l-4 border-[#00ff66] pl-6">
             <h2 className="text-[#f1e5ac] text-3xl font-serif tracking-[0.2em] uppercase italic">
@@ -402,8 +403,9 @@ export default function PerfilView() {
             </div>
         </div>
 
-      </div>
+      </main>
+      
       <Footer />
-    </>
+    </div>
   );
 }
