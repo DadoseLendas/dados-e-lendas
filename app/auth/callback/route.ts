@@ -1,42 +1,42 @@
 import { NextResponse } from 'next/server'
-// Importamos do NOSSO utilitário agora
 import { createClient } from '@/utils/supabase/server' 
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get('code')
-  
-  // se houver 'next' na URL, usamos para redirecionamento, senão dashboard
   const next = searchParams.get('next') ?? '/dashboard'
 
+  // Helper para garantir a URL correta na Vercel
+  const getURL = () => {
+    let url = process.env.NEXT_PUBLIC_SITE_URL ?? origin;
+    url = url.includes('http') ? url : `https://${url}`;
+    return url.endsWith('/') ? url.slice(0, -1) : url;
+  };
+
   if (code) {
-    const supabase = await createClient() // Cliente Servidor
-    
-    // Troca o código pela sessão
+    const supabase = await createClient()
     const { error } = await supabase.auth.exchangeCodeForSession(code)
     
     if (!error) {
-      // Verifica o perfil APÓS trocar o código
       const { data: { user } } = await supabase.auth.getUser()
       
       if (user) {
+        // Buscamos o perfil
         const { data: profile } = await supabase
           .from('profiles')
           .select('id')
           .eq('id', user.id)
           .single()
 
-        // Se não tem perfil, força ir para completar cadastro
         if (!profile) {
-          return NextResponse.redirect(`${origin}/completar-cadastro`)
+          return NextResponse.redirect(`${getURL()}/completar-cadastro`)
         }
       }
 
-      // Se tem perfil ou deu tudo certo, vai para o destino
-      return NextResponse.redirect(`${origin}${next}`)
+      return NextResponse.redirect(`${getURL()}${next}`)
     }
   }
 
-  // Se deu erro no código, volta pro login com erro
-  return NextResponse.redirect(`${origin}/login?error=auth-code-error`)
+  // Fallback em caso de erro crítico no código de autenticação
+  return NextResponse.redirect(`${getURL()}/login?error=auth-code-error`)
 }
