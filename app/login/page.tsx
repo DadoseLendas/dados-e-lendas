@@ -66,7 +66,7 @@ export default function LoginPage() {
       setFormError("Credenciais inválidas. Verifique seu email e senha.")
       setLoading(false)
     } else {
-      router.push('/dashboard')
+      router.push('/')
       router.refresh()
     }
   }

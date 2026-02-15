@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from 'react';
-import { User, LogOut } from 'lucide-react';
+import { User, LogOut, LogIn, UserPlus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 
@@ -30,16 +30,16 @@ export default function Navbar({ abaAtiva, setAbaAtiva }: NavbarProps) {
           
           const { data: profile } = await supabase
             .from('profiles')
-            .select('avatar_url, display_name')
+            .select('avatar_url, display_name, nickname')
             .eq('id', session.user.id)
             .single();
 
           if (profile) {
-            setAvatarUrl(profile.avatar_url);
-            setDisplayName(profile.display_name);
+            setDisplayName(profile.display_name || profile.nickname || 'Aventureiro');
+            setAvatarUrl(profile.avatar_url || null); 
           } else {
-            setAvatarUrl(session.user.user_metadata.avatar_url);
-            setDisplayName(session.user.user_metadata.full_name || session.user.user_metadata.name);
+            setDisplayName('Aventureiro');
+            setAvatarUrl(null);
           }
 
         } else {
@@ -56,11 +56,12 @@ export default function Navbar({ abaAtiva, setAbaAtiva }: NavbarProps) {
   }, [supabase]);
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    router.push('/login');
+    await (supabase.auth as any).signOut();
     setIsUserLoggedIn(false);
     setAvatarUrl(null);
     setDisplayName(null);
+    router.push('/login');
+    router.refresh();
   };
 
   return (
@@ -70,7 +71,7 @@ export default function Navbar({ abaAtiva, setAbaAtiva }: NavbarProps) {
         {/* LOGO */}
         <div 
           className="flex items-center gap-3 cursor-pointer group" 
-          onClick={() => { setAbaAtiva('home'); router.push(isUserLoggedIn ? '/dashboard' : '/'); }}
+          onClick={() => { setAbaAtiva('home'); router.push('/'); }}
         >
           <div className="p-1.5 rounded-md bg-transparent transition-transform group-hover:scale-105">
             <img 
@@ -84,48 +85,45 @@ export default function Navbar({ abaAtiva, setAbaAtiva }: NavbarProps) {
           </span>
         </div>
         
-        {/* Loading State */}
+        {/* Loading State Skeleton */}
         {isLoading ? (
            <div className="animate-pulse flex gap-4">
              <div className="h-4 w-20 bg-[#1a2a1a] rounded"></div>
-             <div className="h-4 w-20 bg-[#1a2a1a] rounded"></div>
+             <div className="h-10 w-10 bg-[#1a2a1a] rounded-full"></div>
            </div>
         ) : (
-          <>
-            {/* ABAS CENTRAIS */}
-            <div className="flex items-center gap-6 md:gap-10">
-              {isUserLoggedIn && (
-                <div className="flex gap-6 md:gap-10 text-xs font-bold uppercase tracking-widest">
-                  <button 
-                    onClick={() => { setAbaAtiva('campanhas'); router.push('/campanhas'); }}
-                    className={`${abaAtiva === 'campanhas' ? 'text-[#00ff66] border-b-2 border-[#00ff66] pb-1' : 'text-[#8a9a8a] hover:text-[#00ff66]'} transition-all`}
-                  >
-                    Campanhas
-                  </button>
-                  <button 
-                      onClick={() => { setAbaAtiva('personagens'); router.push('/personagens'); }}
-                      className={`${abaAtiva === 'personagens' ? 'text-[#00ff66] border-b-2 border-[#00ff66] pb-1' : 'text-[#8a9a8a] hover:text-[#00ff66]'} transition-all`}
-                    >
-                      Personagens
-                    </button>
-                </div>
-              )}
-            </div>
+          <div className="flex items-center gap-6 md:gap-10">
+            
+            {/* LINKS CENTRAIS: APENAS SE LOGADO */}
+            {isUserLoggedIn && (
+              <div className="hidden md:flex gap-10 text-xs font-bold uppercase tracking-widest">
+                <button 
+                  onClick={() => { setAbaAtiva('campanhas'); router.push('/campanhas'); }}
+                  className={`${abaAtiva === 'campanhas' ? 'text-[#00ff66] border-b-2 border-[#00ff66] pb-1' : 'text-[#8a9a8a] hover:text-[#00ff66]'} transition-all`}
+                >
+                  Campanhas
+                </button>
+                <button 
+                  onClick={() => { setAbaAtiva('personagens'); router.push('/personagens'); }}
+                  className={`${abaAtiva === 'personagens' ? 'text-[#00ff66] border-b-2 border-[#00ff66] pb-1' : 'text-[#8a9a8a] hover:text-[#00ff66]'} transition-all`}
+                >
+                  Personagens
+                </button>
+              </div>
+            )}
 
-            {/* ÁREA DO USUÁRIO */}
+            {/* ÁREA DA DIREITA: LOGADO VS DESLOGADO */}
             <div className="flex items-center">
               {isUserLoggedIn ? (
-                <div className="flex items-center gap-4">
+                /* MENU DO USUÁRIO LOGADO */
+                <div className="flex items-center gap-4 border-l border-[#1a2a1a] pl-6 ml-2">
                   <button 
                     onClick={() => { setAbaAtiva('perfil'); router.push('/perfil'); }} 
                     className="flex items-center gap-3 group"
                   >
-                    {/* Nome de Exibição (Estilo da Logo) */}
-                    <span className={"hidden md:block text-sm text-white font-bold font-serif tracking-wider transition-colors group-hover:text-[#00ff66] duration-300 text-[#00ff66]"}>
+                    <span className="hidden md:block text-sm font-bold font-serif tracking-wider transition-colors group-hover:text-[#00ff66] duration-300 text-[#00ff66]">
                       {displayName || 'Aventureiro'}
                     </span>
-
-                    {/* Foto de Perfil */}
                     <div className={`w-10 h-10 rounded-full border-2 transition-all flex items-center justify-center overflow-hidden ${abaAtiva === 'perfil' ? 'border-[#00ff66] shadow-[0_0_8px_#00ff66]' : 'border-[#1a2a1a] group-hover:border-[#00ff66]'}`}>
                         {avatarUrl ? (
                           <img src={avatarUrl} alt="User" className="w-full h-full object-cover" />
@@ -144,23 +142,31 @@ export default function Navbar({ abaAtiva, setAbaAtiva }: NavbarProps) {
                   </button>
                 </div>
               ) : (
-                <div className="flex gap-6">
+              
+                <div className="flex items-center gap-3">
                   <button
                     onClick={() => { setAbaAtiva('login'); router.push('/login'); }}
-                    className={`font-bold text-xs tracking-widest uppercase ${abaAtiva === 'login' ? 'text-[#00ff66]' : 'text-white hover:text-[#00ff66]'} transition-colors`}
+                    className={`flex items-center gap-2 font-bold text-xs tracking-widest uppercase px-4 py-2 rounded transition-all ${
+                      abaAtiva === 'login' 
+                      ? 'text-[#00ff66] bg-[#00ff66]/10' 
+                      : 'text-[#8a9a8a] hover:text-white hover:bg-[#1a2a1a]/50'
+                    }`}
                   >
-                    Login
+                    <LogIn size={16} /> Login
                   </button>
+                  
                   <button
                     onClick={() => { setAbaAtiva('cadastro'); router.push('/cadastro'); }}
-                    className={`font-bold text-xs tracking-widest uppercase ${abaAtiva === 'cadastro' ? 'text-[#00ff66]' : 'text-white hover:text-[#00ff66]'} transition-colors`}
+                    className="group relative flex items-center gap-2 border border-[#00ff66] bg-[#00ff66]/10 text-[#00ff66] hover:bg-[#00ff66] hover:text-black font-bold text-xs tracking-widest uppercase px-6 py-2 rounded transition-all shadow-[0_0_15px_rgba(0,255,102,0.15)] hover:shadow-[0_0_25px_rgba(0,255,102,0.4)]"
                   >
-                    Cadastro
+                    <UserPlus size={16} className="group-hover:scale-110 transition-transform" />
+                    Criar Conta
                   </button>
                 </div>
               )}
             </div>
-          </>
+            
+          </div>
         )}
 
       </div>

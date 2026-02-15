@@ -23,7 +23,6 @@ export default function CompleteProfilePage() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [nicknameError, setNicknameError] = useState(false)
 
-  // Verifica se o usuário chegou aqui logado (via Google ou Link Mágico)
   useEffect(() => {
     const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession()
@@ -47,7 +46,6 @@ export default function CompleteProfilePage() {
   }
 
   const validatePassword = (pass: string) => {
-    // Validação de força de senha no Frontend (UX)
     const strongRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[.,/:@#$%!^&*()_+\-=\[\]{};'"\\|<>\?]).{8,}$/;
     return strongRegex.test(pass);
   }
@@ -57,7 +55,6 @@ export default function CompleteProfilePage() {
     setErrorMsg(null)
     setLoading(true)
 
-    // Validação Visual do Nickname
     if (!nicknameRegex.test(formData.nickname)) {
       setNicknameError(true)
       setErrorMsg("Nickname inválido. Use apenas letras, números, '-' ou '_'.")
@@ -65,7 +62,6 @@ export default function CompleteProfilePage() {
       return
     }
 
-    // Lógica de Senha
     if (formData.password) {
       if (formData.password !== formData.confirmPassword) {
         setErrorMsg("As senhas não conferem.")
@@ -78,7 +74,6 @@ export default function CompleteProfilePage() {
         return
       }
 
-      // Atualiza a senha do usuário LOGADO
       const { error: passwordError } = await supabase.auth.updateUser({
         password: formData.password
       })
@@ -90,7 +85,6 @@ export default function CompleteProfilePage() {
       }
     }
 
-    // Obter dados do usuário para vincular ao perfil
     const { data: { user } } = await supabase.auth.getUser()
     
     if (!user) {
@@ -99,19 +93,16 @@ export default function CompleteProfilePage() {
       return
     }
 
-    // Criar o Perfil Público
     const { error } = await supabase
       .from('profiles')
-      .insert({
-        id: user.id, 
+      .upsert({
+        id: user.id,
         nickname: formData.nickname,
         display_name: formData.displayName,
-        avatar_url: user.user_metadata.avatar_url,
         role: 'user'
       })
 
     if (error) {
-      // Tratamento de erro de banco de dados (Ex: Nickname duplicado)
       if (error.code === '23505') { 
         setErrorMsg("Este nickname já está sendo usado por outro aventureiro.")
         setNicknameError(true)
@@ -120,7 +111,7 @@ export default function CompleteProfilePage() {
       }
       setLoading(false)
     } else {
-      router.push('/dashboard')
+      router.push('/')
       router.refresh()
     }
   }
@@ -154,7 +145,6 @@ export default function CompleteProfilePage() {
         )}
 
         <form onSubmit={handleCompleteProfile} className="space-y-5">
-          {/* Nickname */}
           <div>
             <label className="block text-xs font-black text-[#4a5a4a] uppercase tracking-[0.2em] mb-2 ml-1">NICKNAME</label>
             <input
@@ -178,7 +168,6 @@ export default function CompleteProfilePage() {
             )}
           </div>
           
-          {/* Nome de Exibição */}
           <div>
             <label className="block text-xs font-black text-[#4a5a4a] uppercase tracking-[0.2em] mb-2 ml-1">NOME DE EXIBIÇÃO</label>
             <input
@@ -192,7 +181,6 @@ export default function CompleteProfilePage() {
             />
           </div>
 
-          {/* Senha */}
           <div>
             <label className="block text-xs font-black text-[#4a5a4a] uppercase tracking-[0.2em] mb-2 ml-1">SENHA</label>
             <input
@@ -205,7 +193,6 @@ export default function CompleteProfilePage() {
             />
           </div>
 
-           {/* Confirmar Senha */}
            <div>
             <label className="block text-xs font-black text-[#4a5a4a] uppercase tracking-[0.2em] mb-2 ml-1">CONFIRMAR SENHA</label>
             <input

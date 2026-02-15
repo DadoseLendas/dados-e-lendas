@@ -93,13 +93,12 @@ export default function PerfilView() {
         .eq('id', session.user.id)
         .single();
 
-      if (profile) {
-        setProfileData({
-          nickname: profile.nickname || '',
-          display_name: profile.display_name || '',
-          avatar_url: profile.avatar_url || session.user.user_metadata.avatar_url || ''
-        });
-      }
+      setProfileData({
+        nickname: profile?.nickname || '',
+        display_name: profile?.display_name || '',
+        avatar_url: profile?.avatar_url || ''
+      });
+      
       setLoading(false);
     };
 
