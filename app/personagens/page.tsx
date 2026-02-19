@@ -1,23 +1,107 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import type { ChangeEvent } from 'react';
+import { useRouter } from 'next/navigation';
+import { createClient } from '@/utils/supabase/client'; 
 import Navbar from '@/app/components/ui/navbar';
 import Footer from '@/app/components/ui/footer';
-import { Sword, Plus, ArrowLeft } from 'lucide-react';
+import { Sword, Plus, ArrowLeft, ShieldAlert } from 'lucide-react'; 
+import Link from 'next/link'; 
+
+// Tela de acesso negado
+function UnauthorizedState() {
+  return (
+    <div className="min-h-screen bg-[#050a05] flex flex-col items-center justify-center p-6 text-center font-sans">
+      <div className="bg-[#0a120a] border border-red-900/30 p-12 rounded-2xl shadow-[0_0_50px_rgba(255,0,0,0.1)] max-w-lg w-full">
+        <div className="mx-auto w-20 h-20 bg-red-900/20 rounded-full flex items-center justify-center mb-6 text-red-500 border border-red-500/50">
+          <ShieldAlert size={40} />
+        </div>
+        <h1 className="text-3xl font-serif text-white mb-4 italic tracking-wide">ACESSO NEGADO</h1>
+        <p className="text-[#8a9a8a] mb-8 leading-relaxed">
+          Alto lá, viajante! Você precisa estar logado na guilda para acessar seu grimório de personagens.
+        </p>
+        <div className="flex flex-col gap-3">
+          <Link href="/login" className="w-full bg-[#00ff66] text-black font-black py-4 rounded-lg uppercase tracking-widest hover:bg-[#00cc52] transition-colors">
+            Fazer Login
+          </Link>
+          <Link href="/cadastro" className="w-full border border-[#1a2a1a] text-[#8a9a8a] font-bold py-4 rounded-lg uppercase tracking-widest hover:text-white hover:border-white transition-colors">
+            Criar Conta
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Tela de carregamento
+function LoadingState() {
+  return (
+    <div className="min-h-screen bg-[#050a05] flex items-center justify-center">
+      <div className="flex flex-col items-center gap-4">
+        <div className="w-12 h-12 border-4 border-[#1a2a1a] border-t-[#00ff66] rounded-full animate-spin"></div>
+        <p className="text-[#00ff66] text-xs uppercase tracking-[0.3em] font-bold animate-pulse">Abrindo Grimório...</p>
+      </div>
+    </div>
+  );
+}
+
+type Character = {
+  id: number;
+  name: string;
+  class: string;
+  level: number;
+  race: string;
+  background: string;
+  alignment: string;
+  experiencePoints: number;
+  proficiencyBonus: number;
+  inspiration: boolean;
+  stats: {
+    str: number; dex: number; con: number; int: number; wis: number; cha: number;
+  };
+  savingThrows: Record<string, boolean>;
+  skills: Record<string, boolean>;
+  inventory: { id: number; name: string }[];
+  img: string;
+}
 
 export default function PersonagensPage() {
+  const router = useRouter();
+  const supabase = createClient();
+
+  // Estados de Autenticação
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isLoadingAuth, setIsLoadingAuth] = useState(true);
+
   // Estados da aplicação
   const [abaAtiva, setAbaAtiva] = useState('personagens');
-  const [characters, setCharacters] = useState([]);
-  const [activeCharacter, setActiveCharacter] = useState(null);
-  const [dropdownOpen, setDropdownOpen] = useState(null);
+  const [characters, setCharacters] = useState<Character[]>([]);
+  const [activeCharacter, setActiveCharacter] = useState<Character | null>(null);
+  const [dropdownOpen, setDropdownOpen] = useState<string | null>(null);
   const [editingCharacterImg, setEditingCharacterImg] = useState(false);
   const [tempCharacterImg, setTempCharacterImg] = useState('');
-  const [tempCharacterImgFile, setTempCharacterImgFile] = useState(null);
-  const [showInventoryModal, setShowInventoryModal] = useState(false);
+  
+  // Não são usados, estava causando erro de build
+  // const [tempCharacterImgFile, setTempCharacterImgFile] = useState<File | null>(null); 
+  // const [showInventoryModal, setShowInventoryModal] = useState(false);
+  
   const [newInventoryItem, setNewInventoryItem] = useState('');
   
-  const dropdownRef = useRef(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Efeito de verificação de login
+  useEffect(() => {
+    const checkUser = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        setIsAuthenticated(false);
+      } else {
+        setIsAuthenticated(true);
+      }
+      setIsLoadingAuth(false);
+    };
+    checkUser();
+  }, [supabase]);
 
   // Fechar dropdown ao clicar fora
   useEffect(() => {
@@ -30,16 +114,13 @@ export default function PersonagensPage() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  
-
-  // Função para criar novo personagem
   const createCharacter = () => {
     if (characters.length >= 6) {
       alert('Você atingiu o limite máximo de 6 personagens.');
       return;
     }
 
-    const newCharacter = {
+    const newCharacter: Character = {
       id: Date.now(),
       name: 'Novo Personagem',
       class: 'Lutador',
@@ -50,41 +131,13 @@ export default function PersonagensPage() {
       experiencePoints: 0,
       proficiencyBonus: 2,
       inspiration: false,
-      stats: {
-        str: 10,
-        dex: 10,
-        con: 10,
-        int: 10,
-        wis: 10,
-        cha: 10
-      },
-      savingThrows: {
-        str: false,
-        dex: false,
-        con: false,
-        int: false,
-        wis: false,
-        cha: false
-      },
+      stats: { str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 },
+      savingThrows: { str: false, dex: false, con: false, int: false, wis: false, cha: false },
       skills: {
-        acrobacia: false,
-        arcanismo: false,
-        atletismo: false,
-        atuacao: false,
-        enganacao: false,
-        furtividade: false,
-        historia: false,
-        intimidacao: false,
-        intuicao: false,
-        investigacao: false,
-        lidarAnimais: false,
-        medicina: false,
-        natureza: false,
-        percepcao: false,
-        persuasao: false,
-        prestidigitacao: false,
-        religiao: false,
-        sobrevivencia: false
+        acrobacia: false, arcanismo: false, atletismo: false, atuacao: false, enganacao: false,
+        furtividade: false, historia: false, intimidacao: false, intuicao: false, investigacao: false,
+        lidarAnimais: false, medicina: false, natureza: false, percepcao: false, persuasao: false,
+        prestidigitacao: false, religiao: false, sobrevivencia: false
       },
       inventory: [],
       img: ''
@@ -147,7 +200,7 @@ export default function PersonagensPage() {
       reader.onload = (event) => {
         const result = event.target?.result as string;
         setTempCharacterImg(result);
-        setTempCharacterImgFile(file);
+        // setTempCharacterImgFile(file); // erro unused variable
       };
       reader.readAsDataURL(file);
     }
@@ -155,14 +208,14 @@ export default function PersonagensPage() {
 
   const startEditCharacterImage = () => {
     setTempCharacterImg('');
-    setTempCharacterImgFile(null);
+    // setTempCharacterImgFile(null);
     setEditingCharacterImg(true);
   };
 
   const cancelImageEdit = () => {
     setEditingCharacterImg(false);
     setTempCharacterImg('');
-    setTempCharacterImgFile(null);
+    // setTempCharacterImgFile(null);
   };
 
   const saveCharacterImage = () => {
@@ -185,10 +238,51 @@ export default function PersonagensPage() {
     updateCharacter('inventory', updatedInventory);
   };
 
+  // Verifica se está carregando auth
+  if (isLoadingAuth) return <LoadingState />;
+
+  // Verifica se está logado
+  if (!isAuthenticated) return <UnauthorizedState />;
+
+
+  const getSkillModifier = (skill: string, attr: string) => {
+    if (!activeCharacter) return 0;
+    const statKey = attr as keyof typeof activeCharacter.stats; 
+    const baseModifier = getModifier(activeCharacter.stats[statKey] || 10);
+    const skillKey = skill as keyof typeof activeCharacter.skills; 
+    const proficient = activeCharacter.skills[skillKey] || false;
+    return proficient ? baseModifier + activeCharacter.proficiencyBonus : baseModifier;
+  };
+
+  const skillsData: Record<string, { name: string; attr: string }> = {
+    atletismo: { name: 'Atletismo', attr: 'str' },
+    acrobacia: { name: 'Acrobacia', attr: 'dex' },
+    prestidigitacao: { name: 'Prestidigitação', attr: 'dex' },
+    furtividade: { name: 'Furtividade', attr: 'dex' },
+    arcanismo: { name: 'Arcanismo', attr: 'int' },
+    historia: { name: 'História', attr: 'int' },
+    investigacao: { name: 'Investigação', attr: 'int' },
+    natureza: { name: 'Natureza', attr: 'int' },
+    religiao: { name: 'Religião', attr: 'int' },
+    lidarAnimais: { name: 'Lidar com Animais', attr: 'wis' },
+    intuicao: { name: 'Intuição', attr: 'wis' },
+    medicina: { name: 'Medicina', attr: 'wis' },
+    percepcao: { name: 'Percepção', attr: 'wis' },
+    sobrevivencia: { name: 'Sobrevivência', attr: 'wis' },
+    enganacao: { name: 'Enganação', attr: 'cha' },
+    intimidacao: { name: 'Intimidação', attr: 'cha' },
+    atuacao: { name: 'Atuação', attr: 'cha' },
+    persuasao: { name: 'Persuasão', attr: 'cha' }
+  };
+
+  const statNames: Record<string, string> = {
+    str: 'Força', dex: 'Destreza', con: 'Constituição',
+    int: 'Inteligência', wis: 'Sabedoria', cha: 'Carisma'
+  };
+
   // Renderizar personagens
   const renderCharacters = () => (
     <div className="space-y-6">
-      {/* Header com contador e botão criar */}
       <div className="flex justify-between items-center">
         <h3 className="text-[#4a5a4a] text-xs font-black uppercase tracking-[0.2em]">
           Personagens: {characters.length}/6
@@ -202,7 +296,6 @@ export default function PersonagensPage() {
         </button>
       </div>
       
-      {/* Grid de personagens */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {characters.length === 0 ? (
           <div className="col-span-full text-center py-12 text-[#4a5a4a]">
@@ -264,44 +357,6 @@ export default function PersonagensPage() {
     </div>
   );
 
-  const getSkillModifier = (skill: string, attr: string) => {
-    if (!activeCharacter) return 0;
-    const baseModifier = getModifier(activeCharacter.stats[attr as keyof typeof activeCharacter.stats] || 10);
-    const proficient = activeCharacter.skills[skill as keyof typeof activeCharacter.skills] || false;
-    return proficient ? baseModifier + activeCharacter.proficiencyBonus : baseModifier;
-  };
-
-  const skillsData: Record<string, { name: string; attr: string }> = {
-    atletismo: { name: 'Atletismo', attr: 'str' },
-    acrobacia: { name: 'Acrobacia', attr: 'dex' },
-    prestidigitacao: { name: 'Prestidigitação', attr: 'dex' },
-    furtividade: { name: 'Furtividade', attr: 'dex' },
-    arcanismo: { name: 'Arcanismo', attr: 'int' },
-    historia: { name: 'História', attr: 'int' },
-    investigacao: { name: 'Investigação', attr: 'int' },
-    natureza: { name: 'Natureza', attr: 'int' },
-    religiao: { name: 'Religião', attr: 'int' },
-    lidarAnimais: { name: 'Lidar com Animais', attr: 'wis' },
-    intuicao: { name: 'Intuição', attr: 'wis' },
-    medicina: { name: 'Medicina', attr: 'wis' },
-    percepcao: { name: 'Percepção', attr: 'wis' },
-    sobrevivencia: { name: 'Sobrevivência', attr: 'wis' },
-    enganacao: { name: 'Enganação', attr: 'cha' },
-    intimidacao: { name: 'Intimidação', attr: 'cha' },
-    atuacao: { name: 'Atuação', attr: 'cha' },
-    persuasao: { name: 'Persuasão', attr: 'cha' }
-  };
-
-  const statNames: Record<string, string> = {
-    str: 'Força',
-    dex: 'Destreza',
-    con: 'Constituição',
-    int: 'Inteligência',
-    wis: 'Sabedoria',
-    cha: 'Carisma'
-  };
-
-  // Renderizar ficha de personagem
   const renderCharacterSheet = () => {
     if (!activeCharacter) return null;
 
@@ -317,7 +372,6 @@ export default function PersonagensPage() {
 
         <div>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            
             {/* Coluna Esquerda - Informações Básicas */}
             <div className="space-y-6">
               <div>
@@ -415,8 +469,6 @@ export default function PersonagensPage() {
                     />
                   </div>
 
-
-
                   <div className="grid grid-cols-2 gap-3">
                     <div className="bg-black border border-[#1a2a1a] rounded-lg p-3 text-center">
                       <div className="text-[#4a5a4a] text-[10px] font-black uppercase tracking-[0.2em] mb-2">Inspiração</div>
@@ -474,8 +526,10 @@ export default function PersonagensPage() {
                 <h4 className="text-[#f1e5ac] text-sm font-serif uppercase tracking-wider mb-3">Salvaguardas</h4>
                 <div className="space-y-2">
                   {Object.entries(statNames).map(([stat, name]) => {
-                    const modifier = getModifier(activeCharacter.stats[stat as keyof typeof activeCharacter.stats] || 10);
-                    const proficient = activeCharacter.savingThrows?.[stat as keyof typeof activeCharacter.savingThrows] || false;
+                    const statKey = stat as keyof typeof activeCharacter.stats;
+                    const saveKey = stat as keyof typeof activeCharacter.savingThrows;
+                    const modifier = getModifier(activeCharacter.stats[statKey] || 10);
+                    const proficient = activeCharacter.savingThrows?.[saveKey] || false;
                     const totalBonus = proficient ? modifier + activeCharacter.proficiencyBonus : modifier;
                     return (
                       <div key={stat} className="flex items-center justify-between bg-black border border-[#1a2a1a] rounded px-3 py-2">
@@ -504,7 +558,7 @@ export default function PersonagensPage() {
                 <h3 className="text-[#f1e5ac] text-lg font-serif uppercase tracking-widest text-center mb-3">Perícias</h3>
                 <div className="space-y-2 max-h-96 overflow-y-auto">
                   {Object.entries(skillsData).map(([skillKey, skillInfo]) => {
-                    const proficient = activeCharacter.skills?.[skillKey] || false;
+                    const proficient = activeCharacter.skills?.[skillKey as keyof typeof activeCharacter.skills] || false;
                     const skillModifier = getSkillModifier(skillKey, skillInfo.attr);
                     return (
                       <div key={skillKey} className="flex items-center justify-between bg-black border border-[#1a2a1a] rounded px-3 py-2">
@@ -530,7 +584,7 @@ export default function PersonagensPage() {
                 <h3 className="text-[#f1e5ac] text-lg font-serif uppercase tracking-widest text-center mb-3">Inventário</h3>
                 <div className="bg-black border border-[#1a2a1a] rounded-lg p-3 space-y-2">
                   {activeCharacter.inventory && activeCharacter.inventory.length > 0 ? (
-                    activeCharacter.inventory.map((item: any) => (
+                    activeCharacter.inventory.map((item) => (
                       <div key={item.id} className="flex items-center justify-between bg-[#0a120a] border border-[#1a2a1a] rounded px-2 py-1 text-xs">
                         <span className="text-[#00ff66]">{item.name}</span>
                         <button
@@ -571,7 +625,8 @@ export default function PersonagensPage() {
 
   return (
     <>
-      <Navbar abaAtiva={abaAtiva} setAbaAtiva={setAbaAtiva} isLoggedIn />
+      <Navbar abaAtiva={abaAtiva} setAbaAtiva={setAbaAtiva} />
+      
       <div className="max-w-[1400px] mx-auto py-12 px-6">
         <div className="bg-[#0a120a] border border-[#1a2a1a] rounded-xl p-10 shadow-[0_0_50px_rgba(0,0,0,0.5)]">
           {!activeCharacter ? (

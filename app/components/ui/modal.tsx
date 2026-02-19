@@ -137,8 +137,9 @@ export function ModalButtons({
     </div>
   );
 }
+/*
  // Funções de modal
-  const toggleModal = (show) => {
+  const toggleModal = (show: boolean) => {
     setShowModal(show);
     if (!show) {
       setCampaignName('');
@@ -161,3 +162,5 @@ export function ModalButtons({
     setShowJoinModal(show);
     if (!show) setJoinCode('');
   };
+
+  */
