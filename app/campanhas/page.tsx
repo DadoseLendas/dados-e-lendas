@@ -6,7 +6,9 @@ import type { ChangeEvent } from 'react';
 import Card from '@/app/components/ui/card';
 import { FormModal, TextInput, ImageUpload, ModalButtons } from '@/app/components/ui/modal';
 import { Users, Plus } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@/utils/supabase/client';
+
+const supabase = createClient();
 
 export default function CampanhasPage() {
   const [abaAtiva, setAbaAtiva] = useState('campanhas');
