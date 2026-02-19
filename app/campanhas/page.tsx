@@ -160,7 +160,7 @@ export default function CampanhasPage() {
 
   return (
     <>
-      <Navbar abaAtiva={abaAtiva} setAbaAtiva={setAbaAtiva} isLoggedIn />
+      <Navbar abaAtiva={abaAtiva} setAbaAtiva={setAbaAtiva} />
       <div className="max-w-[800px] mx-auto py-12 px-6">
         <div className="bg-[#0a120a] border border-[#1a2a1a] rounded-xl p-10 shadow-2xl">
           <h2 className="text-[#f1e5ac] text-2xl font-serif text-center mb-10 tracking-[0.2em] uppercase italic">
