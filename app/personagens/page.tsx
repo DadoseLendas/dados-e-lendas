@@ -634,17 +634,7 @@ export default function PersonagensPage() {
                     <div key={char.id} className="bg-black border border-[#1a2a1a] p-6 rounded-2xl hover:border-[#00ff66] transition-all group shadow-[inset_0_0_10px_rgba(0,0,0,0.5)]">
                       <div className="h-44 bg-[#0a120a] rounded-xl mb-4 bg-cover bg-center" style={{ backgroundImage: `url(${char.img})` }} />
                       <h3 className="text-[#00ff66] font-bold text-lg uppercase">{char.name}</h3>
-                      <p className="text-[#4a5a4a] text-xs mb-4">{char.class} • Nível {char.level}</p>
-                      <div className="grid grid-cols-2 gap-2 mb-4">
-                        <div className="bg-[#0a120a] border border-[#1a2a1a] rounded-lg p-2 text-center">
-                          <span className="block text-[9px] text-[#4a5a4a] uppercase font-black">HP</span>
-                          <span className="text-white text-xs font-bold">{char.hp_current ?? 0}/{char.hp_max ?? 0}</span>
-                        </div>
-                        <div className="bg-[#0a120a] border border-[#1a2a1a] rounded-lg p-2 text-center">
-                          <span className="block text-[9px] text-[#4a5a4a] uppercase font-black">CA</span>
-                          <span className="text-[#00ff66] text-xs font-bold">{char.ac ?? 10}</span>
-                        </div>
-                      </div>
+                      <p className="text-[#4a5a4a] text-xs mb-4">{char.class} • Nível {char.level} • HP {char.hp_current ?? 0}/{char.hp_max ?? 0} • CA {char.ac ?? 10}</p>
                       <div className="flex gap-2">
                         <button
                           onClick={() => setActiveCharacter(char)}
