@@ -5,7 +5,7 @@ import Footer from '@/app/components/ui/footer';
 import type { ChangeEvent } from 'react';
 import Card from '@/app/components/ui/card';
 import { FormModal, TextInput, ImageUpload, ModalButtons } from '@/app/components/ui/modal';
-import { Users, Plus } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { createClient } from '@/utils/supabase/client';
 
 export default function CampanhasPage() {
@@ -19,11 +19,15 @@ export default function CampanhasPage() {
 
   // Modais
   const [showModal, setShowModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [showJoinModal, setShowJoinModal] = useState(false);
   
   // Criação
   const [campaignName, setCampaignName] = useState('');
   const [campaignImg, setCampaignImg] = useState(''); // Estado da imagem reativado
+  const [editingCampaignId, setEditingCampaignId] = useState<string | number | null>(null);
+  const [editCampaignName, setEditCampaignName] = useState('');
+  const [editCampaignImg, setEditCampaignImg] = useState('');
   
   // Lógica de entrada (Join)
   const [joinCode, setJoinCode] = useState('');
@@ -147,6 +151,15 @@ export default function CampanhasPage() {
     }
   };
 
+  const handleEditImageChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => setEditCampaignImg(event.target?.result as string);
+      reader.readAsDataURL(file);
+    }
+  };
+
   // FUNÇÃO DE CRIAÇÃO CORRIGIDA
   const handleCreateCampaign = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -170,7 +183,7 @@ export default function CampanhasPage() {
           name: trimmedCampaignName,
           code: inviteCode,
           dm_id: currentUserId,
-          // image_url: campaignImg // Descomente apenas se criar a coluna no Supabase
+          image_url: campaignImg || null
         })
         .select()
         .single();
@@ -203,7 +216,7 @@ export default function CampanhasPage() {
             code: createdCampaign.code,
             date: new Date(createdCampaign.created_at).toLocaleDateString('pt-BR'),
             isOwner: createdCampaign.dm_id === currentUserId,
-            img: createdCampaign.image_url || 'https://via.placeholder.com/400x200/0a120a/00ff66?text=RPG'
+            img: campaignImg || createdCampaign.image_url || 'https://via.placeholder.com/400x200/0a120a/00ff66?text=RPG'
           };
 
           return [newCampaign, ...prev];
@@ -260,6 +273,79 @@ export default function CampanhasPage() {
     }
   };
 
+  const openEditModal = (campaign: any) => {
+    setEditingCampaignId(campaign.id);
+    setEditCampaignName(campaign.name ?? '');
+    setEditCampaignImg(campaign.img ?? '');
+    setDropdownOpen(null);
+    setShowEditModal(true);
+  };
+
+  const closeEditModal = () => {
+    setShowEditModal(false);
+    setEditingCampaignId(null);
+    setEditCampaignName('');
+    setEditCampaignImg('');
+  };
+
+  const handleUpdateCampaign = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!editingCampaignId || !currentUserId) return;
+
+    const trimmedName = editCampaignName.trim();
+    if (!trimmedName) {
+      alert('Informe um nome para a campanha.');
+      return;
+    }
+
+    const { data: updatedCampaign, error } = await supabase
+      .from('campaigns')
+      .update({
+        name: trimmedName,
+        image_url: editCampaignImg || null
+      })
+      .eq('id', editingCampaignId)
+      .eq('dm_id', currentUserId)
+      .select()
+      .single();
+
+    if (error) {
+      alert(`Erro ao editar: ${error.message}`);
+      return;
+    }
+
+    setCampaigns((prev) => prev.map((campaign) => {
+      if (campaign.id !== editingCampaignId) return campaign;
+      return {
+        ...campaign,
+        name: updatedCampaign.name,
+        img: updatedCampaign.image_url || 'https://via.placeholder.com/400x200/0a120a/00ff66?text=RPG'
+      };
+    }));
+
+    closeEditModal();
+  };
+
+  const handleDeleteCampaign = async (campaignId: string | number) => {
+    if (!currentUserId) return;
+    if (!confirm('Tem certeza que deseja excluir esta campanha?')) return;
+
+    const { error } = await supabase
+      .from('campaigns')
+      .delete()
+      .eq('id', campaignId)
+      .eq('dm_id', currentUserId);
+
+    if (error) {
+      alert(`Erro ao excluir: ${error.message}`);
+      return;
+    }
+
+    setCampaigns((prev) => prev.filter((campaign) => campaign.id !== campaignId));
+    setDropdownOpen(null);
+  };
+
   return (
     <>
       <Navbar abaAtiva={abaAtiva} setAbaAtiva={setAbaAtiva} />
@@ -299,10 +385,17 @@ export default function CampanhasPage() {
                     title={campaign.name}
                     subtitle={`${campaign.isOwner ? 'Mestre' : 'Jogador'}`}
                     image={campaign.img}
+                    dropdownOpen={dropdownOpen === String(campaign.id)}
+                    onDropdownToggle={() => setDropdownOpen((prev) => prev === String(campaign.id) ? null : String(campaign.id))}
+                    dropdownRef={dropdownRef}
                     onCopyCode={() => {
                       navigator.clipboard.writeText(campaign.code);
                       alert('Código copiado!');
                     }}
+                    onEdit={() => openEditModal(campaign)}
+                    onDelete={campaign.isOwner ? () => handleDeleteCampaign(campaign.id) : undefined}
+                    onAccess={() => setDropdownOpen(null)}
+                    showEditOption={campaign.isOwner}
                     showCopyOption={campaign.isOwner}
                     accessLabel="Jogar"
                   />
@@ -329,6 +422,23 @@ export default function CampanhasPage() {
         />
 
         <ModalButtons primaryText="Fundar Campanha" primaryType="submit" onSecondary={() => setShowModal(false)} />
+      </FormModal>
+
+      <FormModal isOpen={showEditModal} onClose={closeEditModal} title="Editar Campanha" onSubmit={handleUpdateCampaign}>
+        <TextInput
+          label="Nome da aventura"
+          value={editCampaignName}
+          onChange={(e) => setEditCampaignName(e.target.value)}
+          placeholder="Nome da campanha"
+        />
+
+        <ImageUpload
+          label="Capa da Campanha"
+          onChange={handleEditImageChange}
+          currentImage={editCampaignImg}
+        />
+
+        <ModalButtons primaryText="Salvar" primaryType="submit" onSecondary={closeEditModal} />
       </FormModal>
 
       <FormModal isOpen={showJoinModal} onClose={() => { setShowJoinModal(false); setStep(1); }} title={step === 1 ? "Entrar" : "Personagem"} onSubmit={handleJoinCampaign}>
