@@ -109,6 +109,12 @@ export default function PersonagensPage() {
       name: 'Novo Herói',
       class: 'Guerreiro',
       level: 1,
+      race: '',
+      background: '',
+      alignment: '',
+      experiencePoints: 0,
+      proficiencyBonus: 2,
+      inspiration: false,
       ac: 10,
       hp_current: 10,
       hp_max: 10,
@@ -118,11 +124,27 @@ export default function PersonagensPage() {
       savingThrows: {},
       inventory: [],
       spells: [],
+      img: '/placeholder-rpg.png',
       owner_id: user?.id
     };
 
-    const { error } = await supabase.from('characters').insert(newChar);
-    if (!error) fetchCharacters();
+    const { data, error } = await supabase
+      .from('characters')
+      .insert(newChar)
+      .select('*')
+      .single();
+
+    if (error) {
+      alert('Erro ao criar personagem: ' + error.message);
+      return;
+    }
+
+    if (data) {
+      setCharacters((prev) => [...prev, data]);
+      setActiveCharacter(data);
+    } else {
+      await fetchCharacters();
+    }
   };
 
   const deleteCharacter = async (id: any) => {
@@ -198,6 +220,22 @@ export default function PersonagensPage() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+          <div className="lg:col-span-12 grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="bg-black border border-[#1a2a1a] rounded-xl p-3 text-center">
+              <span className="block text-[9px] text-[#4a5a4a] uppercase font-black">Classe</span>
+              <span className="text-white text-sm font-bold uppercase">{activeCharacter.class || 'Sem classe'}</span>
+            </div>
+            <div className="bg-black border border-[#1a2a1a] rounded-xl p-3 text-center">
+              <span className="block text-[9px] text-[#4a5a4a] uppercase font-black">HP</span>
+              <span className="text-white text-sm font-bold">{activeCharacter.hp_current ?? 0}/{activeCharacter.hp_max ?? 0}</span>
+            </div>
+            <div className="bg-black border border-[#1a2a1a] rounded-xl p-3 text-center">
+              <span className="block text-[9px] text-[#4a5a4a] uppercase font-black">CA</span>
+              <span className="text-[#00ff66] text-sm font-bold">{activeCharacter.ac ?? 10}</span>
+              <span className="block text-[8px] text-[#4a5a4a] uppercase">Classe de Armadura</span>
+            </div>
+          </div>
           
           {/* COLUNA 1: FOTO E STATUS VITAIS */}
           <div className="lg:col-span-3 space-y-4">
@@ -277,11 +315,11 @@ export default function PersonagensPage() {
                 ))}
              </div>
 
-             <div className="bg-black/40 border border-[#1a2a1a] p-4 rounded-xl">
+             <div className="bg-black/40 border border-[#1a2a1a] p-4 rounded-xl overflow-visible">
                 <h4 className="text-[#f1e5ac] text-[10px] font-black uppercase tracking-widest mb-4 flex items-center gap-2">
                   <Sword size={12}/> Perícias (Separadas)
                 </h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 overflow-visible">
                   {Object.entries(skillsData).map(([key, info]) => (
                     <div key={key} className="flex items-center justify-between bg-black/60 p-2 rounded border border-[#1a2a1a] hover:border-[#00ff66]/30 transition-colors">
                       <div className="flex items-center gap-2">
@@ -387,6 +425,17 @@ export default function PersonagensPage() {
                   <div className="h-40 bg-[#0a120a] rounded-xl mb-4 bg-cover bg-center" style={{ backgroundImage: `url(${char.img})` }} />
                   <h3 className="text-[#00ff66] font-bold text-lg uppercase">{char.name}</h3>
                   <p className="text-[#4a5a4a] text-xs mb-4">{char.class} Nível {char.level}</p>
+                  <div className="grid grid-cols-2 gap-2 mb-4">
+                    <div className="bg-[#0a120a] border border-[#1a2a1a] rounded-lg p-2 text-center">
+                      <span className="block text-[9px] text-[#4a5a4a] uppercase font-black">HP</span>
+                      <span className="text-white text-xs font-bold">{char.hp_current ?? 0}/{char.hp_max ?? 0}</span>
+                    </div>
+                    <div className="bg-[#0a120a] border border-[#1a2a1a] rounded-lg p-2 text-center">
+                      <span className="block text-[9px] text-[#4a5a4a] uppercase font-black">CA</span>
+                      <span className="text-[#00ff66] text-xs font-bold">{char.ac ?? 10}</span>
+                      <span className="block text-[8px] text-[#4a5a4a] uppercase">Classe de Armadura</span>
+                    </div>
+                  </div>
                   <div className="flex gap-2">
                     <button onClick={() => setActiveCharacter(char)} className="flex-1 bg-[#00ff66] text-black py-2 rounded font-black text-[10px] uppercase">Acessar Ficha</button>
                     <button onClick={() => deleteCharacter(char.id)} className="p-2 border border-red-900 text-red-500 rounded hover:bg-red-900/20"><Trash2 size={16}/></button>
