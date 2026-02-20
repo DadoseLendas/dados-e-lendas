@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client'; 
 import Navbar from '@/app/components/ui/navbar';
 import Footer from '@/app/components/ui/footer';
-import { Sword, Plus, ArrowLeft, ShieldAlert, Heart, Shield, Zap, Sparkles, Trash2, Save } from 'lucide-react'; 
+import Card from '@/app/components/ui/card';
+import { Sword, Plus, ArrowLeft, ShieldAlert, Heart, Sparkles, Trash2, Save } from 'lucide-react'; 
 import Link from 'next/link'; 
 
 // --- Tipagem Atualizada ---
@@ -82,6 +83,16 @@ export default function PersonagensPage() {
       setIsLoadingAuth(false);
     };
     checkUser();
+  }, []);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setDropdownOpen(null);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   const saveToDatabase = async (char: Character) => {
@@ -233,7 +244,7 @@ export default function PersonagensPage() {
             className="flex items-center gap-2 bg-[#00ff66] text-black px-6 py-2 rounded-full text-xs font-black uppercase tracking-widest hover:scale-105 transition-all disabled:opacity-50"
             disabled={loadingAction}
           >
-            <Save size={14} /> {loadingAction ? 'Salvando...' : 'Salvar no Banco'}
+            <Save size={14} /> Salvar
           </button>
         </div>
 
@@ -400,7 +411,7 @@ export default function PersonagensPage() {
 
           </div>
 
-          {/* COLUNA 3: INVENTÁRIO E MAGIAS */}
+          {/* COLUNA 3: PERÍCIAS, INVENTÁRIO E MAGIAS */}
           <div className="lg:col-span-4 space-y-6">
             <div className="bg-black/40 border border-[#1a2a1a] p-4 rounded-xl overflow-visible">
               <h4 className="text-[#f1e5ac] text-[10px] font-black uppercase tracking-widest mb-4 flex items-center gap-2">
@@ -495,28 +506,48 @@ export default function PersonagensPage() {
   return (
     <>
       <Navbar abaAtiva={abaAtiva} setAbaAtiva={setAbaAtiva} />
-      <div className="max-w-[1400px] mx-auto py-12 px-6">
+      <div className="max-w-[800px] mx-auto py-12 px-6">
         {!activeCharacter ? (
-          <div className="bg-[#0a120a] border border-[#1a2a1a] rounded-xl p-10">
-            <div className="flex justify-between items-center mb-10">
-              <h2 className="text-[#f1e5ac] text-2xl font-serif tracking-[0.2em] uppercase italic">Grimório de Heróis</h2>
-              <button onClick={createCharacter} className="flex items-center gap-2 bg-[#00ff66] text-black px-4 py-2 rounded-lg text-[10px] font-black uppercase hover:brightness-110 transition-all">
-                <Plus size={12} /> Novo Personagem
-              </button>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {characters.map(char => (
-                <div key={char.id} className="bg-black border border-[#1a2a1a] p-6 rounded-2xl hover:border-[#00ff66] transition-all group">
-                  <div className="h-40 bg-[#0a120a] rounded-xl mb-4 bg-cover bg-center" style={{ backgroundImage: `url(${char.img})` }} />
-                  <h3 className="text-[#00ff66] font-bold text-lg uppercase">{char.name}</h3>
-                  <p className="text-[#4a5a4a] text-xs mb-4">{char.class} Nível {char.level}</p>
-                  <div className="flex gap-2">
-                    <button onClick={() => setActiveCharacter(char)} className="flex-1 bg-[#00ff66] text-black py-2 rounded font-black text-[10px] uppercase">Acessar Ficha</button>
-                    <button onClick={() => deleteCharacter(char.id)} className="p-2 border border-red-900 text-red-500 rounded hover:bg-red-900/20"><Trash2 size={16}/></button>
-                  </div>
+          <div className="bg-[#0a120a] border border-[#1a2a1a] rounded-xl p-10 shadow-2xl">
+            <h2 className="text-[#f1e5ac] text-2xl font-serif text-center mb-10 tracking-[0.2em] uppercase italic">
+              Grimório de Heróis
+            </h2>
+
+            <div className="space-y-6">
+              <div className="flex justify-between items-center">
+                <h3 className="text-[#4a5a4a] text-xs font-black uppercase tracking-[0.2em]">
+                  Personagens: {characters.length}
+                </h3>
+                <button onClick={createCharacter} className="flex items-center gap-2 bg-[#00ff66] text-black px-4 py-2 rounded-lg text-[10px] font-black uppercase hover:brightness-110 transition-all">
+                  <Plus size={14} /> Criar
+                </button>
+              </div>
+
+              {characters.length === 0 ? (
+                <div className="text-center text-[#8a9a8a] text-sm py-10">Nenhum personagem encontrado.</div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {characters.map((char) => (
+                    <Card
+                      key={char.id}
+                      id={char.id}
+                      title={char.name}
+                      subtitle={`${char.class} • Nível ${char.level}`}
+                      image={char.img}
+                      dropdownOpen={dropdownOpen === String(char.id)}
+                      onDropdownToggle={() => setDropdownOpen((prev) => prev === String(char.id) ? null : String(char.id))}
+                      dropdownRef={dropdownRef}
+                      onDelete={() => deleteCharacter(char.id)}
+                      onAccess={() => {
+                        setActiveCharacter(char);
+                        setDropdownOpen(null);
+                      }}
+                      accessLabel="Acessar"
+                      deleteLabel="Excluir"
+                    />
+                  ))}
                 </div>
-              ))}
+              )}
             </div>
           </div>
         ) : renderCharacterSheet()}
