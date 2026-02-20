@@ -192,13 +192,28 @@ export default function CampanhasPage() {
         if (memberError) {
           console.warn('Campanha criada, mas não foi possível adicionar o mestre como membro:', memberError.message);
         }
+
+        setCampaigns((prev) => {
+          const alreadyExists = prev.some((campaign) => campaign.id === createdCampaign.id);
+          if (alreadyExists) return prev;
+
+          const newCampaign = {
+            id: createdCampaign.id,
+            name: createdCampaign.name,
+            code: createdCampaign.code,
+            date: new Date(createdCampaign.created_at).toLocaleDateString('pt-BR'),
+            isOwner: createdCampaign.dm_id === currentUserId,
+            img: createdCampaign.image_url || 'https://via.placeholder.com/400x200/0a120a/00ff66?text=RPG'
+          };
+
+          return [newCampaign, ...prev];
+        });
       }
 
       console.log("Campanha criada com sucesso:", createdCampaign);
       setShowModal(false);
       setCampaignName('');
       setCampaignImg('');
-      await fetchCampaigns();
     } catch (err) {
       console.error("Erro inesperado:", err);
     }
