@@ -93,8 +93,7 @@ export default function PersonagensPage() {
       .upsert({
         ...char,
         is_linked: (char as any).is_linked ?? false,
-        owner_id: user?.id,
-        updated_at: new Date()
+        owner_id: user?.id
       });
 
     if (error) alert("Erro ao salvar: " + error.message);
@@ -278,8 +277,7 @@ export default function PersonagensPage() {
 
             {/* CA e Iniciativa */}
             <div className="grid grid-cols-2 gap-4">
-              <div className="bg-black border border-[#1a2a1a] p-4 rounded-xl text-center relative overflow-hidden">
-                <Shield className="absolute -bottom-2 -right-2 opacity-10 text-[#00ff66]" size={60} />
+              <div className="bg-black border border-[#1a2a1a] p-4 rounded-xl text-center">
                 <span className="text-[10px] text-[#4a5a4a] uppercase font-black block mb-1">Classe Armadura</span>
                 <input 
                   type="number" 
@@ -288,8 +286,7 @@ export default function PersonagensPage() {
                   className="bg-transparent text-2xl text-[#00ff66] font-serif w-full text-center outline-none"
                 />
               </div>
-              <div className="bg-black border border-[#1a2a1a] p-4 rounded-xl text-center relative overflow-hidden">
-                <Zap className="absolute -bottom-2 -right-2 opacity-10 text-yellow-500" size={60} />
+              <div className="bg-black border border-[#1a2a1a] p-4 rounded-xl text-center">
                 <span className="text-[10px] text-[#4a5a4a] uppercase font-black block mb-1">Iniciativa</span>
                 <input 
                   type="number" 
@@ -301,7 +298,7 @@ export default function PersonagensPage() {
             </div>
           </div>
 
-          {/* COLUNA 2: ATRIBUTOS E PERÍCIAS */}
+          {/* COLUNA 2: ATRIBUTOS */}
           <div className="lg:col-span-5 space-y-6">
              <div className="bg-[#050a05] border border-[#1a2a1a] p-4 rounded-xl">
                 <h4 className="text-[#f1e5ac] text-[10px] font-black uppercase tracking-widest mb-4">Dados da Ficha</h4>
@@ -401,33 +398,34 @@ export default function PersonagensPage() {
                 ))}
              </div>
 
-             <div className="bg-black/40 border border-[#1a2a1a] p-4 rounded-xl overflow-visible">
-                <h4 className="text-[#f1e5ac] text-[10px] font-black uppercase tracking-widest mb-4 flex items-center gap-2">
-                  <Sword size={12}/> Perícias (Separadas)
-                </h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 overflow-visible">
-                  {Object.entries(skillsData).map(([key, info]) => (
-                    <div key={key} className="flex items-center justify-between bg-black/60 p-2 rounded border border-[#1a2a1a] hover:border-[#00ff66]/30 transition-colors">
-                      <div className="flex items-center gap-2">
-                        <input 
-                          type="checkbox" 
-                          checked={activeCharacter.skills?.[key] || false}
-                          onChange={(e) => updateCharacter('skills', {...activeCharacter.skills, [key]: e.target.checked})}
-                          className="accent-[#00ff66] w-3 h-3"
-                        />
-                        <span className="text-white text-[11px] uppercase tracking-tighter">{info.name}</span>
-                      </div>
-                      <span className="text-[#00ff66] text-xs font-bold">
-                        {getModifier(activeCharacter.stats[info.attr as keyof typeof activeCharacter.stats])}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-             </div>
           </div>
 
           {/* COLUNA 3: INVENTÁRIO E MAGIAS */}
           <div className="lg:col-span-4 space-y-6">
+            <div className="bg-black/40 border border-[#1a2a1a] p-4 rounded-xl overflow-visible">
+              <h4 className="text-[#f1e5ac] text-[10px] font-black uppercase tracking-widest mb-4 flex items-center gap-2">
+                <Sword size={12}/> Perícias 
+              </h4>
+              <div className="grid grid-cols-1 gap-2 overflow-visible">
+                {Object.entries(skillsData).map(([key, info]) => (
+                  <div key={key} className="flex items-center justify-between bg-black/60 p-2 rounded border border-[#1a2a1a] hover:border-[#00ff66]/30 transition-colors">
+                    <div className="flex items-center gap-2">
+                      <input 
+                        type="checkbox" 
+                        checked={activeCharacter.skills?.[key] || false}
+                        onChange={(e) => updateCharacter('skills', {...activeCharacter.skills, [key]: e.target.checked})}
+                        className="accent-[#00ff66] w-3 h-3"
+                      />
+                      <span className="text-white text-[11px] uppercase tracking-tighter">{info.name}</span>
+                    </div>
+                    <span className="text-[#00ff66] text-xs font-bold">
+                      {getModifier(activeCharacter.stats[info.attr as keyof typeof activeCharacter.stats])}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
             {/* Seção de Magias */}
             <div className="bg-[#050a05] border border-[#1a2a1a] p-4 rounded-xl">
               <h4 className="text-[#00ff66] text-[10px] font-black uppercase tracking-widest mb-4 flex items-center gap-2">
@@ -513,17 +511,6 @@ export default function PersonagensPage() {
                   <div className="h-40 bg-[#0a120a] rounded-xl mb-4 bg-cover bg-center" style={{ backgroundImage: `url(${char.img})` }} />
                   <h3 className="text-[#00ff66] font-bold text-lg uppercase">{char.name}</h3>
                   <p className="text-[#4a5a4a] text-xs mb-4">{char.class} Nível {char.level}</p>
-                  <div className="grid grid-cols-2 gap-2 mb-4">
-                    <div className="bg-[#0a120a] border border-[#1a2a1a] rounded-lg p-2 text-center">
-                      <span className="block text-[9px] text-[#4a5a4a] uppercase font-black">HP</span>
-                      <span className="text-white text-xs font-bold">{char.hp_current ?? 0}/{char.hp_max ?? 0}</span>
-                    </div>
-                    <div className="bg-[#0a120a] border border-[#1a2a1a] rounded-lg p-2 text-center">
-                      <span className="block text-[9px] text-[#4a5a4a] uppercase font-black">CA</span>
-                      <span className="text-[#00ff66] text-xs font-bold">{char.ac ?? 10}</span>
-                      <span className="block text-[8px] text-[#4a5a4a] uppercase">Classe de Armadura</span>
-                    </div>
-                  </div>
                   <div className="flex gap-2">
                     <button onClick={() => setActiveCharacter(char)} className="flex-1 bg-[#00ff66] text-black py-2 rounded font-black text-[10px] uppercase">Acessar Ficha</button>
                     <button onClick={() => deleteCharacter(char.id)} className="p-2 border border-red-900 text-red-500 rounded hover:bg-red-900/20"><Trash2 size={16}/></button>
