@@ -64,11 +64,7 @@ export default function Card({
                 onClick={onDropdownToggle}
                 className="dropdown-button"
               >
-                <div className="dropdown-dots">
-                  <div className="dot"></div>
-                  <div className="dot"></div>
-                  <div className="dot"></div>
-                </div>
+                <MoreVertical size={16} />
               </button>
               
               {dropdownOpen && (
@@ -174,19 +170,6 @@ export default function Card({
 
         .dropdown-button:hover {
           color: #00ff66;
-        }
-
-        .dropdown-dots {
-          display: flex;
-          flex-direction: column;
-          gap: 4px;
-        }
-
-        .dot {
-          width: 4px;
-          height: 4px;
-          background-color: currentColor;
-          border-radius: 50%;
         }
 
         .dropdown-menu {
