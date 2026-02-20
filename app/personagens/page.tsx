@@ -6,6 +6,7 @@ import { createClient } from '@/utils/supabase/client';
 import Navbar from '@/app/components/ui/navbar';
 import Footer from '@/app/components/ui/footer';
 import Card from '@/app/components/ui/card';
+import { FormModal, TextInput, ImageUpload, ModalButtons } from '@/app/components/ui/modal';
 import { Sword, Plus, ArrowLeft, ShieldAlert, Heart, Sparkles, Trash2, Save } from 'lucide-react'; 
 import Link from 'next/link'; 
 
@@ -73,6 +74,12 @@ export default function PersonagensPage() {
     }
   };
 
+  const extractMissingColumn = (message?: string) => {
+    if (!message) return null;
+    const match = message.match(/Could not find the '([^']+)' column/);
+    return match?.[1] ?? null;
+  };
+
   useEffect(() => {
     const checkUser = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -98,16 +105,36 @@ export default function PersonagensPage() {
   const saveToDatabase = async (char: Character) => {
     setLoadingAction(true);
     const { data: { user } } = await supabase.auth.getUser();
-    
-    const { error } = await supabase
-      .from('characters')
-      .upsert({
-        ...char,
-        is_linked: (char as any).is_linked ?? false,
-        owner_id: user?.id
-      });
 
-    if (error) alert("Erro ao salvar: " + error.message);
+    let payload: Record<string, any> = {
+      ...char,
+      is_linked: (char as any).is_linked ?? false,
+      owner_id: user?.id
+    };
+
+    let saveError: any = null;
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const { error } = await supabase
+        .from('characters')
+        .upsert(payload);
+
+      if (!error) {
+        saveError = null;
+        break;
+      }
+
+      const missingColumn = extractMissingColumn(error.message);
+      if (missingColumn && missingColumn in payload) {
+        delete payload[missingColumn];
+        saveError = error;
+        continue;
+      }
+
+      saveError = error;
+      break;
+    }
+
+    if (saveError) alert("Erro ao salvar: " + saveError.message);
     else await fetchCharacters();
     setLoadingAction(false);
   };
@@ -145,14 +172,36 @@ export default function PersonagensPage() {
       owner_id: user.id
     };
 
-    const { data, error } = await supabase
-      .from('characters')
-      .insert([newChar], { defaultToNull: false })
-      .select('*')
-      .single();
+    let insertPayload: Record<string, any> = { ...newChar };
+    let data: any = null;
+    let createError: any = null;
 
-    if (error) {
-      const details = [error.message, (error as any).details, (error as any).hint].filter(Boolean).join(' | ');
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const result = await supabase
+        .from('characters')
+        .insert([insertPayload], { defaultToNull: false })
+        .select('*')
+        .single();
+
+      if (!result.error) {
+        data = result.data;
+        createError = null;
+        break;
+      }
+
+      const missingColumn = extractMissingColumn(result.error.message);
+      if (missingColumn && missingColumn in insertPayload) {
+        delete insertPayload[missingColumn];
+        createError = result.error;
+        continue;
+      }
+
+      createError = result.error;
+      break;
+    }
+
+    if (createError) {
+      const details = [createError.message, (createError as any).details, (createError as any).hint].filter(Boolean).join(' | ');
       alert('Erro ao criar personagem: ' + details);
       return false;
     }
@@ -213,12 +262,22 @@ export default function PersonagensPage() {
   const skillsData: Record<string, { name: string; attr: string }> = {
     atletismo: { name: 'Atletismo', attr: 'str' },
     acrobacia: { name: 'Acrobacia', attr: 'dex' },
+    prestidigitacao: { name: 'Prestidigitação', attr: 'dex' },
     furtividade: { name: 'Furtividade', attr: 'dex' },
     arcanismo: { name: 'Arcanismo', attr: 'int' },
     historia: { name: 'História', attr: 'int' },
+    investigacao: { name: 'Investigação', attr: 'int' },
+    natureza: { name: 'Natureza', attr: 'int' },
+    religiao: { name: 'Religião', attr: 'int' },
+    adestrarAnimais: { name: 'Adestrar Animais', attr: 'wis' },
+    intuicao: { name: 'Intuição', attr: 'wis' },
+    medicina: { name: 'Medicina', attr: 'wis' },
     percepcao: { name: 'Percepção', attr: 'wis' },
+    sobrevivencia: { name: 'Sobrevivência', attr: 'wis' },
+    atuacao: { name: 'Atuação', attr: 'cha' },
+    enganacao: { name: 'Enganação', attr: 'cha' },
+    intimidacao: { name: 'Intimidação', attr: 'cha' },
     persuasao: { name: 'Persuasão', attr: 'cha' },
-    // Adicione as outras conforme necessário...
   };
 
   const statLabels: Record<string, string> = {
@@ -232,6 +291,25 @@ export default function PersonagensPage() {
 
   const renderCharacterSheet = () => {
     if (!activeCharacter) return null;
+
+    const openCharacterImageModal = () => {
+      setTempCharacterImg(activeCharacter.img || '/placeholder-rpg.png');
+      setEditingCharacterImg(true);
+    };
+
+    const handleCharacterImageFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (event) => setTempCharacterImg(event.target?.result as string);
+      reader.readAsDataURL(file);
+    };
+
+    const handleSaveCharacterImage = (e: React.FormEvent) => {
+      e.preventDefault();
+      updateCharacter('img', tempCharacterImg || '/placeholder-rpg.png');
+      setEditingCharacterImg(false);
+    };
 
     return (
       <div className="space-y-6 max-w-6xl mx-auto animate-in fade-in duration-500">
@@ -255,7 +333,7 @@ export default function PersonagensPage() {
             <div 
               className="w-full aspect-square bg-black border-2 border-[#1a2a1a] rounded-xl bg-cover bg-center relative group overflow-hidden"
               style={{ backgroundImage: `url(${activeCharacter.img || '/placeholder-rpg.png'})` }}
-              onClick={() => setEditingCharacterImg(true)}
+              onClick={openCharacterImageModal}
             >
               <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity cursor-pointer">
                 <Plus className="text-[#00ff66]" />
@@ -288,7 +366,7 @@ export default function PersonagensPage() {
 
             {/* CA e Iniciativa */}
             <div className="grid grid-cols-2 gap-4">
-              <div className="bg-black border border-[#1a2a1a] p-4 rounded-xl text-center">
+              <div className="bg-black border border-[#1a2a1a] p-4 rounded-xl text-center flex flex-col items-center justify-center">
                 <span className="text-[10px] text-[#4a5a4a] uppercase font-black block mb-1">Classe Armadura</span>
                 <input 
                   type="number" 
@@ -297,7 +375,7 @@ export default function PersonagensPage() {
                   className="bg-transparent text-2xl text-[#00ff66] font-serif w-full text-center outline-none"
                 />
               </div>
-              <div className="bg-black border border-[#1a2a1a] p-4 rounded-xl text-center">
+              <div className="bg-black border border-[#1a2a1a] p-4 rounded-xl text-center flex flex-col items-center justify-center">
                 <span className="text-[10px] text-[#4a5a4a] uppercase font-black block mb-1">Iniciativa</span>
                 <input 
                   type="number" 
@@ -395,7 +473,7 @@ export default function PersonagensPage() {
 
              <div className="grid grid-cols-3 gap-3">
                 {Object.entries(activeCharacter.stats).map(([stat, val]) => (
-                  <div key={stat} className="bg-black border border-[#1a2a1a] rounded-lg p-2 text-center">
+                  <div key={stat} className="bg-black border border-[#1a2a1a] rounded-lg p-2 text-center flex flex-col items-center justify-center">
                     <span className="text-[9px] text-[#4a5a4a] uppercase font-black">{statLabels[stat] ?? stat}</span>
                     <div className="text-[9px] text-[#4a5a4a] uppercase">{stat}</div>
                     <input 
@@ -414,7 +492,7 @@ export default function PersonagensPage() {
           {/* COLUNA 3: PERÍCIAS, INVENTÁRIO E MAGIAS */}
           <div className="lg:col-span-4 space-y-6">
             <div className="bg-black/40 border border-[#1a2a1a] p-4 rounded-xl overflow-visible">
-              <h4 className="text-[#f1e5ac] text-[10px] font-black uppercase tracking-widest mb-4 flex items-center gap-2">
+              <h4 className="text-[#f1e5ac] text-[10px] font-black uppercase tracking-widest mb-4 flex items-center justify-center gap-2 text-center">
                 <Sword size={12}/> Perícias 
               </h4>
               <div className="grid grid-cols-1 gap-2 overflow-visible">
@@ -494,6 +572,21 @@ export default function PersonagensPage() {
           </div>
 
         </div>
+
+        <FormModal isOpen={editingCharacterImg} onClose={() => setEditingCharacterImg(false)} title="Imagem do Personagem" onSubmit={handleSaveCharacterImage}>
+          <TextInput
+            label="URL da imagem"
+            value={tempCharacterImg}
+            onChange={(e) => setTempCharacterImg(e.target.value)}
+            placeholder="https://..."
+          />
+          <ImageUpload
+            label="Ou faça upload"
+            onChange={handleCharacterImageFileChange}
+            currentImage={tempCharacterImg}
+          />
+          <ModalButtons primaryText="Aplicar" primaryType="submit" onSecondary={() => setEditingCharacterImg(false)} />
+        </FormModal>
       </div>
     );
   };
@@ -506,7 +599,7 @@ export default function PersonagensPage() {
   return (
     <>
       <Navbar abaAtiva={abaAtiva} setAbaAtiva={setAbaAtiva} />
-      <div className="max-w-[800px] mx-auto py-12 px-6">
+      <div className={`${activeCharacter ? 'max-w-[1400px]' : 'max-w-[800px]'} mx-auto py-12 px-6`}>
         {!activeCharacter ? (
           <div className="bg-[#0a120a] border border-[#1a2a1a] rounded-xl p-10 shadow-2xl">
             <h2 className="text-[#f1e5ac] text-2xl font-serif text-center mb-10 tracking-[0.2em] uppercase italic">
