@@ -50,7 +50,7 @@ export default function Card({
   dropdownRef,
   metaLeft,
   metaRight,
-  showMetaDivider = true,
+  showMetaDivider = false,
   metaLarge = false,
 }: CardProps) {
   const renderMetaIcon = (icon: MetaIcon) => {

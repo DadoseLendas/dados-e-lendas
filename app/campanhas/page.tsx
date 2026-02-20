@@ -384,6 +384,7 @@ export default function CampanhasPage() {
                   title={campaign.name}
                   subtitle={`${campaign.isOwner ? 'Mestre' : 'Jogador'}`}
                   metaRight={{ icon: 'calendar', label: campaign.date }}
+                  showMetaDivider={false}
                   image={campaign.img}
                   dropdownOpen={dropdownOpen === String(campaign.id)}
                   onDropdownToggle={() => setDropdownOpen((prev) => prev === String(campaign.id) ? null : String(campaign.id))}
