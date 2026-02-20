@@ -385,9 +385,41 @@ export default function PersonagensPage() {
                 />
               </div>
             </div>
+
+            {/* Inventário */}
+            <div className="bg-[#050a05] border border-[#1a2a1a] p-4 rounded-xl">
+              <h4 className="text-[#4a5a4a] text-[10px] font-black uppercase tracking-widest mb-4 flex items-center gap-2">
+                <Sword size={12}/> Inventário
+              </h4>
+              <div className="space-y-2 mb-4">
+                {activeCharacter.inventory?.map((item) => (
+                  <div key={item.id} className="flex items-center justify-between bg-black p-2 rounded border border-[#1a2a1a] group">
+                    <span className="text-white text-xs">{item.name}</span>
+                    <button 
+                      onClick={() => updateCharacter('inventory', activeCharacter.inventory.filter(i => i.id !== item.id))}
+                      className="text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={12}/></button>
+                  </div>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <input 
+                  placeholder="Novo item..." 
+                  value={newInventoryItem}
+                  onChange={(e) => setNewInventoryItem(e.target.value)}
+                  className="flex-1 bg-black border border-[#1a2a1a] rounded p-2 text-xs text-white"
+                />
+                <button 
+                   onClick={() => {
+                    if(!newInventoryItem) return;
+                    updateCharacter('inventory', [...(activeCharacter.inventory || []), {id: Date.now(), name: newInventoryItem}]);
+                    setNewInventoryItem('');
+                  }}
+                  className="bg-[#4a5a4a] text-white p-2 rounded"><Plus size={14}/></button>
+              </div>
+            </div>
           </div>
 
-          {/* COLUNA 2: ATRIBUTOS */}
+          {/* COLUNA 2: ATRIBUTOS E MAGIAS */}
           <div className="lg:col-span-5 space-y-6">
              <div className="bg-[#050a05] border border-[#1a2a1a] p-4 rounded-xl">
                 <h4 className="text-[#f1e5ac] text-[10px] font-black uppercase tracking-widest mb-4">Dados da Ficha</h4>
@@ -487,34 +519,6 @@ export default function PersonagensPage() {
                 ))}
              </div>
 
-          </div>
-
-          {/* COLUNA 3: PERÍCIAS, INVENTÁRIO E MAGIAS */}
-          <div className="lg:col-span-4 space-y-6">
-            <div className="bg-black/40 border border-[#1a2a1a] p-4 rounded-xl overflow-visible">
-              <h4 className="text-[#f1e5ac] text-[10px] font-black uppercase tracking-widest mb-4 flex items-center justify-center gap-2 text-center">
-                <Sword size={12}/> Perícias 
-              </h4>
-              <div className="grid grid-cols-1 gap-2 overflow-visible">
-                {Object.entries(skillsData).map(([key, info]) => (
-                  <div key={key} className="flex items-center justify-between bg-black/60 p-2 rounded border border-[#1a2a1a] hover:border-[#00ff66]/30 transition-colors">
-                    <div className="flex items-center gap-2">
-                      <input 
-                        type="checkbox" 
-                        checked={activeCharacter.skills?.[key] || false}
-                        onChange={(e) => updateCharacter('skills', {...activeCharacter.skills, [key]: e.target.checked})}
-                        className="accent-[#00ff66] w-3 h-3"
-                      />
-                      <span className="text-white text-[11px] uppercase tracking-tighter">{info.name}</span>
-                    </div>
-                    <span className="text-[#00ff66] text-xs font-bold">
-                      {getModifier(activeCharacter.stats[info.attr as keyof typeof activeCharacter.stats])}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
             {/* Seção de Magias */}
             <div className="bg-[#050a05] border border-[#1a2a1a] p-4 rounded-xl">
               <h4 className="text-[#00ff66] text-[10px] font-black uppercase tracking-widest mb-4 flex items-center gap-2">
@@ -546,29 +550,35 @@ export default function PersonagensPage() {
                   className="bg-[#00ff66] text-black p-2 rounded"><Plus size={14}/></button>
               </div>
             </div>
+          </div>
 
-            {/* Inventário */}
-            <div className="bg-[#050a05] border border-[#1a2a1a] p-4 rounded-xl">
-              <h4 className="text-[#4a5a4a] text-[10px] font-black uppercase tracking-widest mb-4 flex items-center gap-2">
-                <Sword size={12}/> Inventário
+          {/* COLUNA 3: PERÍCIAS */}
+          <div className="lg:col-span-4 space-y-6">
+            <div className="bg-black/40 border border-[#1a2a1a] p-4 rounded-xl overflow-visible">
+              <h4 className="text-[#f1e5ac] text-[10px] font-black uppercase tracking-widest mb-4 flex items-center justify-center gap-2 text-center">
+                <Sword size={12}/> Perícias 
               </h4>
-              {/* Lógica similar à de magias... */}
-              <div className="flex gap-2">
-                <input 
-                  placeholder="Novo item..." 
-                  value={newInventoryItem}
-                  onChange={(e) => setNewInventoryItem(e.target.value)}
-                  className="flex-1 bg-black border border-[#1a2a1a] rounded p-2 text-xs text-white"
-                />
-                <button 
-                   onClick={() => {
-                    if(!newInventoryItem) return;
-                    updateCharacter('inventory', [...(activeCharacter.inventory || []), {id: Date.now(), name: newInventoryItem}]);
-                    setNewInventoryItem('');
-                  }}
-                  className="bg-[#4a5a4a] text-white p-2 rounded"><Plus size={14}/></button>
+              <div className="grid grid-cols-1 gap-2 overflow-visible">
+                {Object.entries(skillsData).map(([key, info]) => (
+                  <div key={key} className="flex items-center justify-between bg-black/60 p-2 rounded border border-[#1a2a1a] hover:border-[#00ff66]/30 transition-colors">
+                    <div className="flex items-center gap-2">
+                      <input 
+                        type="checkbox" 
+                        checked={activeCharacter.skills?.[key] || false}
+                        onChange={(e) => updateCharacter('skills', {...activeCharacter.skills, [key]: e.target.checked})}
+                        className="accent-[#00ff66] w-3 h-3"
+                      />
+                      <span className="text-white text-[11px] uppercase tracking-tighter">{info.name}</span>
+                    </div>
+                    <span className="text-[#00ff66] text-xs font-bold">
+                      {getModifier(activeCharacter.stats[info.attr as keyof typeof activeCharacter.stats])}
+                    </span>
+                  </div>
+                ))}
               </div>
             </div>
+
+
           </div>
 
         </div>
@@ -625,7 +635,7 @@ export default function PersonagensPage() {
                       key={char.id}
                       id={char.id}
                       title={char.name}
-                      subtitle={`${char.class} • Nível ${char.level}`}
+                      subtitle={`${char.class} • Nível ${char.level} • HP ${char.hp_current}/${char.hp_max} • CA ${char.ac}`}
                       image={char.img}
                       dropdownOpen={dropdownOpen === String(char.id)}
                       onDropdownToggle={() => setDropdownOpen((prev) => prev === String(char.id) ? null : String(char.id))}
