@@ -31,6 +31,7 @@ type Character = {
   inventory: { id: number; name: string }[];
   spells: { id: number; name: string; level: string }[]; // Nova seção de magias
   img: string;
+  is_linked?: boolean;
   owner_id?: string;
 
 }
@@ -105,6 +106,10 @@ export default function PersonagensPage() {
     if (characters.length >= 6) return alert('Limite de 6 personagens atingido.');
     
     const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      alert('Sessão inválida. Faça login novamente.');
+      return;
+    }
     
     const newChar = {
       name: 'Novo Herói',
@@ -127,17 +132,18 @@ export default function PersonagensPage() {
       spells: [],
       img: '/placeholder-rpg.png',
       is_linked: false,
-      owner_id: user?.id
+      owner_id: user.id
     };
 
     const { data, error } = await supabase
       .from('characters')
-      .insert(newChar)
+      .insert([newChar], { defaultToNull: false })
       .select('*')
       .single();
 
     if (error) {
-      alert('Erro ao criar personagem: ' + error.message);
+      const details = [error.message, (error as any).details, (error as any).hint].filter(Boolean).join(' | ');
+      alert('Erro ao criar personagem: ' + details);
       return;
     }
 
