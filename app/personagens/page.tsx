@@ -262,8 +262,8 @@ export default function PersonagensPage() {
   const skillsData: Record<string, { name: string; attr: string }> = {
     atletismo: { name: 'Atletismo', attr: 'str' },
     acrobacia: { name: 'Acrobacia', attr: 'dex' },
-    prestidigitacao: { name: 'Prestidigitação', attr: 'dex' },
     furtividade: { name: 'Furtividade', attr: 'dex' },
+    prestidigitacao: { name: 'Prestidigitação', attr: 'dex' },
     arcanismo: { name: 'Arcanismo', attr: 'int' },
     historia: { name: 'História', attr: 'int' },
     investigacao: { name: 'Investigação', attr: 'int' },
