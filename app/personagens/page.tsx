@@ -209,6 +209,15 @@ export default function PersonagensPage() {
     // Adicione as outras conforme necessário...
   };
 
+  const statLabels: Record<string, string> = {
+    str: 'Força',
+    dex: 'Destreza',
+    con: 'Constituição',
+    int: 'Inteligência',
+    wis: 'Sabedoria',
+    cha: 'Carisma',
+  };
+
   const renderCharacterSheet = () => {
     if (!activeCharacter) return null;
 
@@ -311,57 +320,73 @@ export default function PersonagensPage() {
              <div className="bg-[#050a05] border border-[#1a2a1a] p-4 rounded-xl">
                 <h4 className="text-[#f1e5ac] text-[10px] font-black uppercase tracking-widest mb-4">Dados da Ficha</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <input
-                    value={activeCharacter.name || ''}
-                    onChange={(e) => updateCharacter('name', e.target.value)}
-                    placeholder="Nome"
-                    className="bg-black border border-[#1a2a1a] rounded p-2 text-xs text-white"
-                  />
-                  <input
-                    value={activeCharacter.class || ''}
-                    onChange={(e) => updateCharacter('class', e.target.value)}
-                    placeholder="Classe"
-                    className="bg-black border border-[#1a2a1a] rounded p-2 text-xs text-white"
-                  />
-                  <input
-                    type="number"
-                    value={activeCharacter.level ?? 1}
-                    onChange={(e) => updateCharacter('level', parseInt(e.target.value) || 1)}
-                    placeholder="Nível"
-                    className="bg-black border border-[#1a2a1a] rounded p-2 text-xs text-white"
-                  />
-                  <input
-                    value={activeCharacter.race || ''}
-                    onChange={(e) => updateCharacter('race', e.target.value)}
-                    placeholder="Raça"
-                    className="bg-black border border-[#1a2a1a] rounded p-2 text-xs text-white"
-                  />
-                  <input
-                    value={activeCharacter.background || ''}
-                    onChange={(e) => updateCharacter('background', e.target.value)}
-                    placeholder="Antecedente"
-                    className="bg-black border border-[#1a2a1a] rounded p-2 text-xs text-white"
-                  />
-                  <input
-                    value={activeCharacter.alignment || ''}
-                    onChange={(e) => updateCharacter('alignment', e.target.value)}
-                    placeholder="Alinhamento"
-                    className="bg-black border border-[#1a2a1a] rounded p-2 text-xs text-white"
-                  />
-                  <input
-                    type="number"
-                    value={activeCharacter.experiencePoints ?? 0}
-                    onChange={(e) => updateCharacter('experiencePoints', parseInt(e.target.value) || 0)}
-                    placeholder="Pontos de Experiência"
-                    className="bg-black border border-[#1a2a1a] rounded p-2 text-xs text-white"
-                  />
-                  <input
-                    type="number"
-                    value={activeCharacter.proficiencyBonus ?? 2}
-                    onChange={(e) => updateCharacter('proficiencyBonus', parseInt(e.target.value) || 0)}
-                    placeholder="Bônus de Proficiência"
-                    className="bg-black border border-[#1a2a1a] rounded p-2 text-xs text-white"
-                  />
+                  <div>
+                    <label className="block text-[10px] text-[#4a5a4a] uppercase font-black mb-1">Nome</label>
+                    <input
+                      value={activeCharacter.name || ''}
+                      onChange={(e) => updateCharacter('name', e.target.value)}
+                      className="w-full bg-black border border-[#1a2a1a] rounded p-2 text-xs text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-[#4a5a4a] uppercase font-black mb-1">Classe</label>
+                    <input
+                      value={activeCharacter.class || ''}
+                      onChange={(e) => updateCharacter('class', e.target.value)}
+                      className="w-full bg-black border border-[#1a2a1a] rounded p-2 text-xs text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-[#4a5a4a] uppercase font-black mb-1">Nível</label>
+                    <input
+                      type="number"
+                      value={activeCharacter.level ?? 1}
+                      onChange={(e) => updateCharacter('level', parseInt(e.target.value) || 1)}
+                      className="w-full bg-black border border-[#1a2a1a] rounded p-2 text-xs text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-[#4a5a4a] uppercase font-black mb-1">Raça</label>
+                    <input
+                      value={activeCharacter.race || ''}
+                      onChange={(e) => updateCharacter('race', e.target.value)}
+                      className="w-full bg-black border border-[#1a2a1a] rounded p-2 text-xs text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-[#4a5a4a] uppercase font-black mb-1">Antecedente</label>
+                    <input
+                      value={activeCharacter.background || ''}
+                      onChange={(e) => updateCharacter('background', e.target.value)}
+                      className="w-full bg-black border border-[#1a2a1a] rounded p-2 text-xs text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-[#4a5a4a] uppercase font-black mb-1">Alinhamento</label>
+                    <input
+                      value={activeCharacter.alignment || ''}
+                      onChange={(e) => updateCharacter('alignment', e.target.value)}
+                      className="w-full bg-black border border-[#1a2a1a] rounded p-2 text-xs text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-[#4a5a4a] uppercase font-black mb-1">Pontos de Experiência</label>
+                    <input
+                      type="number"
+                      value={activeCharacter.experiencePoints ?? 0}
+                      onChange={(e) => updateCharacter('experiencePoints', parseInt(e.target.value) || 0)}
+                      className="w-full bg-black border border-[#1a2a1a] rounded p-2 text-xs text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-[#4a5a4a] uppercase font-black mb-1">Bônus de Proficiência</label>
+                    <input
+                      type="number"
+                      value={activeCharacter.proficiencyBonus ?? 2}
+                      onChange={(e) => updateCharacter('proficiencyBonus', parseInt(e.target.value) || 0)}
+                      className="w-full bg-black border border-[#1a2a1a] rounded p-2 text-xs text-white"
+                    />
+                  </div>
                 </div>
                 <label className="mt-3 flex items-center gap-2 text-[11px] text-white uppercase">
                   <input
@@ -377,7 +402,8 @@ export default function PersonagensPage() {
              <div className="grid grid-cols-3 gap-3">
                 {Object.entries(activeCharacter.stats).map(([stat, val]) => (
                   <div key={stat} className="bg-black border border-[#1a2a1a] rounded-lg p-2 text-center">
-                    <span className="text-[9px] text-[#4a5a4a] uppercase font-black">{stat}</span>
+                    <span className="text-[9px] text-[#4a5a4a] uppercase font-black">{statLabels[stat] ?? stat}</span>
+                    <div className="text-[9px] text-[#4a5a4a] uppercase">{stat}</div>
                     <input 
                       type="number" 
                       value={val}
