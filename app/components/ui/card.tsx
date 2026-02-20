@@ -1,6 +1,13 @@
 "use client";
 
-import { Edit, Trash2, MoreVertical, Map, Users, Calendar } from 'lucide-react';
+import { Edit, Trash2, MoreVertical, Map, Users, Calendar, Heart, Shield } from 'lucide-react';
+
+type MetaIcon = 'users' | 'calendar' | 'hp' | 'ca';
+
+type CardMetaItem = {
+  label: string;
+  icon: MetaIcon;
+};
 
 interface CardProps {
   id: string | number;
@@ -19,6 +26,8 @@ interface CardProps {
   deleteLabel?: string;
   accessLabel?: string;
   dropdownRef?: React.RefObject<HTMLDivElement | null>;
+  metaLeft?: CardMetaItem;
+  metaRight?: CardMetaItem;
 }
 
 export default function Card({ 
@@ -36,8 +45,17 @@ export default function Card({
   showCopyOption = false,
   deleteLabel = 'Excluir',
   accessLabel = 'Acessar',
-  dropdownRef
+  dropdownRef,
+  metaLeft,
+  metaRight,
 }: CardProps) {
+  const renderMetaIcon = (icon: MetaIcon) => {
+    if (icon === 'users') return <Users size={12} className="meta-icon" />;
+    if (icon === 'calendar') return <Calendar size={12} className="meta-icon" />;
+    if (icon === 'hp') return <Heart size={12} className="meta-icon" />;
+    return <Shield size={12} className="meta-icon" />;
+  };
+
   return (
     <>
       <div className="card-container" onClick={onAccess}>
@@ -123,7 +141,19 @@ export default function Card({
           <div className="card-info">
             <div className="card-text">
               <h3 className="card-title">{title}</h3>
-              <p className="card-subtitle">{subtitle}</p>
+              {subtitle ? <p className="card-subtitle">{subtitle}</p> : null}
+              {(metaLeft || metaRight) && (
+                <div className="card-meta-row">
+                  <span className="card-meta-item">
+                    {metaLeft ? renderMetaIcon(metaLeft.icon) : null}
+                    {metaLeft?.label}
+                  </span>
+                  <span className="card-meta-item right">
+                    {metaRight ? renderMetaIcon(metaRight.icon) : null}
+                    {metaRight?.label}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -148,7 +178,7 @@ export default function Card({
         .card-hero {
           position: relative;
           height: 128px;
-          background: linear-gradient(180deg, #0c1b11 0%, #0a120a 100%);
+          background: #0b0f0b;
           border-bottom: 1px solid #1a2a1a;
           display: flex;
           align-items: center;
@@ -161,12 +191,12 @@ export default function Card({
           inset: 0;
           background-size: cover;
           background-position: center;
-          opacity: 0.22;
+          opacity: 0.32;
           transition: opacity 0.3s ease;
         }
 
         .card-container:hover .card-bg-image {
-          opacity: 0.3;
+          opacity: 0.42;
         }
 
         .hero-icon {
@@ -279,9 +309,35 @@ export default function Card({
           font-size: 11px;
           font-weight: 800;
           text-transform: uppercase;
+          margin-bottom: 8px;
+          letter-spacing: 0.03em;
+        }
+
+        .card-meta-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          text-transform: uppercase;
+          color: #8a9a8a;
           border-top: 1px solid #1a2a1a;
           padding-top: 10px;
+          font-size: 10px;
+          font-weight: 800;
           letter-spacing: 0.03em;
+        }
+
+        .card-meta-item {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+        }
+
+        .card-meta-item.right {
+          justify-content: flex-end;
+        }
+
+        .meta-icon {
+          color: #00ff66;
         }
       `}</style>
     </>

@@ -635,7 +635,9 @@ export default function PersonagensPage() {
                       key={char.id}
                       id={char.id}
                       title={char.name}
-                      subtitle={`${char.class} • Nível ${char.level} • HP ${char.hp_current ?? 0}/${char.hp_max ?? 0} • CA ${char.ac ?? 10}`}
+                      subtitle={`${char.class} • Nível ${char.level}`}
+                      metaLeft={{ icon: 'hp', label: `${char.hp_current ?? 0}/${char.hp_max ?? 0}` }}
+                      metaRight={{ icon: 'ca', label: `${char.ac ?? 10}` }}
                       image={char.img}
                       dropdownOpen={dropdownOpen === String(char.id)}
                       onDropdownToggle={() => setDropdownOpen((prev) => prev === String(char.id) ? null : String(char.id))}
