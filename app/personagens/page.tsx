@@ -631,23 +631,35 @@ export default function PersonagensPage() {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {characters.map((char) => (
-                    <Card
-                      key={char.id}
-                      id={char.id}
-                      title={char.name}
-                      subtitle={`${char.class} • Nível ${char.level} • HP ${char.hp_current}/${char.hp_max} • CA ${char.ac}`}
-                      image={char.img}
-                      dropdownOpen={dropdownOpen === String(char.id)}
-                      onDropdownToggle={() => setDropdownOpen((prev) => prev === String(char.id) ? null : String(char.id))}
-                      dropdownRef={dropdownRef}
-                      onDelete={() => deleteCharacter(char.id)}
-                      onAccess={() => {
-                        setActiveCharacter(char);
-                        setDropdownOpen(null);
-                      }}
-                      accessLabel="Acessar"
-                      deleteLabel="Excluir"
-                    />
+                    <div key={char.id} className="bg-black border border-[#1a2a1a] p-6 rounded-2xl hover:border-[#00ff66] transition-all group shadow-[inset_0_0_10px_rgba(0,0,0,0.5)]">
+                      <div className="h-44 bg-[#0a120a] rounded-xl mb-4 bg-cover bg-center" style={{ backgroundImage: `url(${char.img})` }} />
+                      <h3 className="text-[#00ff66] font-bold text-lg uppercase">{char.name}</h3>
+                      <p className="text-[#4a5a4a] text-xs mb-4">{char.class} • Nível {char.level}</p>
+                      <div className="grid grid-cols-2 gap-2 mb-4">
+                        <div className="bg-[#0a120a] border border-[#1a2a1a] rounded-lg p-2 text-center">
+                          <span className="block text-[9px] text-[#4a5a4a] uppercase font-black">HP</span>
+                          <span className="text-white text-xs font-bold">{char.hp_current ?? 0}/{char.hp_max ?? 0}</span>
+                        </div>
+                        <div className="bg-[#0a120a] border border-[#1a2a1a] rounded-lg p-2 text-center">
+                          <span className="block text-[9px] text-[#4a5a4a] uppercase font-black">CA</span>
+                          <span className="text-[#00ff66] text-xs font-bold">{char.ac ?? 10}</span>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => setActiveCharacter(char)}
+                          className="flex-1 bg-[#00ff66] text-black py-2 rounded font-black text-[10px] uppercase"
+                        >
+                          Acessar Ficha
+                        </button>
+                        <button
+                          onClick={() => deleteCharacter(char.id)}
+                          className="p-2 border border-red-900 text-red-500 rounded hover:bg-red-900/20"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </div>
                   ))}
                 </div>
               )}
