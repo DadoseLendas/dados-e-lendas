@@ -342,23 +342,23 @@ export default function PersonagensPage() {
 
             <div className="bg-[#050a05] border border-[#1a2a1a] p-4 rounded-xl space-y-4">
               <HealthBar current={activeCharacter.hp_current} max={activeCharacter.hp_max} />
-              <div className="grid grid-cols-2 gap-2">
-                <div className="flex flex-col items-center justify-center p-2 bg-black border border-[#1a2a1a] rounded-lg">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col items-center justify-center p-3 bg-gradient-to-b from-[#0b140b] to-black border border-[#1a2a1a] rounded-xl shadow-[inset_0_0_12px_rgba(0,0,0,0.6)]">
                   <span className="text-[9px] text-[#4a5a4a] uppercase font-black">HP Atual</span>
                   <input 
                     type="number" 
                     value={activeCharacter.hp_current}
                     onChange={(e) => updateCharacter('hp_current', parseInt(e.target.value))}
-                    className="bg-transparent text-[#00ff66] text-center font-bold w-full"
+                    className="mt-2 w-full bg-[#0a120a] border border-[#1a2a1a] rounded-lg text-[#00ff66] text-center font-black py-1.5 outline-none focus:border-[#00ff66]/50"
                   />
                 </div>
-                <div className="flex flex-col items-center justify-center p-2 bg-black border border-[#1a2a1a] rounded-lg">
+                <div className="flex flex-col items-center justify-center p-3 bg-gradient-to-b from-[#0b140b] to-black border border-[#1a2a1a] rounded-xl shadow-[inset_0_0_12px_rgba(0,0,0,0.6)]">
                   <span className="text-[9px] text-[#4a5a4a] uppercase font-black">HP Máximo</span>
                   <input 
                     type="number" 
                     value={activeCharacter.hp_max}
                     onChange={(e) => updateCharacter('hp_max', parseInt(e.target.value))}
-                    className="bg-transparent text-white text-center font-bold w-full"
+                    className="mt-2 w-full bg-[#0a120a] border border-[#1a2a1a] rounded-lg text-white text-center font-black py-1.5 outline-none focus:border-[#00ff66]/40"
                   />
                 </div>
               </div>
@@ -366,22 +366,22 @@ export default function PersonagensPage() {
 
             {/* CA e Iniciativa */}
             <div className="grid grid-cols-2 gap-4">
-              <div className="bg-black border border-[#1a2a1a] p-4 rounded-xl text-center flex flex-col items-center justify-center">
+              <div className="bg-gradient-to-b from-[#0b140b] to-black border border-[#1a2a1a] p-4 rounded-xl text-center flex flex-col items-center justify-center shadow-[inset_0_0_12px_rgba(0,0,0,0.6)]">
                 <span className="text-[10px] text-[#4a5a4a] uppercase font-black block mb-1">Classe Armadura</span>
                 <input 
                   type="number" 
                   value={activeCharacter.ac}
                   onChange={(e) => updateCharacter('ac', parseInt(e.target.value))}
-                  className="bg-transparent text-2xl text-[#00ff66] font-serif w-full text-center outline-none"
+                  className="mt-1 w-full bg-[#0a120a] border border-[#1a2a1a] rounded-lg text-2xl text-[#00ff66] font-serif text-center py-1 outline-none focus:border-[#00ff66]/50"
                 />
               </div>
-              <div className="bg-black border border-[#1a2a1a] p-4 rounded-xl text-center flex flex-col items-center justify-center">
+              <div className="bg-gradient-to-b from-[#0b140b] to-black border border-[#1a2a1a] p-4 rounded-xl text-center flex flex-col items-center justify-center shadow-[inset_0_0_12px_rgba(0,0,0,0.6)]">
                 <span className="text-[10px] text-[#4a5a4a] uppercase font-black block mb-1">Iniciativa</span>
                 <input 
                   type="number" 
                   value={activeCharacter.initiative}
                   onChange={(e) => updateCharacter('initiative', parseInt(e.target.value))}
-                  className="bg-transparent text-2xl text-yellow-500 font-serif w-full text-center outline-none"
+                  className="mt-1 w-full bg-[#0a120a] border border-[#1a2a1a] rounded-lg text-2xl text-yellow-500 font-serif text-center py-1 outline-none focus:border-yellow-500/50"
                 />
               </div>
             </div>
@@ -414,7 +414,7 @@ export default function PersonagensPage() {
                       type="number"
                       value={activeCharacter.level ?? 1}
                       onChange={(e) => updateCharacter('level', parseInt(e.target.value) || 1)}
-                      className="w-full bg-black border border-[#1a2a1a] rounded p-2 text-xs text-white"
+                      className="w-full bg-gradient-to-b from-[#0b140b] to-black border border-[#1a2a1a] rounded-lg p-2 text-sm text-[#f1e5ac] font-bold text-center outline-none focus:border-[#00ff66]/40"
                     />
                   </div>
                   <div>
@@ -447,7 +447,7 @@ export default function PersonagensPage() {
                       type="number"
                       value={activeCharacter.experiencePoints ?? 0}
                       onChange={(e) => updateCharacter('experiencePoints', parseInt(e.target.value) || 0)}
-                      className="w-full bg-black border border-[#1a2a1a] rounded p-2 text-xs text-white"
+                      className="w-full bg-gradient-to-b from-[#0b140b] to-black border border-[#1a2a1a] rounded-lg p-2 text-sm text-[#f1e5ac] font-bold text-center outline-none focus:border-[#00ff66]/40"
                     />
                   </div>
                   <div>
@@ -456,7 +456,7 @@ export default function PersonagensPage() {
                       type="number"
                       value={activeCharacter.proficiencyBonus ?? 2}
                       onChange={(e) => updateCharacter('proficiencyBonus', parseInt(e.target.value) || 0)}
-                      className="w-full bg-black border border-[#1a2a1a] rounded p-2 text-xs text-white"
+                      className="w-full bg-gradient-to-b from-[#0b140b] to-black border border-[#1a2a1a] rounded-lg p-2 text-sm text-[#00ff66] font-black text-center outline-none focus:border-[#00ff66]/50"
                     />
                   </div>
                 </div>
@@ -473,14 +473,14 @@ export default function PersonagensPage() {
 
              <div className="grid grid-cols-3 gap-3">
                 {Object.entries(activeCharacter.stats).map(([stat, val]) => (
-                  <div key={stat} className="bg-black border border-[#1a2a1a] rounded-lg p-2 text-center flex flex-col items-center justify-center">
+                  <div key={stat} className="bg-gradient-to-b from-[#0b140b] to-black border border-[#1a2a1a] rounded-xl p-3 text-center flex flex-col items-center justify-center shadow-[inset_0_0_12px_rgba(0,0,0,0.6)] hover:border-[#00ff66]/35 transition-colors">
                     <span className="text-[9px] text-[#4a5a4a] uppercase font-black">{statLabels[stat] ?? stat}</span>
                     <div className="text-[9px] text-[#4a5a4a] uppercase">{stat}</div>
                     <input 
                       type="number" 
                       value={val}
                       onChange={(e) => updateCharacter('stats', {...activeCharacter.stats, [stat]: parseInt(e.target.value)})}
-                      className="w-full bg-transparent text-white text-center font-bold text-xl"
+                      className="mt-2 w-full bg-[#0a120a] border border-[#1a2a1a] rounded-lg text-white text-center font-black text-xl py-1 outline-none focus:border-[#00ff66]/45"
                     />
                     <div className="text-[#00ff66] text-xs font-bold">{getModifier(val) >= 0 ? '+' : ''}{getModifier(val)}</div>
                   </div>
