@@ -349,60 +349,58 @@ export default function CampanhasPage() {
   return (
     <>
       <Navbar abaAtiva={abaAtiva} setAbaAtiva={setAbaAtiva} />
-      <div className="max-w-[800px] mx-auto py-12 px-6">
-        <div className="bg-[#0a120a] border border-[#1a2a1a] rounded-xl p-10 shadow-2xl">
-          <h2 className="text-[#f1e5ac] text-2xl font-serif text-center mb-10 tracking-[0.2em] uppercase italic">
-            Minhas Campanhas
-          </h2>
+      <div className="max-w-[1000px] mx-auto py-12 px-6">
+        <h2 className="text-[#f1e5ac] text-2xl font-serif mb-10 tracking-[0.2em] uppercase italic">
+          Minhas Campanhas
+        </h2>
 
-          <div className="space-y-6">
-            <div className="flex justify-between items-center">
-              <h3 className="text-[#4a5a4a] text-xs font-black uppercase tracking-[0.2em]">
-                Campanhas: {campaigns.length}
-              </h3>
-              <div className="flex gap-3">
-                <button onClick={() => setShowJoinModal(true)} className="flex items-center gap-2 border border-[#00ff66] text-[#00ff66] px-4 py-2 rounded-lg text-[10px] font-black uppercase hover:bg-[#00ff66] hover:text-black transition-all">
-                  <Plus size={14} /> Juntar
-                </button>
-                <button onClick={() => setShowModal(true)} className="flex items-center gap-2 bg-[#00ff66] text-black px-4 py-2 rounded-lg text-[10px] font-black uppercase hover:brightness-110 transition-all">
-                  <Plus size={14} /> Criar
-                </button>
-              </div>
+        <div className="space-y-6">
+          <div className="flex justify-between items-center">
+            <h3 className="text-[#4a5a4a] text-xs font-black uppercase tracking-[0.2em]">
+              Campanhas: {campaigns.length}
+            </h3>
+            <div className="flex gap-3">
+              <button onClick={() => setShowJoinModal(true)} className="flex items-center gap-2 border border-[#00ff66] text-[#00ff66] px-4 py-2 rounded-lg text-[10px] font-black uppercase hover:bg-[#00ff66] hover:text-black transition-all">
+                <Plus size={14} /> Juntar
+              </button>
+              <button onClick={() => setShowModal(true)} className="flex items-center gap-2 bg-[#00ff66] text-black px-4 py-2 rounded-lg text-[10px] font-black uppercase hover:brightness-110 transition-all">
+                <Plus size={14} /> Criar
+              </button>
             </div>
-
-            {loading ? (
-              <div className="text-center text-[#8a9a8a] text-sm py-10">Carregando campanhas...</div>
-            ) : fetchError ? (
-              <div className="text-center text-red-400 text-sm py-10">{fetchError}</div>
-            ) : campaigns.length === 0 ? (
-              <div className="text-center text-[#8a9a8a] text-sm py-10">Nenhuma campanha encontrada.</div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {campaigns.map(campaign => (
-                  <Card
-                    key={campaign.id}
-                    id={campaign.id}
-                    title={campaign.name}
-                    subtitle={`${campaign.isOwner ? 'Mestre' : 'Jogador'}`}
-                    image={campaign.img}
-                    dropdownOpen={dropdownOpen === String(campaign.id)}
-                    onDropdownToggle={() => setDropdownOpen((prev) => prev === String(campaign.id) ? null : String(campaign.id))}
-                    dropdownRef={dropdownRef}
-                    onCopyCode={() => {
-                      navigator.clipboard.writeText(campaign.code);
-                      alert('Código copiado!');
-                    }}
-                    onEdit={() => openEditModal(campaign)}
-                    onDelete={campaign.isOwner ? () => handleDeleteCampaign(campaign.id) : undefined}
-                    onAccess={() => setDropdownOpen(null)}
-                    showEditOption={campaign.isOwner}
-                    showCopyOption={campaign.isOwner}
-                    accessLabel="Jogar"
-                  />
-                ))}
-              </div>
-            )}
           </div>
+
+          {loading ? (
+            <div className="text-center text-[#8a9a8a] text-sm py-10">Carregando campanhas...</div>
+          ) : fetchError ? (
+            <div className="text-center text-red-400 text-sm py-10">{fetchError}</div>
+          ) : campaigns.length === 0 ? (
+            <div className="text-center text-[#8a9a8a] text-sm py-10">Nenhuma campanha encontrada.</div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {campaigns.map(campaign => (
+                <Card
+                  key={campaign.id}
+                  id={campaign.id}
+                  title={campaign.name}
+                  subtitle={`${campaign.isOwner ? 'Mestre' : 'Jogador'}`}
+                  image={campaign.img}
+                  dropdownOpen={dropdownOpen === String(campaign.id)}
+                  onDropdownToggle={() => setDropdownOpen((prev) => prev === String(campaign.id) ? null : String(campaign.id))}
+                  dropdownRef={dropdownRef}
+                  onCopyCode={() => {
+                    navigator.clipboard.writeText(campaign.code);
+                    alert('Código copiado!');
+                  }}
+                  onEdit={() => openEditModal(campaign)}
+                  onDelete={campaign.isOwner ? () => handleDeleteCampaign(campaign.id) : undefined}
+                  onAccess={() => setDropdownOpen(null)}
+                  showEditOption={campaign.isOwner}
+                  showCopyOption={campaign.isOwner}
+                  accessLabel="Jogar"
+                />
+              ))}
+            </div>
+          )}
         </div>
       </div>
 

@@ -1,7 +1,6 @@
 "use client";
 
-import { ReactNode } from 'react';
-import { Edit, Trash2, Eye, MoreVertical, Map, Users, Calendar } from 'lucide-react';
+import { Edit, Trash2, MoreVertical, Map, Users, Calendar } from 'lucide-react';
 
 interface CardProps {
   id: string | number;
@@ -41,27 +40,38 @@ export default function Card({
 }: CardProps) {
   return (
     <>
-      <div className="card-container">
-        {/* Imagem de fundo */}
-        {image && (
-          <div 
-            className="card-bg-image"
-            style={{ backgroundImage: `url('${image}')` }}
-          />
-        )}
-        {!image && placeholder && (
-          <div 
-            className="card-bg-image"
-            style={{ backgroundImage: `url('${placeholder}')` }}
-          />
-        )}
+      <div className="card-container" onClick={onAccess}>
+        <div className="card-hero">
+          {/* Imagem de fundo */}
+          {image && (
+            <div 
+              className="card-bg-image"
+              style={{ backgroundImage: `url('${image}')` }}
+            />
+          )}
+          {!image && placeholder && (
+            <div 
+              className="card-bg-image"
+              style={{ backgroundImage: `url('${placeholder}')` }}
+            />
+          )}
+
+          {!image && !placeholder && (
+            <div className="hero-icon">
+              <Map size={34} strokeWidth={1.6} />
+            </div>
+          )}
+        </div>
         
         <div className="card-content">
           {/* Menu dropdown */}
           {onDropdownToggle && (
             <div className="dropdown-container" ref={dropdownRef}>
               <button 
-                onClick={onDropdownToggle}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDropdownToggle();
+                }}
                 className="dropdown-button"
               >
                 <MoreVertical size={16} />
@@ -71,7 +81,10 @@ export default function Card({
                 <div className="dropdown-menu">
                   {showEditOption && onEdit && (
                     <button
-                      onClick={onEdit}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onEdit();
+                      }}
                       className="dropdown-item edit-item"
                     >
                       <Edit size={12} />
@@ -80,7 +93,10 @@ export default function Card({
                   )}
                   {showCopyOption && onCopyCode && (
                     <button
-                      onClick={onCopyCode}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onCopyCode();
+                      }}
                       className="dropdown-item copy-item"
                     >
                       Copiar Código
@@ -88,7 +104,10 @@ export default function Card({
                   )}
                   {onDelete && (
                     <button
-                      onClick={onDelete}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDelete();
+                      }}
                       className="dropdown-item delete-item"
                     >
                       <Trash2 size={12} />
@@ -106,16 +125,6 @@ export default function Card({
               <h3 className="card-title">{title}</h3>
               <p className="card-subtitle">{subtitle}</p>
             </div>
-
-            {onAccess && (
-              <button 
-                onClick={onAccess}
-                className="access-button"
-              >
-                <Eye size={14} />
-                {accessLabel}
-              </button>
-            )}
           </div>
         </div>
       </div>
@@ -123,16 +132,28 @@ export default function Card({
       <style jsx>{`
         .card-container {
           position: relative;
-          background: black;
+          background: #0a120a;
           border: 1px solid #1a2a1a;
           border-radius: 12px;
           overflow: hidden;
           box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5);
           transition: all 0.3s ease;
+          cursor: ${onAccess ? 'pointer' : 'default'};
         }
 
         .card-container:hover {
           border-color: #00ff66;
+        }
+
+        .card-hero {
+          position: relative;
+          height: 128px;
+          background: linear-gradient(180deg, #0c1b11 0%, #0a120a 100%);
+          border-bottom: 1px solid #1a2a1a;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          overflow: hidden;
         }
 
         .card-bg-image {
@@ -140,7 +161,7 @@ export default function Card({
           inset: 0;
           background-size: cover;
           background-position: center;
-          opacity: 0.2;
+          opacity: 0.22;
           transition: opacity 0.3s ease;
         }
 
@@ -148,28 +169,41 @@ export default function Card({
           opacity: 0.3;
         }
 
+        .hero-icon {
+          color: #00ff66;
+          opacity: 0.45;
+          z-index: 1;
+          transition: all 0.3s ease;
+        }
+
+        .card-container:hover .hero-icon {
+          opacity: 0.75;
+        }
+
         .card-content {
           position: relative;
-          padding: 24px;
+          padding: 16px;
         }
 
         .dropdown-container {
           position: absolute;
-          top: 16px;
-          right: 16px;
+          top: -120px;
+          right: 10px;
+          z-index: 3;
         }
 
         .dropdown-button {
-          color: #4a5a4a;
+          color: #00ff66;
+          opacity: 0.8;
           background: none;
           border: none;
-          padding: 8px;
+          padding: 6px;
           cursor: pointer;
-          transition: color 0.3s ease;
+          transition: all 0.3s ease;
         }
 
         .dropdown-button:hover {
-          color: #00ff66;
+          opacity: 1;
         }
 
         .dropdown-menu {
@@ -220,7 +254,7 @@ export default function Card({
         .card-info {
           display: flex;
           flex-direction: column;
-          gap: 16px;
+          gap: 10px;
         }
 
         .card-text h3 {
@@ -232,39 +266,22 @@ export default function Card({
         }
 
         .card-title {
-          color: white;
-          font-weight: bold;
-          font-size: 18px;
-          margin-bottom: 8px;
+          color: #f1e5ac;
+          font-weight: 900;
+          font-size: 22px;
+          margin-bottom: 10px;
+          text-transform: uppercase;
+          line-height: 1.15;
         }
 
         .card-subtitle {
-          color: #4a5a4a;
-          font-size: 12px;
-        }
-
-        .access-button {
-          width: 100%;
-          background: #00ff66;
-          color: black;
-          font-weight: 900;
-          padding: 12px;
-          border-radius: 8px;
-          font-size: 12px;
+          color: #8a9a8a;
+          font-size: 11px;
+          font-weight: 800;
           text-transform: uppercase;
-          letter-spacing: 0.1em;
-          border: none;
-          cursor: pointer;
-          transition: all 0.3s ease;
-          box-shadow: 0 0 20px rgba(0, 255, 102, 0.2);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 8px;
-        }
-
-        .access-button:hover {
-          filter: brightness(1.1);
+          border-top: 1px solid #1a2a1a;
+          padding-top: 10px;
+          letter-spacing: 0.03em;
         }
       `}</style>
     </>

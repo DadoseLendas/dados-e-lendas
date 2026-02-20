@@ -609,10 +609,10 @@ export default function PersonagensPage() {
   return (
     <>
       <Navbar abaAtiva={abaAtiva} setAbaAtiva={setAbaAtiva} />
-      <div className={`${activeCharacter ? 'max-w-[1400px]' : 'max-w-[800px]'} mx-auto py-12 px-6`}>
+      <div className={`${activeCharacter ? 'max-w-[1400px]' : 'max-w-[1000px]'} mx-auto py-12 px-6`}>
         {!activeCharacter ? (
-          <div className="bg-[#0a120a] border border-[#1a2a1a] rounded-xl p-10 shadow-2xl">
-            <h2 className="text-[#f1e5ac] text-2xl font-serif text-center mb-10 tracking-[0.2em] uppercase italic">
+          <div>
+            <h2 className="text-[#f1e5ac] text-2xl font-serif mb-10 tracking-[0.2em] uppercase italic">
               Grimório de Heróis
             </h2>
 
@@ -631,25 +631,23 @@ export default function PersonagensPage() {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {characters.map((char) => (
-                    <div key={char.id} className="bg-black border border-[#1a2a1a] p-6 rounded-2xl hover:border-[#00ff66] transition-all group shadow-[inset_0_0_10px_rgba(0,0,0,0.5)]">
-                      <div className="h-44 bg-[#0a120a] rounded-xl mb-4 bg-cover bg-center" style={{ backgroundImage: `url(${char.img})` }} />
-                      <h3 className="text-[#00ff66] font-bold text-lg uppercase">{char.name}</h3>
-                      <p className="text-[#4a5a4a] text-xs mb-4">{char.class} • Nível {char.level} • HP {char.hp_current ?? 0}/{char.hp_max ?? 0} • CA {char.ac ?? 10}</p>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => setActiveCharacter(char)}
-                          className="flex-1 bg-[#00ff66] text-black py-2 rounded font-black text-[10px] uppercase"
-                        >
-                          Acessar Ficha
-                        </button>
-                        <button
-                          onClick={() => deleteCharacter(char.id)}
-                          className="p-2 border border-red-900 text-red-500 rounded hover:bg-red-900/20"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    </div>
+                    <Card
+                      key={char.id}
+                      id={char.id}
+                      title={char.name}
+                      subtitle={`${char.class} • Nível ${char.level} • HP ${char.hp_current ?? 0}/${char.hp_max ?? 0} • CA ${char.ac ?? 10}`}
+                      image={char.img}
+                      dropdownOpen={dropdownOpen === String(char.id)}
+                      onDropdownToggle={() => setDropdownOpen((prev) => prev === String(char.id) ? null : String(char.id))}
+                      dropdownRef={dropdownRef}
+                      onDelete={() => deleteCharacter(char.id)}
+                      onAccess={() => {
+                        setActiveCharacter(char);
+                        setDropdownOpen(null);
+                      }}
+                      accessLabel="Acessar"
+                      deleteLabel="Excluir"
+                    />
                   ))}
                 </div>
               )}
