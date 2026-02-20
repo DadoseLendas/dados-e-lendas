@@ -108,9 +108,9 @@ export default function PersonagensPage() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       alert('Sessão inválida. Faça login novamente.');
-      return;
+      return false;
     }
-    
+
     const newChar = {
       name: 'Novo Herói',
       class: 'Guerreiro',
@@ -144,14 +144,16 @@ export default function PersonagensPage() {
     if (error) {
       const details = [error.message, (error as any).details, (error as any).hint].filter(Boolean).join(' | ');
       alert('Erro ao criar personagem: ' + details);
-      return;
+      return false;
     }
 
     if (data) {
       setCharacters((prev) => [...prev, data]);
       setActiveCharacter(data);
+      return true;
     } else {
       await fetchCharacters();
+      return false;
     }
   };
 
@@ -237,22 +239,6 @@ export default function PersonagensPage() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-
-          <div className="lg:col-span-12 grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="bg-black border border-[#1a2a1a] rounded-xl p-3 text-center">
-              <span className="block text-[9px] text-[#4a5a4a] uppercase font-black">Classe</span>
-              <span className="text-white text-sm font-bold uppercase">{activeCharacter.class || 'Sem classe'}</span>
-            </div>
-            <div className="bg-black border border-[#1a2a1a] rounded-xl p-3 text-center">
-              <span className="block text-[9px] text-[#4a5a4a] uppercase font-black">HP</span>
-              <span className="text-white text-sm font-bold">{activeCharacter.hp_current ?? 0}/{activeCharacter.hp_max ?? 0}</span>
-            </div>
-            <div className="bg-black border border-[#1a2a1a] rounded-xl p-3 text-center">
-              <span className="block text-[9px] text-[#4a5a4a] uppercase font-black">CA</span>
-              <span className="text-[#00ff66] text-sm font-bold">{activeCharacter.ac ?? 10}</span>
-              <span className="block text-[8px] text-[#4a5a4a] uppercase">Classe de Armadura</span>
-            </div>
-          </div>
           
           {/* COLUNA 1: FOTO E STATUS VITAIS */}
           <div className="lg:col-span-3 space-y-4">
@@ -516,7 +502,9 @@ export default function PersonagensPage() {
           <div className="bg-[#0a120a] border border-[#1a2a1a] rounded-xl p-10">
             <div className="flex justify-between items-center mb-10">
               <h2 className="text-[#f1e5ac] text-2xl font-serif tracking-[0.2em] uppercase italic">Grimório de Heróis</h2>
-              <button onClick={createCharacter} className="bg-[#00ff66] text-black px-6 py-2 rounded-lg font-black uppercase text-xs hover:scale-105 transition-all">Novo Personagem</button>
+              <button onClick={createCharacter} className="flex items-center gap-2 bg-[#00ff66] text-black px-4 py-2 rounded-lg text-[10px] font-black uppercase hover:brightness-110 transition-all">
+                <Plus size={12} /> Novo Personagem
+              </button>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -546,6 +534,7 @@ export default function PersonagensPage() {
           </div>
         ) : renderCharacterSheet()}
       </div>
+
       <Footer />
     </>
   );
