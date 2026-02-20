@@ -15,7 +15,7 @@
 
 <br />
 
-## ⚔️ Sobre o Projeto
+## ⚔️ Sobre o Projeto (FELIPE VC NAO SABE DE NADA)
 
 **Dados & Lendas** é uma aplicação web moderna desenvolvida para facilitar a gestão de mesas de RPG (com foco em D&D 5e).
 
