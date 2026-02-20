@@ -8,12 +8,13 @@ import { FormModal, TextInput, ImageUpload, ModalButtons } from '@/app/component
 import { Users, Plus } from 'lucide-react';
 import { createClient } from '@/utils/supabase/client';
 
-const supabase = createClient();
-
 export default function CampanhasPage() {
+  const supabase = createClient();
   const [abaAtiva, setAbaAtiva] = useState('campanhas');
   const [campaigns, setCampaigns] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [authReady, setAuthReady] = useState(false);
 
   // Modais
   const [showModal, setShowModal] = useState(false);
@@ -43,29 +44,77 @@ export default function CampanhasPage() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  useEffect(() => {
+    const syncAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setCurrentUserId(session?.user?.id ?? null);
+      setAuthReady(true);
+    };
+
+    syncAuth();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setCurrentUserId(session?.user?.id ?? null);
+      setAuthReady(true);
+    });
+
+    return () => subscription.unsubscribe();
+  }, [supabase]);
+
   const fetchCampaigns = async () => {
     setLoading(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!currentUserId) {
+        setCampaigns([]);
+        return;
+      }
 
-      const { data, error } = await supabase
+      const { data: ownedCampaigns, error: ownedError } = await supabase
         .from('campaigns')
-        .select(`*, campaign_members(user_id)`)
-        .or(`dm_id.eq.${user.id},campaign_members.user_id.eq.${user.id}`);
+        .select('*')
+        .eq('dm_id', currentUserId);
 
-      if (error) throw error;
+      if (ownedError) throw ownedError;
 
-      if (data) {
-        const formatted = data.map(c => ({
+      const { data: membershipRows, error: membershipError } = await supabase
+        .from('campaign_members')
+        .select('campaign_id')
+        .eq('user_id', currentUserId);
+
+      if (membershipError) throw membershipError;
+
+      const membershipCampaignIds = (membershipRows ?? []).map(row => row.campaign_id);
+      let memberCampaigns: any[] = [];
+
+      if (membershipCampaignIds.length > 0) {
+        const { data: campaignsFromMembership, error: membershipCampaignsError } = await supabase
+          .from('campaigns')
+          .select('*')
+          .in('id', membershipCampaignIds);
+
+        if (membershipCampaignsError) throw membershipCampaignsError;
+        memberCampaigns = campaignsFromMembership ?? [];
+      }
+
+      const uniqueCampaigns = new Map();
+      [...(ownedCampaigns ?? []), ...memberCampaigns].forEach((campaign) => {
+        uniqueCampaigns.set(campaign.id, campaign);
+      });
+
+      const allCampaigns = Array.from(uniqueCampaigns.values());
+
+      if (allCampaigns.length > 0) {
+        const formatted = allCampaigns.map(c => ({
           id: c.id,
           name: c.name,
           code: c.code,
           date: new Date(c.created_at).toLocaleDateString('pt-BR'),
-          isOwner: c.dm_id === user.id,
+          isOwner: c.dm_id === currentUserId,
           img: c.image_url || 'https://via.placeholder.com/400x200/0a120a/00ff66?text=RPG'
         }));
         setCampaigns(formatted);
+      } else {
+        setCampaigns([]);
       }
     } catch (err) {
       console.error("Erro ao buscar campanhas:", err);
@@ -74,7 +123,10 @@ export default function CampanhasPage() {
     }
   };
 
-  useEffect(() => { fetchCampaigns(); }, []);
+  useEffect(() => {
+    if (!authReady) return;
+    fetchCampaigns();
+  }, [authReady, currentUserId]);
 
   // LÓGICA DE TRATAMENTO DE IMAGEM
   const handleImageChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -92,21 +144,27 @@ export default function CampanhasPage() {
     console.log("Tentando criar campanha...");
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return alert("Usuário não autenticado");
+      const trimmedCampaignName = campaignName.trim();
+      if (!trimmedCampaignName) {
+        alert('Informe um nome para a campanha.');
+        return;
+      }
+
+      if (!currentUserId) return alert("Usuário não autenticado");
 
       const inviteCode = Math.random().toString(36).substr(2, 6).toUpperCase();
 
       // IMPORTANTE: Se o seu banco não tiver a coluna 'image_url', remova-a abaixo
-      const { data, error } = await supabase
+      const { data: createdCampaign, error } = await supabase
         .from('campaigns')
         .insert({
-          name: campaignName.trim(),
+          name: trimmedCampaignName,
           code: inviteCode,
-          dm_id: user.id,
+          dm_id: currentUserId,
           // image_url: campaignImg // Descomente apenas se criar a coluna no Supabase
         })
-        .select();
+        .select()
+        .single();
 
       if (error) {
         console.error("Erro do Supabase:", error);
@@ -114,11 +172,24 @@ export default function CampanhasPage() {
         return;
       }
 
-      console.log("Campanha criada com sucesso:", data);
+      if (createdCampaign) {
+        const { error: memberError } = await supabase
+          .from('campaign_members')
+          .insert({
+            campaign_id: createdCampaign.id,
+            user_id: currentUserId,
+          });
+
+        if (memberError) {
+          console.warn('Campanha criada, mas não foi possível adicionar o mestre como membro:', memberError.message);
+        }
+      }
+
+      console.log("Campanha criada com sucesso:", createdCampaign);
       setShowModal(false);
       setCampaignName('');
       setCampaignImg('');
-      fetchCampaigns();
+      await fetchCampaigns();
     } catch (err) {
       console.error("Erro inesperado:", err);
     }
@@ -126,8 +197,7 @@ export default function CampanhasPage() {
 
   const handleJoinCampaign = async (e: React.FormEvent) => {
     e.preventDefault();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    if (!currentUserId) return;
 
     if (step === 1) {
       const { data: campaign, error } = await supabase
@@ -141,7 +211,7 @@ export default function CampanhasPage() {
       const { data: chars } = await supabase
         .from('characters')
         .select('id, name')
-        .eq('owner_id', user.id);
+        .eq('owner_id', currentUserId);
 
       if (!chars || chars.length === 0) return alert('Crie um personagem primeiro!');
 
@@ -153,7 +223,7 @@ export default function CampanhasPage() {
         .from('campaign_members')
         .insert({
           campaign_id: tempCampaign.id,
-          user_id: user.id,
+          user_id: currentUserId,
           current_character_id: parseInt(selectedCharacterId)
         });
 
