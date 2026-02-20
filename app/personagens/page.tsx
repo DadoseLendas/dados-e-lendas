@@ -638,6 +638,8 @@ export default function PersonagensPage() {
                       subtitle={`${char.class} • Nível ${char.level}`}
                       metaLeft={{ icon: 'hp', label: `${char.hp_current ?? 0}/${char.hp_max ?? 0}` }}
                       metaRight={{ icon: 'ca', label: `${char.ac ?? 10}` }}
+                      showMetaDivider={false}
+                      metaLarge
                       image={char.img}
                       dropdownOpen={dropdownOpen === String(char.id)}
                       onDropdownToggle={() => setDropdownOpen((prev) => prev === String(char.id) ? null : String(char.id))}

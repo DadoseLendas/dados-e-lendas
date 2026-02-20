@@ -28,6 +28,8 @@ interface CardProps {
   dropdownRef?: React.RefObject<HTMLDivElement | null>;
   metaLeft?: CardMetaItem;
   metaRight?: CardMetaItem;
+  showMetaDivider?: boolean;
+  metaLarge?: boolean;
 }
 
 export default function Card({ 
@@ -48,6 +50,8 @@ export default function Card({
   dropdownRef,
   metaLeft,
   metaRight,
+  showMetaDivider = true,
+  metaLarge = false,
 }: CardProps) {
   const renderMetaIcon = (icon: MetaIcon) => {
     if (icon === 'users') return <Users size={12} className="meta-icon" />;
@@ -143,12 +147,12 @@ export default function Card({
               <h3 className="card-title">{title}</h3>
               {subtitle ? <p className="card-subtitle">{subtitle}</p> : null}
               {(metaLeft || metaRight) && (
-                <div className="card-meta-row">
-                  <span className="card-meta-item">
+                <div className={`card-meta-row ${showMetaDivider ? 'with-divider' : ''} ${metaLarge ? 'large' : ''}`}>
+                  <span className={`card-meta-item ${metaLarge ? 'large' : ''}`}>
                     {metaLeft ? renderMetaIcon(metaLeft.icon) : null}
                     {metaLeft?.label}
                   </span>
-                  <span className="card-meta-item right">
+                  <span className={`card-meta-item right ${metaLarge ? 'large' : ''}`}>
                     {metaRight ? renderMetaIcon(metaRight.icon) : null}
                     {metaRight?.label}
                   </span>
@@ -298,10 +302,13 @@ export default function Card({
         .card-title {
           color: #f1e5ac;
           font-weight: 900;
-          font-size: 22px;
+          font-size: 18px;
           margin-bottom: 10px;
           text-transform: uppercase;
           line-height: 1.15;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
         }
 
         .card-subtitle {
@@ -319,11 +326,20 @@ export default function Card({
           align-items: center;
           text-transform: uppercase;
           color: #8a9a8a;
-          border-top: 1px solid #1a2a1a;
-          padding-top: 10px;
+          padding-top: 8px;
           font-size: 10px;
           font-weight: 800;
           letter-spacing: 0.03em;
+        }
+
+        .card-meta-row.with-divider {
+          border-top: 1px solid #1a2a1a;
+          padding-top: 10px;
+        }
+
+        .card-meta-row.large {
+          font-size: 12px;
+          font-weight: 900;
         }
 
         .card-meta-item {
@@ -332,12 +348,21 @@ export default function Card({
           gap: 6px;
         }
 
+        .card-meta-item.large {
+          gap: 8px;
+        }
+
         .card-meta-item.right {
           justify-content: flex-end;
         }
 
         .meta-icon {
           color: #00ff66;
+        }
+
+        .card-meta-row.large :global(svg) {
+          width: 15px;
+          height: 15px;
         }
       `}</style>
     </>
