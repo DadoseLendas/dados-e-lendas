@@ -91,6 +91,7 @@ export default function PersonagensPage() {
       .from('characters')
       .upsert({
         ...char,
+        is_linked: (char as any).is_linked ?? false,
         owner_id: user?.id,
         updated_at: new Date()
       });
@@ -125,6 +126,7 @@ export default function PersonagensPage() {
       inventory: [],
       spells: [],
       img: '/placeholder-rpg.png',
+      is_linked: false,
       owner_id: user?.id
     };
 
