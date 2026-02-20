@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import Navbar from '@/app/components/ui/navbar';
 import Footer from '@/app/components/ui/footer';
 import type { ChangeEvent } from 'react';
@@ -9,10 +9,11 @@ import { Users, Plus } from 'lucide-react';
 import { createClient } from '@/utils/supabase/client';
 
 export default function CampanhasPage() {
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
   const [abaAtiva, setAbaAtiva] = useState('campanhas');
   const [campaigns, setCampaigns] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [authReady, setAuthReady] = useState(false);
 
@@ -63,6 +64,7 @@ export default function CampanhasPage() {
 
   const fetchCampaigns = async () => {
     setLoading(true);
+    setFetchError(null);
     try {
       if (!currentUserId) {
         setCampaigns([]);
@@ -81,18 +83,22 @@ export default function CampanhasPage() {
         .select('campaign_id')
         .eq('user_id', currentUserId);
 
-      if (membershipError) throw membershipError;
+      if (membershipError) {
+        console.warn('Não foi possível ler campaign_members. Exibindo apenas campanhas do mestre.', membershipError.message);
+      }
 
-      const membershipCampaignIds = (membershipRows ?? []).map(row => row.campaign_id);
+      const membershipCampaignIds = ((membershipRows ?? []) as Array<{ campaign_id: string | number }>).map(row => row.campaign_id);
       let memberCampaigns: any[] = [];
 
-      if (membershipCampaignIds.length > 0) {
+      if (!membershipError && membershipCampaignIds.length > 0) {
         const { data: campaignsFromMembership, error: membershipCampaignsError } = await supabase
           .from('campaigns')
           .select('*')
           .in('id', membershipCampaignIds);
 
-        if (membershipCampaignsError) throw membershipCampaignsError;
+        if (membershipCampaignsError) {
+          console.warn('Não foi possível carregar campanhas por membership.', membershipCampaignsError.message);
+        }
         memberCampaigns = campaignsFromMembership ?? [];
       }
 
@@ -104,7 +110,9 @@ export default function CampanhasPage() {
       const allCampaigns = Array.from(uniqueCampaigns.values());
 
       if (allCampaigns.length > 0) {
-        const formatted = allCampaigns.map(c => ({
+        const formatted = [...allCampaigns]
+          .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+          .map(c => ({
           id: c.id,
           name: c.name,
           code: c.code,
@@ -118,6 +126,7 @@ export default function CampanhasPage() {
       }
     } catch (err) {
       console.error("Erro ao buscar campanhas:", err);
+      setFetchError('Não foi possível carregar campanhas. Verifique as políticas RLS de SELECT no Supabase.');
     } finally {
       setLoading(false);
     }
@@ -260,23 +269,31 @@ export default function CampanhasPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {campaigns.map(campaign => (
-                <Card
-                  key={campaign.id}
-                  id={campaign.id}
-                  title={campaign.name}
-                  subtitle={`${campaign.isOwner ? 'Mestre' : 'Jogador'}`}
-                  image={campaign.img}
-                  onCopyCode={() => {
-                    navigator.clipboard.writeText(campaign.code);
-                    alert('Código copiado!');
-                  }}
-                  showCopyOption={campaign.isOwner}
-                  accessLabel="Jogar"
-                />
-              ))}
-            </div>
+            {loading ? (
+              <div className="text-center text-[#8a9a8a] text-sm py-10">Carregando campanhas...</div>
+            ) : fetchError ? (
+              <div className="text-center text-red-400 text-sm py-10">{fetchError}</div>
+            ) : campaigns.length === 0 ? (
+              <div className="text-center text-[#8a9a8a] text-sm py-10">Nenhuma campanha encontrada.</div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {campaigns.map(campaign => (
+                  <Card
+                    key={campaign.id}
+                    id={campaign.id}
+                    title={campaign.name}
+                    subtitle={`${campaign.isOwner ? 'Mestre' : 'Jogador'}`}
+                    image={campaign.img}
+                    onCopyCode={() => {
+                      navigator.clipboard.writeText(campaign.code);
+                      alert('Código copiado!');
+                    }}
+                    showCopyOption={campaign.isOwner}
+                    accessLabel="Jogar"
+                  />
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
