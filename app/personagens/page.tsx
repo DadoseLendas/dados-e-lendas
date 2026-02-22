@@ -24,18 +24,6 @@ const RACE_DATA: Record<string, { stats: Record<string, number>, traits: string,
   "Meio-Orc": { stats: { str: 2, con: 1 }, traits: "Visão no Escuro, Ameaçador, Resistência Implacável, Ataques Selvagens" },
 };
 
-const RACES = [
-        'Humano',
-        'Elfo',
-        'Anão',
-        'Halfling',
-        'Draconato',
-        'Gnomo',
-        'Meio-Elfo',
-        'Meio-Orc',
-        'Tiefling',
-        ];
-
 
 type Character = {
   id: any;
@@ -296,7 +284,7 @@ export default function PersonagensPage() {
                   className="w-full bg-black/40 border border-[#1a2a1a] p-1.5 text-xs rounded text-white"
                 >
                   <option value="">Selecione...</option>
-                  {RACES.map((race) => (
+                  {Object.keys(RACE_DATA).map((race) => (
                     <option key={race} value={race}>
                       {race}
                     </option>
