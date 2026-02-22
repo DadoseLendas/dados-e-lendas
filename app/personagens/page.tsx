@@ -264,12 +264,12 @@ export default function PersonagensPage() {
             </div>
 
             {/* Nome */}
-            <div className="bg-[#050a05] border border-[#1a2a1a] p-4 rounded-2xl">
+            <div className="bg-black/60 border border-[#1a2a1a] p-4 rounded-xl">
               <label className="text-[8px] text-[#4a5a4a] font-black uppercase">Nome</label>
               <input
                 value={activeCharacter.name}
                 onChange={(e) => updateCharacter('name', e.target.value)}
-                className="w-full bg-transparent text-2xl font-serif italic text-[#f1e5ac] outline-none text-center"
+                className="w-full bg-black/40 border border-[#1a2a1a] p-1.5 text-xs rounded text-white text-center outline-none"
                 placeholder="Nome do Herói"
               />
             </div>
@@ -520,8 +520,8 @@ export default function PersonagensPage() {
                     const mod = getModifier(getTotalStat(info.attr, activeCharacter.stats[info.attr]));
                     // Soma o bônus de proficiência APENAS se o checkbox estiver marcado
                     const total = mod + (activeCharacter.skills[key] ? activeCharacter.proficiencyBonus : 0);
-                    
-                    
+
+
                     return (
                       <div
                         key={key}
