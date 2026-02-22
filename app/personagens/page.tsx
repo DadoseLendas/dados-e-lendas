@@ -365,191 +365,198 @@ export default function PersonagensPage() {
           <div className="lg:col-span-5 space-y-6">
             {/* Atributos */}
             <div className="grid grid-cols-3 gap-3">
-              {(['str', 'dex', 'con', 'int', 'wis', 'cha'] as const).map((s) => (
+              {(['str', 'dex', 'con', 'int', 'wis', 'cha'] as const).map((s) => {
+                // 1. Pega o valor base + bônus da raça
+                const totalVal = getTotalStat(s, activeCharacter.stats[s]);
+                // 2. Calcula o modificador em cima do total real
+                const mod = getModifier(totalVal);
+
+                return (
                   <div key={s} className="bg-black border border-[#1a2a1a] rounded-xl p-3 text-center">
-                    <span className="text-[9px] text-[#4a5a4a] font-black uppercase">{s}</span>
+                    <span className="text-[9px] text-[#4a5a4a] font-black uppercase">{statLabels[s]}</span>
                     <input
                       type="number"
                       value={activeCharacter.stats[s]}
-                      onChange={(e) =>
-                        updateCharacter('stats', {
-                          ...activeCharacter.stats,
-                          [s]: Number(e.target.value) || 0,
-                        })
-                      }
+                      onChange={(e) => updateCharacter('stats', { ...activeCharacter.stats, [s]: Number(e.target.value) || 0 })}
                       className="w-full bg-transparent text-center text-xl font-black outline-none text-white"
                     />
+                    {/* O modificador aqui já mostra o bônus da raça (ex: se era 15 e a raça dá +1, mostra +3) */}
                     <div className="text-[#00ff66] text-xs font-black mt-1">
-                      {getModifier(getTotalStat(s, activeCharacter.stats[s])) >= 0 ? '+' : ''}
-                      {getModifier(getTotalStat(s, activeCharacter.stats[s]))}
+                      {mod >= 0 ? '+' : ''}{mod}
                     </div>
+                    {/* Label de apoio para o jogador saber o total real */}
+                    <div className="text-[8px] text-gray-500 uppercase">Total: {totalVal}</div>
                   </div>
-                ))}
-            </div>
+                )
+              })}
 
-            {/* Salvaguardas */}
-            <div className="bg-black/40 border border-[#1a2a1a] p-4 rounded-xl">
-              <h3 className="text-[9px] text-[#4a5a4a] font-black uppercase mb-3 flex items-center gap-2">
-                <ShieldAlert size={12} /> Salvaguardas
-              </h3>
-              <div className="grid grid-cols-2 gap-x-6 gap-y-2">
-                {(['str', 'dex', 'con', 'int', 'wis', 'cha'] as const).map((s) => (
-                  <div key={s} className="flex items-center justify-between border-b border-[#1a2a1a]/50 py-1">
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={activeCharacter.savingThrows[s]}
-                        onChange={(e) =>
-                          updateCharacter('savingThrows', {
-                            ...activeCharacter.savingThrows,
-                            [s]: e.target.checked,
-                          })
-                        }
-                        className="accent-[#00ff66] w-3 h-3"
-                      />
-                      <span className="text-[10px] uppercase text-gray-300">{s}</span>
-                    </div>
-                    <span className="text-[10px] font-black text-[#00ff66]">
-                      {(getModifier(getTotalStat(s, activeCharacter.stats[s])) +
-                        (activeCharacter.savingThrows[s] ? activeCharacter.proficiencyBonus : 0)) >= 0
-                        ? '+'
-                        : ''}
-                      {getModifier(getTotalStat(s, activeCharacter.stats[s])) +
-                        (activeCharacter.savingThrows[s] ? activeCharacter.proficiencyBonus : 0)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Magias e Habilidades */}
-            <div className="bg-[#050a05] border border-[#1a2a1a] p-5 rounded-xl">
-              <h3 className="text-[#f1e5ac] text-[10px] font-black uppercase mb-4 flex items-center gap-2">
-                <Sparkles size={14} /> Magias & Habilidades
-              </h3>
-              <div className="max-h-[280px] overflow-y-auto space-y-2 mb-4 pr-2">
-                {activeCharacter.spells?.map((spell: any) => (
-                  <div
-                    key={spell.id}
-                    className="bg-black/60 p-2 rounded border border-[#1a2a1a] flex justify-between items-center group"
-                  >
-                    <span className="text-[10px] uppercase font-bold text-gray-300">{spell.name}</span>
-                    <button
-                      onClick={() => updateCharacter('spells', activeCharacter.spells.filter((s: any) => s.id !== spell.id))}
-                      className="text-red-900 group-hover:text-red-500"
-                    >
-                      <Trash2 size={12} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-              <div className="flex gap-2">
-                <input
-                  value={newSpellName}
-                  onChange={(e) => setNewSpellName(e.target.value)}
-                  placeholder="Nova habilidade..."
-                  className="flex-1 bg-black border border-[#1a2a1a] rounded p-2 text-xs text-white"
-                />
-                <button
-                  onClick={() => {
-                    if (!newSpellName) return;
-                    updateCharacter('spells', [...activeCharacter.spells, { id: Date.now(), name: newSpellName }]);
-                    setNewSpellName('');
-                  }}
-                  className="bg-[#00ff66] text-black px-3 rounded text-lg"
-                >
-                  +
-                </button>
-              </div>
-            </div>
-
-            {/* Inventário (menor) */}
-            <div className="bg-[#050a05] border border-[#1a2a1a] p-4 rounded-xl h-[170px] flex flex-col">
-              <h3 className="text-[#00ff66] text-[10px] font-black uppercase mb-2 flex items-center gap-2">
-                <Box size={14} /> Inventário
-              </h3>
-              <div className="flex-1 overflow-y-auto space-y-1 mb-2 pr-1">
-                {activeCharacter.inventory?.map((item: any) => (
-                  <div key={item.id} className="flex justify-between items-center bg-black/40 p-1.5 rounded border border-[#1a2a1a]">
-                    <span className="text-[9px] uppercase text-gray-400">{item.name}</span>
-                    <button
-                      onClick={() =>
-                        updateCharacter(
-                          'inventory',
-                          activeCharacter.inventory.filter((i: any) => i.id !== item.id),
-                        )
-                      }
-                      className="text-red-900 hover:text-red-500"
-                    >
-                      <Trash2 size={10} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-              <div className="flex gap-1">
-                <input
-                  value={newItem}
-                  onChange={(e) => setNewItem(e.target.value)}
-                  placeholder="Novo item..."
-                  className="flex-1 bg-black border border-[#1a2a1a] rounded p-1 text-[10px]"
-                />
-                <button
-                  onClick={() => {
-                    if (!newItem) return;
-                    updateCharacter('inventory', [...activeCharacter.inventory, { id: Date.now(), name: newItem }]);
-                    setNewItem('');
-                  }}
-                  className="bg-[#1a2a1a] px-2 rounded text-[#00ff66] text-xs"
-                >
-                  +
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* COLUNA 3: PERÍCIAS */}
-          <div className="lg:col-span-3 space-y-4">
-            <div className="bg-black border border-[#1a2a1a] p-4 rounded-xl">
-              <h3 className="text-[#f1e5ac] text-[10px] font-black uppercase mb-4 text-center">Perícias</h3>
-              <div className="space-y-1 max-h-[800px] overflow-y-auto pr-2">
-                {Object.entries(skillsData).map(([key, info]) => {
-                  const mod = getModifier(getTotalStat(info.attr, activeCharacter.stats[info.attr]));
-                  const total = mod + (activeCharacter.skills[key] ? activeCharacter.proficiencyBonus : 0);
-
-                  return (
-                    <div
-                      key={key}
-                      className="flex items-center justify-between bg-black/40 p-2 rounded border border-[#1a2a1a] hover:border-[#00ff66]/50 transition-colors"
-                    >
+              {/* Salvaguardas */}
+              <div className="bg-black/40 border border-[#1a2a1a] p-4 rounded-xl">
+                <h3 className="text-[9px] text-[#4a5a4a] font-black uppercase mb-3 flex items-center gap-2">
+                  <ShieldAlert size={12} /> Salvaguardas
+                </h3>
+                <div className="grid grid-cols-2 gap-x-6 gap-y-2">
+                  {(['str', 'dex', 'con', 'int', 'wis', 'cha'] as const).map((s) => (
+                    <div key={s} className="flex items-center justify-between border-b border-[#1a2a1a]/50 py-1">
                       <div className="flex items-center gap-2">
                         <input
                           type="checkbox"
-                          checked={activeCharacter.skills[key]}
+                          checked={activeCharacter.savingThrows[s]}
                           onChange={(e) =>
-                            updateCharacter('skills', {
-                              ...activeCharacter.skills,
-                              [key]: e.target.checked,
+                            updateCharacter('savingThrows', {
+                              ...activeCharacter.savingThrows,
+                              [s]: e.target.checked,
                             })
                           }
                           className="accent-[#00ff66] w-3 h-3"
                         />
-                        <span className="text-[9px] uppercase text-gray-300">{info.name}</span>
+                        <span className="text-[10px] uppercase text-gray-300">{s}</span>
                       </div>
-                      <span className="text-[10px] font-black text-[#00ff66]">{total >= 0 ? '+' : ''}{total}</span>
+                      <span className="text-[10px] font-black text-[#00ff66]">
+                        {(getModifier(getTotalStat(s, activeCharacter.stats[s])) +
+                          (activeCharacter.savingThrows[s] ? activeCharacter.proficiencyBonus : 0)) >= 0
+                          ? '+'
+                          : ''}
+                        {getModifier(getTotalStat(s, activeCharacter.stats[s])) +
+                          (activeCharacter.savingThrows[s] ? activeCharacter.proficiencyBonus : 0)}
+                      </span>
                     </div>
-                  );
-                })}
+                  ))}
+                </div>
+              </div>
+
+              {/* Magias e Habilidades */}
+              <div className="bg-[#050a05] border border-[#1a2a1a] p-5 rounded-xl">
+                <h3 className="text-[#f1e5ac] text-[10px] font-black uppercase mb-4 flex items-center gap-2">
+                  <Sparkles size={14} /> Magias & Habilidades
+                </h3>
+                <div className="max-h-[280px] overflow-y-auto space-y-2 mb-4 pr-2">
+                  {activeCharacter.spells?.map((spell: any) => (
+                    <div
+                      key={spell.id}
+                      className="bg-black/60 p-2 rounded border border-[#1a2a1a] flex justify-between items-center group"
+                    >
+                      <span className="text-[10px] uppercase font-bold text-gray-300">{spell.name}</span>
+                      <button
+                        onClick={() => updateCharacter('spells', activeCharacter.spells.filter((s: any) => s.id !== spell.id))}
+                        className="text-red-900 group-hover:text-red-500"
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    value={newSpellName}
+                    onChange={(e) => setNewSpellName(e.target.value)}
+                    placeholder="Nova habilidade..."
+                    className="flex-1 bg-black border border-[#1a2a1a] rounded p-2 text-xs text-white"
+                  />
+                  <button
+                    onClick={() => {
+                      if (!newSpellName) return;
+                      updateCharacter('spells', [...activeCharacter.spells, { id: Date.now(), name: newSpellName }]);
+                      setNewSpellName('');
+                    }}
+                    className="bg-[#00ff66] text-black px-3 rounded text-lg"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+
+              {/* Inventário (menor) */}
+              <div className="bg-[#050a05] border border-[#1a2a1a] p-4 rounded-xl h-[170px] flex flex-col">
+                <h3 className="text-[#00ff66] text-[10px] font-black uppercase mb-2 flex items-center gap-2">
+                  <Box size={14} /> Inventário
+                </h3>
+                <div className="flex-1 overflow-y-auto space-y-1 mb-2 pr-1">
+                  {activeCharacter.inventory?.map((item: any) => (
+                    <div key={item.id} className="flex justify-between items-center bg-black/40 p-1.5 rounded border border-[#1a2a1a]">
+                      <span className="text-[9px] uppercase text-gray-400">{item.name}</span>
+                      <button
+                        onClick={() =>
+                          updateCharacter(
+                            'inventory',
+                            activeCharacter.inventory.filter((i: any) => i.id !== item.id),
+                          )
+                        }
+                        className="text-red-900 hover:text-red-500"
+                      >
+                        <Trash2 size={10} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex gap-1">
+                  <input
+                    value={newItem}
+                    onChange={(e) => setNewItem(e.target.value)}
+                    placeholder="Novo item..."
+                    className="flex-1 bg-black border border-[#1a2a1a] rounded p-1 text-[10px]"
+                  />
+                  <button
+                    onClick={() => {
+                      if (!newItem) return;
+                      updateCharacter('inventory', [...activeCharacter.inventory, { id: Date.now(), name: newItem }]);
+                      setNewItem('');
+                    }}
+                    className="bg-[#1a2a1a] px-2 rounded text-[#00ff66] text-xs"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* COLUNA 3: PERÍCIAS */}
+            <div className="lg:col-span-3 space-y-4">
+              <div className="bg-black border border-[#1a2a1a] p-4 rounded-xl">
+                <h3 className="text-[#f1e5ac] text-[10px] font-black uppercase mb-4 text-center">Perícias</h3>
+                <div className="space-y-1 max-h-[800px] overflow-y-auto pr-2">
+                  {Object.entries(skillsData).map(([key, info]) => {
+                    // Modificador calculado sobre (Base + Raça)
+                    const mod = getModifier(getTotalStat(info.attr, activeCharacter.stats[info.attr]));
+                    // Soma o bônus de proficiência APENAS se o checkbox estiver marcado
+                    const total = mod + (activeCharacter.skills[key] ? activeCharacter.proficiencyBonus : 0);
+                    
+                    
+                    return (
+                      <div
+                        key={key}
+                        className="flex items-center justify-between bg-black/40 p-2 rounded border border-[#1a2a1a] hover:border-[#00ff66]/50 transition-colors"
+                      >
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={activeCharacter.skills[key]}
+                            onChange={(e) =>
+                              updateCharacter('skills', {
+                                ...activeCharacter.skills,
+                                [key]: e.target.checked,
+                              })
+                            }
+                            className="accent-[#00ff66] w-3 h-3"
+                          />
+                          <span className="text-[9px] uppercase text-gray-300">{info.name}</span>
+                        </div>
+                        <span className="text-[10px] font-black text-[#00ff66]">{total >= 0 ? '+' : ''}{total}</span>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           </div>
+
+
+          <FormModal isOpen={editingCharacterImg} onClose={() => setEditingCharacterImg(false)} title="Imagem do Personagem" onSubmit={handleSaveCharacterImage}>
+            <TextInput label="URL da imagem" value={tempCharacterImg} onChange={(e) => setTempCharacterImg(e.target.value)} placeholder="https://..." />
+            <ImageUpload label="Ou faça upload" onChange={handleCharacterImageFileChange} currentImage={tempCharacterImg} />
+            <ModalButtons primaryText="Aplicar" primaryType="submit" onSecondary={() => setEditingCharacterImg(false)} />
+          </FormModal>
         </div>
-
-
-        <FormModal isOpen={editingCharacterImg} onClose={() => setEditingCharacterImg(false)} title="Imagem do Personagem" onSubmit={handleSaveCharacterImage}>
-          <TextInput label="URL da imagem" value={tempCharacterImg} onChange={(e) => setTempCharacterImg(e.target.value)} placeholder="https://..." />
-          <ImageUpload label="Ou faça upload" onChange={handleCharacterImageFileChange} currentImage={tempCharacterImg} />
-          <ModalButtons primaryText="Aplicar" primaryType="submit" onSecondary={() => setEditingCharacterImg(false)} />
-        </FormModal>
       </div>
     );
   };
