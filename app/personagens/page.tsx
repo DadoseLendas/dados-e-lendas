@@ -263,19 +263,25 @@ export default function PersonagensPage() {
               />
             </div>
 
-            {/* Nome */}
-            <div className="bg-black/60 border border-[#1a2a1a] p-4 rounded-xl">
-              <label className="text-[8px] text-[#4a5a4a] font-black uppercase">Nome</label>
-              <input
-                value={activeCharacter.name}
-                onChange={(e) => updateCharacter('name', e.target.value)}
-                className="w-full bg-black/40 border border-[#1a2a1a] p-1.5 text-xs rounded text-white text-center outline-none"
-                placeholder="Nome do Herói"
+            {/* Infos Básicas */}
+          <div className="lg:col-span-4 space-y-4">
+            <div className="bg-[#050a05] border border-[#1a2a1a] p-4 rounded-2xl">
+              <div
+                className="w-full aspect-video bg-black rounded-xl bg-cover bg-center border border-[#1a2a1a] cursor-pointer"
+                style={{ backgroundImage: `url(${activeCharacter.img || '/placeholder.png'})` }}
+                onClick={() => setEditingCharacterImg(true)}
               />
             </div>
 
-            {/* Infos Básicas */}
             <div className="bg-black/60 border border-[#1a2a1a] p-4 rounded-xl grid grid-cols-2 gap-3">
+              <div className="col-span-2">
+                <label className="text-[8px] text-[#4a5a4a] font-black uppercase">Nome</label>
+                <input
+                  value={activeCharacter.name}
+                  onChange={(e) => updateCharacter('name', e.target.value)}
+                  className="w-full bg-black/40 border border-[#1a2a1a] p-1.5 text-xs rounded text-white text-center outline-none"
+                />
+              </div>
               <div className="col-span-2">
                 <label className="text-[8px] text-[#4a5a4a] font-black uppercase">Raça</label>
                 <select
@@ -285,60 +291,33 @@ export default function PersonagensPage() {
                 >
                   <option value="">Selecione...</option>
                   {Object.keys(RACE_DATA).map((race) => (
-                    <option key={race} value={race}>
-                      {race}
-                    </option>
+                    <option key={race} value={race}>{race}</option>
                   ))}
                 </select>
               </div>
-
               <div>
                 <label className="text-[8px] text-[#4a5a4a] font-black uppercase">Classe</label>
-                <input
-                  value={activeCharacter.class ?? ''}
-                  onChange={(e) => updateCharacter('class', e.target.value)}
-                  className="w-full bg-black/40 border border-[#1a2a1a] p-1.5 text-xs rounded text-white"
-                />
+                <input value={activeCharacter.class ?? ''} onChange={(e) => updateCharacter('class', e.target.value)} className="w-full bg-black/40 border border-[#1a2a1a] p-1.5 text-xs rounded text-white" />
               </div>
-
               <div>
                 <label className="text-[8px] text-[#4a5a4a] font-black uppercase">Nível</label>
-                <input
-                  type="number"
-                  value={activeCharacter.level ?? 1}
-                  onChange={(e) => updateCharacter('level', Number(e.target.value) || 0)}
-                  className="w-full bg-black/40 border border-[#1a2a1a] p-1.5 text-xs rounded text-[#00ff66] font-bold text-center"
-                />
-              </div>
-
-              <div>
-                <label className="text-[8px] text-[#4a5a4a] font-black uppercase">XP</label>
-                <input
-                  type="number"
-                  value={activeCharacter.experiencePoints ?? 0}
-                  onChange={(e) => updateCharacter('experiencePoints', Number(e.target.value) || 0)}
-                  className="w-full bg-black/40 border border-[#1a2a1a] p-1.5 text-xs rounded text-[#f1e5ac] text-center"
-                />
-              </div>
-
-              <div>
-                <label className="text-[8px] text-[#4a5a4a] font-black uppercase">Alinhamento</label>
-                <input
-                  value={activeCharacter.alignment ?? ''}
-                  onChange={(e) => updateCharacter('alignment', e.target.value)}
-                  className="w-full bg-black/40 border border-[#1a2a1a] p-1.5 text-xs rounded text-white"
-                />
-              </div>
-
-              <div>
-                <label className="text-[8px] text-[#4a5a4a] font-black uppercase">Antecedente</label>
-                <input
-                  value={activeCharacter.background ?? ''}
-                  onChange={(e) => updateCharacter('background', e.target.value)}
-                  className="w-full bg-black/40 border border-[#1a2a1a] p-1.5 text-xs rounded text-white"
-                />
+                <input type="number" value={activeCharacter.level ?? 1} onChange={(e) => updateCharacter('level', Number(e.target.value) || 0)} className="w-full bg-black/40 border border-[#1a2a1a] p-1.5 text-xs rounded text-[#00ff66] font-bold text-center" />
               </div>
             </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-[#0a150a] border-2 border-[#1a2a1a] rounded-xl p-3 text-center">
+                <Shield className="mx-auto text-[#00ff66] mb-1" size={18} />
+                <input type="number" value={activeCharacter.ac ?? 10} onChange={(e) => updateCharacter('ac', Number(e.target.value) || 0)} className="w-full bg-transparent text-2xl font-black outline-none text-center" />
+                <span className="text-[8px] text-[#4a5a4a] font-black uppercase">CA</span>
+              </div>
+              <div className="bg-[#0a150a] border-2 border-[#1a2a1a] rounded-xl p-3 text-center">
+                <Zap className="mx-auto text-[#f1e5ac] mb-1" size={18} />
+                <div className="text-2xl font-black">{getModifier(getTotalStat('dex', activeCharacter.stats.dex))}</div>
+                <span className="text-[8px] text-[#4a5a4a] font-black uppercase">Iniciativa</span>
+              </div>
+            </div>
+          </div>
 
             {/* CA e Iniciativa */}
             <div className="grid grid-cols-2 gap-4">
@@ -516,11 +495,8 @@ export default function PersonagensPage() {
                 <h3 className="text-[#f1e5ac] text-[10px] font-black uppercase mb-4 text-center">Perícias</h3>
                 <div className="space-y-1 max-h-[800px] overflow-y-auto pr-2">
                   {Object.entries(skillsData).map(([key, info]) => {
-                    // Modificador calculado sobre (Base + Raça)
                     const mod = getModifier(getTotalStat(info.attr, activeCharacter.stats[info.attr]));
-                    // Soma o bônus de proficiência APENAS se o checkbox estiver marcado
                     const total = mod + (activeCharacter.skills[key] ? activeCharacter.proficiencyBonus : 0);
-
 
                     return (
                       <div
