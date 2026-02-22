@@ -111,7 +111,7 @@ export default function PersonagensPage() {
   const [editingCharacterImg, setEditingCharacterImg] = useState(false);
   const [tempCharacterImg, setTempCharacterImg] = useState('');
   const [newSpellName, setNewSpellName] = useState('');
-  const [abaAtiva, setAbaAtiva] = useState('personagens');
+  const [abaAtiva, setAbaAtiva] = useState('');
 
   const getModifier = (value: number) => Math.floor((value - 10) / 2);
   const getTotalStat = (statKey: string, baseValue: number) => {
