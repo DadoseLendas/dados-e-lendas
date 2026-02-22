@@ -252,7 +252,7 @@ export default function PersonagensPage() {
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* COLUNA 1: IDENTIDADE E COMBATE BASE */}
+          {/* COLUNA 1 */}
           <div className="lg:col-span-4 space-y-4">
             {/* Foto */}
             <div className="bg-[#050a05] border border-[#1a2a1a] p-4 rounded-2xl">
@@ -274,7 +274,7 @@ export default function PersonagensPage() {
                   placeholder="Nome do Herói"
                 />
               </div>
-            <div className="bg-black/60 border border-[#1a2a1a] p-4 rounded-xl grid grid-cols-2 gap-3">
+
               <div className="col-span-2">
                 <label className="text-[8px] text-[#4a5a4a] font-black uppercase">Raça</label>
                 <select
@@ -329,7 +329,7 @@ export default function PersonagensPage() {
                 />
               </div>
 
-              <div>
+              <div className="col-span-2">
                 <label className="text-[8px] text-[#4a5a4a] font-black uppercase">Antecedente</label>
                 <input
                   value={activeCharacter.background ?? ''}
@@ -360,9 +360,8 @@ export default function PersonagensPage() {
             </div>
           </div>
 
-          {/* COLUNA 2: ATRIBUTOS, SALVAGUARDAS, MAGIAS E INVENTÁRIO */}
+          {/* COLUNA 2 */}
           <div className="lg:col-span-5 space-y-6">
-            {/* Atributos */}
             <div className="grid grid-cols-3 gap-3">
               {(['str', 'dex', 'con', 'int', 'wis', 'cha'] as const).map((s) => {
                 // 1. Pega o valor base + bônus da raça
@@ -544,62 +543,60 @@ export default function PersonagensPage() {
                 </div>
               </div>
             </div>
+
+            <FormModal isOpen={editingCharacterImg} onClose={() => setEditingCharacterImg(false)} title="Imagem do Personagem" onSubmit={handleSaveCharacterImage}>
+              <TextInput label="URL da imagem" value={tempCharacterImg} onChange={(e) => setTempCharacterImg(e.target.value)} placeholder="https://..." />
+              <ImageUpload label="Ou faça upload" onChange={handleCharacterImageFileChange} currentImage={tempCharacterImg} />
+              <ModalButtons primaryText="Aplicar" primaryType="submit" onSecondary={() => setEditingCharacterImg(false)} />
+            </FormModal>
           </div>
-
-
-          <FormModal isOpen={editingCharacterImg} onClose={() => setEditingCharacterImg(false)} title="Imagem do Personagem" onSubmit={handleSaveCharacterImage}>
-            <TextInput label="URL da imagem" value={tempCharacterImg} onChange={(e) => setTempCharacterImg(e.target.value)} placeholder="https://..." />
-            <ImageUpload label="Ou faça upload" onChange={handleCharacterImageFileChange} currentImage={tempCharacterImg} />
-            <ModalButtons primaryText="Aplicar" primaryType="submit" onSecondary={() => setEditingCharacterImg(false)} />
-          </FormModal>
         </div>
       </div>
-      </div>
     );
-  };
+};
 
-  if (isLoadingAuth) return <div className="min-h-screen flex items-center justify-center bg-black text-[#00ff66] font-black uppercase">Sincronizando com a Névoa...</div>;
-  if (!isAuthenticated) return <div className="min-h-screen flex items-center justify-center bg-black text-red-500 font-black">Acesso negado. Faça login.</div>;
+          if (isLoadingAuth) return <div className="min-h-screen flex items-center justify-center bg-black text-[#00ff66] font-black uppercase">Sincronizando com a Névoa...</div>;
+          if (!isAuthenticated) return <div className="min-h-screen flex items-center justify-center bg-black text-red-500 font-black">Acesso negado. Faça login.</div>;
 
-  return (
-    <div className="min-h-screen bg-[#020502]">
-      <Navbar abaAtiva={abaAtiva} setAbaAtiva={setAbaAtiva} />
-      <div className={`${activeCharacter ? 'max-w-[1400px]' : 'max-w-[1000px]'} mx-auto py-12 px-6`}>
-        {!activeCharacter ? (
-          <div>
-            <h2 className="text-[#f1e5ac] text-2xl font-serif mb-10 tracking-[0.2em] uppercase italic">Grimório de Heróis</h2>
-            <div className="space-y-6">
-              <div className="flex justify-between items-center">
-                <h3 className="text-[#4a5a4a] text-xs font-black uppercase tracking-[0.2em]">Personagens: {characters.length}</h3>
-                <button onClick={createCharacter} className="flex items-center gap-2 bg-[#00ff66] text-black px-4 py-2 rounded-lg text-[10px] font-black uppercase hover:brightness-110 transition-all">
-                  <Plus size={14} /> Criar Novo
-                </button>
-              </div>
+          return (
+          <div className="min-h-screen bg-[#020502]">
+            <Navbar abaAtiva={abaAtiva} setAbaAtiva={setAbaAtiva} />
+            <div className={`${activeCharacter ? 'max-w-[1400px]' : 'max-w-[1000px]'} mx-auto py-12 px-6`}>
+              {!activeCharacter ? (
+                <div>
+                  <h2 className="text-[#f1e5ac] text-2xl font-serif mb-10 tracking-[0.2em] uppercase italic">Grimório de Heróis</h2>
+                  <div className="space-y-6">
+                    <div className="flex justify-between items-center">
+                      <h3 className="text-[#4a5a4a] text-xs font-black uppercase tracking-[0.2em]">Personagens: {characters.length}</h3>
+                      <button onClick={createCharacter} className="flex items-center gap-2 bg-[#00ff66] text-black px-4 py-2 rounded-lg text-[10px] font-black uppercase hover:brightness-110 transition-all">
+                        <Plus size={14} /> Criar Novo
+                      </button>
+                    </div>
 
-              {characters.length === 0 ? (
-                <div className="text-center text-[#8a9a8a] text-sm py-20 border border-dashed border-[#1a2a1a] rounded-2xl">Nenhum personagem encontrado na taverna.</div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {characters.map((char) => (
-                    <Card
-                      key={char.id} id={char.id} title={char.name} subtitle={`${char.class} • Nível ${char.level}`}
-                      metaLeft={{ icon: 'hp', label: `${char.hp_current ?? 0}/${char.hp_max ?? 0}` }}
-                      metaRight={{ icon: 'ca', label: `${char.ac ?? 10}` }}
-                      showMetaDivider={false} metaLarge image={char.img}
-                      dropdownOpen={dropdownOpen === String(char.id)}
-                      onDropdownToggle={() => setDropdownOpen((prev) => prev === String(char.id) ? null : String(char.id))}
-                      dropdownRef={dropdownRef} onDelete={() => deleteCharacter(char.id)}
-                      onAccess={() => { setActiveCharacter(char); setDropdownOpen(null); }}
-                      accessLabel="Acessar" deleteLabel="Excluir"
-                    />
-                  ))}
+                    {characters.length === 0 ? (
+                      <div className="text-center text-[#8a9a8a] text-sm py-20 border border-dashed border-[#1a2a1a] rounded-2xl">Nenhum personagem encontrado na taverna.</div>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {characters.map((char) => (
+                          <Card
+                            key={char.id} id={char.id} title={char.name} subtitle={`${char.class} • Nível ${char.level}`}
+                            metaLeft={{ icon: 'hp', label: `${char.hp_current ?? 0}/${char.hp_max ?? 0}` }}
+                            metaRight={{ icon: 'ca', label: `${char.ac ?? 10}` }}
+                            showMetaDivider={false} metaLarge image={char.img}
+                            dropdownOpen={dropdownOpen === String(char.id)}
+                            onDropdownToggle={() => setDropdownOpen((prev) => prev === String(char.id) ? null : String(char.id))}
+                            dropdownRef={dropdownRef} onDelete={() => deleteCharacter(char.id)}
+                            onAccess={() => { setActiveCharacter(char); setDropdownOpen(null); }}
+                            accessLabel="Acessar" deleteLabel="Excluir"
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
-              )}
+              ) : renderCharacterSheet()}
             </div>
+            <Footer />
           </div>
-        ) : renderCharacterSheet()}
-      </div>
-      <Footer />
-    </div>
-  );
+          );
 }
