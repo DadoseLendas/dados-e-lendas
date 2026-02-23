@@ -24,6 +24,22 @@ const RACE_DATA: Record<string, { stats: Record<string, number>, traits: string,
   "Meio-Orc": { stats: { str: 2, con: 1 }, traits: "Visão no Escuro, Ameaçador, Resistência Implacável, Ataques Selvagens" },
 };
 
+const CLASS_DATA: Record<string, { hp: number; primaryAttr: string; savingThrows: string[] }> = {
+  "Artífice":    { hp: 8,  primaryAttr: "Inteligência",          savingThrows: ["con", "int"] },
+  "Bárbaro":     { hp: 12, primaryAttr: "Força",                 savingThrows: ["str", "con"] },
+  "Bardo":       { hp: 8,  primaryAttr: "Carisma",               savingThrows: ["dex", "cha"] },
+  "Bruxo":       { hp: 8,  primaryAttr: "Carisma",               savingThrows: ["wis", "cha"] },
+  "Clérigo":     { hp: 8,  primaryAttr: "Sabedoria",             savingThrows: ["wis", "cha"] },
+  "Druida":      { hp: 8,  primaryAttr: "Sabedoria",             savingThrows: ["int", "wis"] },
+  "Feiticeiro":  { hp: 6,  primaryAttr: "Carisma",               savingThrows: ["con", "cha"] },
+  "Guardião":    { hp: 10, primaryAttr: "Destreza & Sabedoria",  savingThrows: ["str", "dex"] },
+  "Guerreiro":   { hp: 10, primaryAttr: "Força ou Destreza",     savingThrows: ["str", "con"] },
+  "Ladino":      { hp: 8,  primaryAttr: "Destreza",              savingThrows: ["dex", "int"] },
+  "Mago":        { hp: 6,  primaryAttr: "Inteligência",          savingThrows: ["int", "wis"] },
+  "Monge":       { hp: 8,  primaryAttr: "Destreza & Sabedoria",  savingThrows: ["str", "dex"] },
+  "Paladino":    { hp: 10, primaryAttr: "Força & Carisma",       savingThrows: ["wis", "cha"] },
+};
+
 
 type Character = {
   id: any;
@@ -235,332 +251,379 @@ export default function PersonagensPage() {
 
     return (
       <>
-  <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-    {/* COLUNA 1 - col-span-4 */}
-    <div className="lg:col-span-4 space-y-4">
-      {/* Foto */}
-      <div className="bg-[#050a05] border border-[#1a2a1a] p-4 rounded-2xl">
-        <div
-          className="w-full aspect-video bg-black rounded-xl bg-cover bg-center border border-[#1a2a1a] cursor-pointer"
-          style={{ backgroundImage: `url(${activeCharacter.img || '/placeholder.png'})` }}
-          onClick={() => setEditingCharacterImg(true)}
-        />
-      </div>
-
-      {/* Infos Básicas */}
-      <div className="bg-black/60 border border-[#1a2a1a] p-4 rounded-xl grid grid-cols-2 gap-3">
-        <div className="col-span-2">
-          <label className="text-[8px] text-[#4a5a4a] font-black uppercase">Nome</label>
-          <input
-            value={activeCharacter.name}
-            onChange={(e) => updateCharacter('name', e.target.value)}
-            className="w-full bg-black/40 border border-[#1a2a1a] p-1.5 text-xs rounded text-white text-center outline-none"
-            placeholder="Nome do Herói"
-          />
-        </div>
-        <div className="col-span-2">
-          <label className="text-[8px] text-[#4a5a4a] font-black uppercase">Raça</label>
-          <select
-            value={activeCharacter.race ?? ''}
-            onChange={(e) => updateCharacter('race', e.target.value)}
-            className="w-full bg-black/40 border border-[#1a2a1a] p-1.5 text-xs rounded text-white"
-          >
-            <option value="">Selecione...</option>
-            {Object.keys(RACE_DATA).map((race) => (
-              <option key={race} value={race}>{race}</option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="text-[8px] text-[#4a5a4a] font-black uppercase">Classe</label>
-          <input
-            value={activeCharacter.class ?? ''}
-            onChange={(e) => updateCharacter('class', e.target.value)}
-            className="w-full bg-black/40 border border-[#1a2a1a] p-1.5 text-xs rounded text-white"
-          />
-        </div>
-        <div>
-          <label className="text-[8px] text-[#4a5a4a] font-black uppercase">Nível</label>
-          <input
-            type="number"
-            value={activeCharacter.level ?? 1}
-            onChange={(e) => updateCharacter('level', Number(e.target.value) || 0)}
-            className="w-full bg-black/40 border border-[#1a2a1a] p-1.5 text-xs rounded text-[#00ff66] font-bold text-center"
-          />
-        </div>
-        <div>
-          <label className="text-[8px] text-[#4a5a4a] font-black uppercase">XP</label>
-          <input
-            type="number"
-            value={activeCharacter.experiencePoints ?? 0}
-            onChange={(e) => updateCharacter('experiencePoints', Number(e.target.value) || 0)}
-            className="w-full bg-black/40 border border-[#1a2a1a] p-1.5 text-xs rounded text-[#f1e5ac] text-center"
-          />
-        </div>
-        <div>
-          <label className="text-[8px] text-[#4a5a4a] font-black uppercase">Alinhamento</label>
-          <input
-            value={activeCharacter.alignment ?? ''}
-            onChange={(e) => updateCharacter('alignment', e.target.value)}
-            className="w-full bg-black/40 border border-[#1a2a1a] p-1.5 text-xs rounded text-white"
-          />
-        </div>
-        <div className="col-span-2">
-          <label className="text-[8px] text-[#4a5a4a] font-black uppercase">Antecedente</label>
-          <input
-            value={activeCharacter.background ?? ''}
-            onChange={(e) => updateCharacter('background', e.target.value)}
-            className="w-full bg-black/40 border border-[#1a2a1a] p-1.5 text-xs rounded text-white"
-          />
-        </div>
-      </div>
-
-      {/* CA e Iniciativa */}
-      <div className="grid grid-cols-2 gap-4">
-        <div className="bg-[#0a150a] border-2 border-[#1a2a1a] rounded-xl p-3 text-center">
-          <Shield className="mx-auto text-[#00ff66] mb-1" size={18} />
-          <input
-            type="number"
-            value={activeCharacter.ac ?? 10}
-            onChange={(e) => updateCharacter('ac', Number(e.target.value) || 0)}
-            className="w-full bg-transparent text-2xl font-black outline-none text-center"
-          />
-          <span className="text-[8px] text-[#4a5a4a] font-black uppercase">Classe de Armadura</span>
-        </div>
-        <div className="bg-[#0a150a] border-2 border-[#1a2a1a] rounded-xl p-3 text-center">
-          <Zap className="mx-auto text-[#f1e5ac] mb-1" size={18} />
-          <div className="text-2xl font-black">{getModifier(getTotalStat('dex', activeCharacter.stats.dex))}</div>
-          <span className="text-[8px] text-[#4a5a4a] font-black uppercase">Iniciativa</span>
-        </div>
-      </div>
-    </div>
-
-    {/* COLUNA 2 - col-span-5 */}
-    <div className="lg:col-span-5 space-y-4">
-      {/* Atributos */}
-      <div className="grid grid-cols-3 gap-3">
-        {(['str', 'dex', 'con', 'int', 'wis', 'cha'] as const).map((s) => {
-          const totalVal = getTotalStat(s, activeCharacter.stats[s]);
-          const mod = getModifier(totalVal);
-          return (
-            <div key={s} className="bg-black border border-[#1a2a1a] rounded-xl p-3 text-center">
-              <span className="text-[9px] text-[#4a5a4a] font-black uppercase">{statLabels[s]}</span>
-              <input
-                type="number"
-                value={activeCharacter.stats[s]}
-                onChange={(e) => updateCharacter('stats', { ...activeCharacter.stats, [s]: Number(e.target.value) || 0 })}
-                className="w-full bg-transparent text-center text-xl font-black outline-none text-white"
-              />
-              <div className="text-[#00ff66] text-xs font-black mt-1">
-                {mod >= 0 ? '+' : ''}{mod}
-              </div>
-              <div className="text-[8px] text-gray-500 uppercase">Total: {totalVal}</div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Salvaguardas */}
-      <div className="bg-black/40 border border-[#1a2a1a] p-4 rounded-xl">
-        <h3 className="text-[9px] text-[#4a5a4a] font-black uppercase mb-3 flex items-center gap-2">
-          <ShieldAlert size={12} /> Salvaguardas
-        </h3>
-        <div className="grid grid-cols-2 gap-x-6 gap-y-2">
-          {(['str', 'dex', 'con', 'int', 'wis', 'cha'] as const).map((s) => (
-            <div key={s} className="flex items-center justify-between border-b border-[#1a2a1a]/50 py-1">
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={activeCharacter.savingThrows[s]}
-                  onChange={(e) =>
-                    updateCharacter('savingThrows', {
-                      ...activeCharacter.savingThrows,
-                      [s]: e.target.checked,
-                    })
-                  }
-                  className="accent-[#00ff66] w-3 h-3"
-                />
-                <span className="text-[10px] uppercase text-gray-300">{s}</span>
-              </div>
-              <span className="text-[10px] font-black text-[#00ff66]">
-                {(getModifier(getTotalStat(s, activeCharacter.stats[s])) +
-                  (activeCharacter.savingThrows[s] ? activeCharacter.proficiencyBonus : 0)) >= 0 ? '+' : ''}
-                {getModifier(getTotalStat(s, activeCharacter.stats[s])) +
-                  (activeCharacter.savingThrows[s] ? activeCharacter.proficiencyBonus : 0)}
-              </span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Magias e Habilidades */}
-      <div className="bg-[#050a05] border border-[#1a2a1a] p-5 rounded-xl">
-        <h3 className="text-[#f1e5ac] text-[10px] font-black uppercase mb-4 flex items-center gap-2">
-          <Sparkles size={14} /> Magias & Habilidades
-        </h3>
-        <div className="max-h-[200px] overflow-y-auto space-y-2 mb-4 pr-2">
-          {activeCharacter.spells?.map((spell: any) => (
-            <div
-              key={spell.id}
-              className="bg-black/60 p-2 rounded border border-[#1a2a1a] flex justify-between items-center group"
-            >
-              <span className="text-[10px] uppercase font-bold text-gray-300">{spell.name}</span>
-              <button
-                onClick={() => updateCharacter('spells', activeCharacter.spells.filter((s: any) => s.id !== spell.id))}
-                className="text-red-900 group-hover:text-red-500"
-              >
-                <Trash2 size={12} />
-              </button>
-            </div>
-          ))}
-        </div>
-        <div className="flex gap-2">
-          <input
-            value={newSpellName}
-            onChange={(e) => setNewSpellName(e.target.value)}
-            placeholder="Nova habilidade..."
-            className="flex-1 bg-black border border-[#1a2a1a] rounded p-2 text-xs text-white"
-          />
-          <button
-            onClick={() => {
-              if (!newSpellName) return;
-              updateCharacter('spells', [...activeCharacter.spells, { id: Date.now(), name: newSpellName }]);
-              setNewSpellName('');
-            }}
-            className="bg-[#00ff66] text-black px-3 rounded text-lg"
-          >
-            +
-          </button>
-        </div>
-      </div>
-
-      {/* Inventário */}
-      <div className="bg-[#050a05] border border-[#1a2a1a] p-4 rounded-xl">
-        <h3 className="text-[#00ff66] text-[10px] font-black uppercase mb-2 flex items-center gap-2">
-          <Box size={14} /> Inventário
-        </h3>
-        <div className="max-h-[150px] overflow-y-auto space-y-1 mb-2 pr-1">
-          {activeCharacter.inventory?.map((item: any) => (
-            <div key={item.id} className="flex justify-between items-center bg-black/40 p-1.5 rounded border border-[#1a2a1a]">
-              <span className="text-[9px] uppercase text-gray-400">{item.name}</span>
-              <button
-                onClick={() =>
-                  updateCharacter('inventory', activeCharacter.inventory.filter((i: any) => i.id !== item.id))
-                }
-                className="text-red-900 hover:text-red-500"
-              >
-                <Trash2 size={10} />
-              </button>
-            </div>
-          ))}
-        </div>
-        <div className="flex gap-1">
-          <input
-            value={newItem}
-            onChange={(e) => setNewItem(e.target.value)}
-            placeholder="Novo item..."
-            className="flex-1 bg-black border border-[#1a2a1a] rounded p-1 text-[10px]"
-          />
-          <button
-            onClick={() => {
-              if (!newItem) return;
-              updateCharacter('inventory', [...activeCharacter.inventory, { id: Date.now(), name: newItem }]);
-              setNewItem('');
-            }}
-            className="bg-[#1a2a1a] px-2 rounded text-[#00ff66] text-xs"
-          >
-            +
-          </button>
-        </div>
-      </div>
-    </div>
-
-    {/* COLUNA 3 - col-span-3 — PERÍCIAS */}
-    <div className="lg:col-span-3">
-      <div className="bg-black border border-[#1a2a1a] p-4 rounded-xl h-full">
-        <h3 className="text-[#f1e5ac] text-[10px] font-black uppercase mb-4 text-center">Perícias</h3>
-        <div className="space-y-1 overflow-y-auto pr-2">
-          {Object.entries(skillsData).map(([key, info]) => {
-            const mod = getModifier(getTotalStat(info.attr, activeCharacter.stats[info.attr]));
-            const total = mod + (activeCharacter.skills[key] ? activeCharacter.proficiencyBonus : 0);
-            return (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {/* COLUNA 1 - col-span-4 */}
+          <div className="lg:col-span-4 space-y-4">
+            {/* Foto */}
+            <div className="bg-[#050a05] border border-[#1a2a1a] p-4 rounded-2xl">
               <div
-                key={key}
-                className="flex items-center justify-between bg-black/40 p-2 rounded border border-[#1a2a1a] hover:border-[#00ff66]/50 transition-colors"
-              >
-                <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={activeCharacter.skills[key]}
-                    onChange={(e) =>
-                      updateCharacter('skills', {
-                        ...activeCharacter.skills,
-                        [key]: e.target.checked,
-                      })
-                    }
-                    className="accent-[#00ff66] w-3 h-3"
-                  />
-                  <span className="text-[9px] uppercase text-gray-300">{info.name}</span>
-                </div>
-                <span className="text-[10px] font-black text-[#00ff66]">{total >= 0 ? '+' : ''}{total}</span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <FormModal isOpen={editingCharacterImg} onClose={() => setEditingCharacterImg(false)} title="Imagem do Personagem" onSubmit={handleSaveCharacterImage}>
-    <TextInput label="URL da imagem" value={tempCharacterImg} onChange={(e) => setTempCharacterImg(e.target.value)} placeholder="https://..." />
-    <ImageUpload label="Ou faça upload" onChange={handleCharacterImageFileChange} currentImage={tempCharacterImg} />
-    <ModalButtons primaryText="Aplicar" primaryType="submit" onSecondary={() => setEditingCharacterImg(false)} />
-  </FormModal>
-      </>
-);
-};
-
-if (isLoadingAuth) return <div className="min-h-screen flex items-center justify-center bg-black text-[#00ff66] font-black uppercase">Sincronizando com a Névoa...</div>;
-if (!isAuthenticated) return <div className="min-h-screen flex items-center justify-center bg-black text-red-500 font-black">Acesso negado. Faça login.</div>;
-
-return (
-  <div className="min-h-screen bg-[#020502]">
-    <Navbar abaAtiva={abaAtiva} setAbaAtiva={setAbaAtiva} />
-    <div className={`${activeCharacter ? 'max-w-[1400px]' : 'max-w-[1000px]'} mx-auto py-12 px-6`}>
-      {!activeCharacter ? (
-        <div>
-          <h2 className="text-[#f1e5ac] text-2xl font-serif mb-10 tracking-[0.2em] uppercase italic">Grimório de Heróis</h2>
-          <div className="space-y-6">
-            <div className="flex justify-between items-center">
-              <h3 className="text-[#4a5a4a] text-xs font-black uppercase tracking-[0.2em]">Personagens: {characters.length}</h3>
-              <button onClick={createCharacter} className="flex items-center gap-2 bg-[#00ff66] text-black px-4 py-2 rounded-lg text-[10px] font-black uppercase hover:brightness-110 transition-all">
-                <Plus size={14} /> Criar Novo
-              </button>
+                className="w-full aspect-video bg-black rounded-xl bg-cover bg-center border border-[#1a2a1a] cursor-pointer"
+                style={{ backgroundImage: `url(${activeCharacter.img || '/placeholder.png'})` }}
+                onClick={() => setEditingCharacterImg(true)}
+              />
             </div>
-            {characters.length === 0 ? (
-              <div className="text-center text-[#8a9a8a] text-sm py-20 border border-dashed border-[#1a2a1a] rounded-2xl">Nenhum personagem encontrado na taverna.</div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {characters.map((char) => (
-                  <Card
-                    key={char.id} id={char.id} title={char.name} subtitle={`${char.class} • Nível ${char.level}`}
-                    metaLeft={{ icon: 'hp', label: `${char.hp_current ?? 0}/${char.hp_max ?? 0}` }}
-                    metaRight={{ icon: 'ca', label: `${char.ac ?? 10}` }}
-                    showMetaDivider={false} metaLarge image={char.img}
-                    dropdownOpen={dropdownOpen === String(char.id)}
-                    onDropdownToggle={() => setDropdownOpen((prev) => prev === String(char.id) ? null : String(char.id))}
-                    dropdownRef={dropdownRef} onDelete={() => deleteCharacter(char.id)}
-                    onAccess={() => { setActiveCharacter(char); setDropdownOpen(null); }}
-                    accessLabel="Acessar" deleteLabel="Excluir"
-                  />
+
+            {/* Infos Básicas */}
+            <div className="bg-black/60 border border-[#1a2a1a] p-4 rounded-xl grid grid-cols-2 gap-3">
+              <div className="col-span-2">
+                <label className="text-[8px] text-[#4a5a4a] font-black uppercase">Nome</label>
+                <input
+                  value={activeCharacter.name}
+                  onChange={(e) => updateCharacter('name', e.target.value)}
+                  className="w-full bg-black/40 border border-[#1a2a1a] p-1.5 text-xs rounded text-white text-center outline-none"
+                  placeholder="Nome do Herói"
+                />
+              </div>
+              <div className="col-span-2">
+                <label className="text-[8px] text-[#4a5a4a] font-black uppercase">Raça</label>
+                <select
+                  value={activeCharacter.race ?? ''}
+                  onChange={(e) => updateCharacter('race', e.target.value)}
+                  className="w-full bg-black/40 border border-[#1a2a1a] p-1.5 text-xs rounded text-white"
+                >
+                  <option value="">Selecione...</option>
+                  {Object.keys(RACE_DATA).map((race) => (
+                    <option key={race} value={race}>{race}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="col-span-2">
+                <label className="text-[8px] text-[#4a5a4a] font-black uppercase">Classe</label>
+                <select
+                  value={activeCharacter.class ?? ''}
+                  onChange={(e) => {
+                    const chosen = e.target.value;
+                    const classInfo = CLASS_DATA[chosen];
+                    if (classInfo) {
+                      const newSavingThrows = { str: false, dex: false, con: false, int: false, wis: false, cha: false };
+                      classInfo.savingThrows.forEach((s) => { newSavingThrows[s as keyof typeof newSavingThrows] = true; });
+                      const conMod = getModifier(getTotalStat('con', activeCharacter.stats.con));
+                      const newHp = classInfo.hp + conMod;
+                      setActiveCharacter((prev) => prev ? {
+                        ...prev,
+                        class: chosen,
+                        savingThrows: newSavingThrows,
+                        hp_max: newHp,
+                        hp_current: newHp,
+                      } : prev);
+                    } else {
+                      updateCharacter('class', chosen);
+                    }
+                  }}
+                  className="w-full bg-black/40 border border-[#1a2a1a] p-1.5 text-xs rounded text-white"
+                >
+                  <option value="">Selecione...</option>
+                  {Object.keys(CLASS_DATA).map((cls) => (
+                    <option key={cls} value={cls}>{cls}</option>
+                  ))}
+                </select>
+                {CLASS_DATA[activeCharacter.class] && (
+                  <div className="mt-1 flex justify-between text-[8px] text-[#4a5a4a] font-black uppercase px-1">
+                    <span> {CLASS_DATA[activeCharacter.class].hp} +con </span>
+                    <span> {CLASS_DATA[activeCharacter.class].primaryAttr}</span>
+                  </div>
+                )}
+              </div>
+              <div>
+                <label className="text-[8px] text-[#4a5a4a] font-black uppercase">Nível</label>
+                <input
+                  type="number"
+                  value={activeCharacter.level ?? 1}
+                  onChange={(e) => updateCharacter('level', Number(e.target.value) || 0)}
+                  className="w-full bg-black/40 border border-[#1a2a1a] p-1.5 text-xs rounded text-[#00ff66] font-bold text-center"
+                />
+              </div>
+              <div>
+                <label className="text-[8px] text-[#4a5a4a] font-black uppercase">XP</label>
+                <input
+                  type="number"
+                  value={activeCharacter.experiencePoints ?? 0}
+                  onChange={(e) => updateCharacter('experiencePoints', Number(e.target.value) || 0)}
+                  className="w-full bg-black/40 border border-[#1a2a1a] p-1.5 text-xs rounded text-[#f1e5ac] text-center"
+                />
+              </div>
+              <div>
+                <label className="text-[8px] text-[#4a5a4a] font-black uppercase">Alinhamento</label>
+                <input
+                  value={activeCharacter.alignment ?? ''}
+                  onChange={(e) => updateCharacter('alignment', e.target.value)}
+                  className="w-full bg-black/40 border border-[#1a2a1a] p-1.5 text-xs rounded text-white"
+                />
+              </div>
+              <div className="col-span-2">
+                <label className="text-[8px] text-[#4a5a4a] font-black uppercase">Antecedente</label>
+                <input
+                  value={activeCharacter.background ?? ''}
+                  onChange={(e) => updateCharacter('background', e.target.value)}
+                  className="w-full bg-black/40 border border-[#1a2a1a] p-1.5 text-xs rounded text-white"
+                />
+              </div>
+            </div>
+
+            {/* CA e Iniciativa */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-[#0a150a] border-2 border-[#1a2a1a] rounded-xl p-3 text-center">
+                <Shield className="mx-auto text-[#00ff66] mb-1" size={18} />
+                <input
+                  type="number"
+                  value={activeCharacter.ac ?? 10}
+                  onChange={(e) => updateCharacter('ac', Number(e.target.value) || 0)}
+                  className="w-full bg-transparent text-2xl font-black outline-none text-center"
+                />
+                <span className="text-[8px] text-[#4a5a4a] font-black uppercase">Classe de Armadura</span>
+              </div>
+              <div className="bg-[#0a150a] border-2 border-[#1a2a1a] rounded-xl p-3 text-center">
+                <Zap className="mx-auto text-[#f1e5ac] mb-1" size={18} />
+                <div className="text-2xl font-black">{getModifier(getTotalStat('dex', activeCharacter.stats.dex))}</div>
+                <span className="text-[8px] text-[#4a5a4a] font-black uppercase">Iniciativa</span>
+              </div>
+            </div>
+          </div>
+
+          {/* COLUNA 2 - col-span-5 */}
+          <div className="lg:col-span-5 space-y-4">
+            {/* Atributos */}
+            <div className="grid grid-cols-3 gap-3">
+              {(['str', 'dex', 'con', 'int', 'wis', 'cha'] as const).map((s) => {
+                const totalVal = getTotalStat(s, activeCharacter.stats[s]);
+                const mod = getModifier(totalVal);
+                return (
+                  <div key={s} className="bg-black border border-[#1a2a1a] rounded-xl p-3 text-center">
+                    <span className="text-[9px] text-[#4a5a4a] font-black uppercase">{statLabels[s]}</span>
+                    <input
+                      type="number"
+                      value={activeCharacter.stats[s]}
+                      onChange={(e) => updateCharacter('stats', { ...activeCharacter.stats, [s]: Number(e.target.value) || 0 })}
+                      className="w-full bg-transparent text-center text-xl font-black outline-none text-white"
+                    />
+                    <div className="text-[#00ff66] text-xs font-black mt-1">
+                      {mod >= 0 ? '+' : ''}{mod}
+                    </div>
+                    <div className="text-[8px] text-gray-500 uppercase">Total: {totalVal}</div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Salvaguardas */}
+            <div className="bg-black/40 border border-[#1a2a1a] p-4 rounded-xl">
+              <h3 className="text-[9px] text-[#4a5a4a] font-black uppercase mb-3 flex items-center gap-2">
+                <ShieldAlert size={12} /> Salvaguardas
+              </h3>
+              <div className="grid grid-cols-2 gap-x-6 gap-y-2">
+                {(['str', 'dex', 'con', 'int', 'wis', 'cha'] as const).map((s) => (
+                  <div key={s} className="flex items-center justify-between border-b border-[#1a2a1a]/50 py-1">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={activeCharacter.savingThrows[s]}
+                        onChange={(e) =>
+                          updateCharacter('savingThrows', {
+                            ...activeCharacter.savingThrows,
+                            [s]: e.target.checked,
+                          })
+                        }
+                        className="accent-[#00ff66] w-3 h-3"
+                      />
+                      <span className="text-[10px] uppercase text-gray-300">{s}</span>
+                    </div>
+                    <span className="text-[10px] font-black text-[#00ff66]">
+                      {(getModifier(getTotalStat(s, activeCharacter.stats[s])) +
+                        (activeCharacter.savingThrows[s] ? activeCharacter.proficiencyBonus : 0)) >= 0 ? '+' : ''}
+                      {getModifier(getTotalStat(s, activeCharacter.stats[s])) +
+                        (activeCharacter.savingThrows[s] ? activeCharacter.proficiencyBonus : 0)}
+                    </span>
+                  </div>
                 ))}
               </div>
-            )}
+            </div>
+
+            {/* Magias e Habilidades */}
+            <div className="bg-[#050a05] border border-[#1a2a1a] p-5 rounded-xl">
+              <h3 className="text-[#f1e5ac] text-[10px] font-black uppercase mb-4 flex items-center gap-2">
+                <Sparkles size={14} /> Magias & Habilidades
+              </h3>
+              <div className="max-h-[200px] overflow-y-auto space-y-2 mb-4 pr-2">
+
+                {/* Habilidades da Raça — automáticas, não deletáveis */}
+                {raceInfo?.traits && raceInfo.traits.split(', ').map((trait) => (
+                  <div
+                    key={trait}
+                    className="bg-[#0a1a0a] p-2 rounded border border-[#1a2a1a]/60 flex justify-between items-center"
+                  >
+                    <span className="text-[10px] uppercase font-bold text-[#4a7a4a]">{trait}</span>
+                    <span className="text-[8px] text-[#2a4a2a] font-black uppercase">Raça</span>
+                  </div>
+                ))}
+
+                {/* Separador só se tiver raça E spells */}
+                {raceInfo?.traits && activeCharacter.spells?.length > 0 && (
+                  <div className="border-t border-[#1a2a1a] my-2" />
+                )}
+
+                {/* Spells/Habilidades manuais */}
+                {activeCharacter.spells?.map((spell: any) => (
+                  <div
+                    key={spell.id}
+                    className="bg-black/60 p-2 rounded border border-[#1a2a1a] flex justify-between items-center group"
+                  >
+                    <span className="text-[10px] uppercase font-bold text-gray-300">{spell.name}</span>
+                    <button
+                      onClick={() => updateCharacter('spells', activeCharacter.spells.filter((s: any) => s.id !== spell.id))}
+                      className="text-red-900 group-hover:text-red-500"
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <input
+                  value={newSpellName}
+                  onChange={(e) => setNewSpellName(e.target.value)}
+                  placeholder="Nova habilidade..."
+                  className="flex-1 bg-black border border-[#1a2a1a] rounded p-2 text-xs text-white"
+                />
+                <button
+                  onClick={() => {
+                    if (!newSpellName) return;
+                    updateCharacter('spells', [...activeCharacter.spells, { id: Date.now(), name: newSpellName }]);
+                    setNewSpellName('');
+                  }}
+                  className="bg-[#00ff66] text-black px-3 rounded text-lg"
+                >
+                  +
+                </button>
+              </div>
+            </div>
+
+            {/* Inventário */}
+            <div className="bg-[#050a05] border border-[#1a2a1a] p-4 rounded-xl">
+              <h3 className="text-[#00ff66] text-[10px] font-black uppercase mb-2 flex items-center gap-2">
+                <Box size={14} /> Inventário
+              </h3>
+              <div className="max-h-[150px] overflow-y-auto space-y-1 mb-2 pr-1">
+                {activeCharacter.inventory?.map((item: any) => (
+                  <div key={item.id} className="flex justify-between items-center bg-black/40 p-1.5 rounded border border-[#1a2a1a]">
+                    <span className="text-[9px] uppercase text-gray-400">{item.name}</span>
+                    <button
+                      onClick={() =>
+                        updateCharacter('inventory', activeCharacter.inventory.filter((i: any) => i.id !== item.id))
+                      }
+                      className="text-red-900 hover:text-red-500"
+                    >
+                      <Trash2 size={10} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <div className="flex gap-1">
+                <input
+                  value={newItem}
+                  onChange={(e) => setNewItem(e.target.value)}
+                  placeholder="Novo item..."
+                  className="flex-1 bg-black border border-[#1a2a1a] rounded p-1 text-[10px]"
+                />
+                <button
+                  onClick={() => {
+                    if (!newItem) return;
+                    updateCharacter('inventory', [...activeCharacter.inventory, { id: Date.now(), name: newItem }]);
+                    setNewItem('');
+                  }}
+                  className="bg-[#1a2a1a] px-2 rounded text-[#00ff66] text-xs"
+                >
+                  +
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* COLUNA 3 - col-span-3 — PERÍCIAS */}
+          <div className="lg:col-span-3">
+            <div className="bg-black border border-[#1a2a1a] p-4 rounded-xl h-full">
+              <h3 className="text-[#f1e5ac] text-[10px] font-black uppercase mb-4 text-center">Perícias</h3>
+              <div className="space-y-1 overflow-y-auto pr-2">
+                {Object.entries(skillsData).map(([key, info]) => {
+                  const mod = getModifier(getTotalStat(info.attr, activeCharacter.stats[info.attr]));
+                  const total = mod + (activeCharacter.skills[key] ? activeCharacter.proficiencyBonus : 0);
+                  return (
+                    <div
+                      key={key}
+                      className="flex items-center justify-between bg-black/40 p-2 rounded border border-[#1a2a1a] hover:border-[#00ff66]/50 transition-colors"
+                    >
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={activeCharacter.skills[key]}
+                          onChange={(e) =>
+                            updateCharacter('skills', {
+                              ...activeCharacter.skills,
+                              [key]: e.target.checked,
+                            })
+                          }
+                          className="accent-[#00ff66] w-3 h-3"
+                        />
+                        <span className="text-[9px] uppercase text-gray-300">{info.name}</span>
+                      </div>
+                      <span className="text-[10px] font-black text-[#00ff66]">{total >= 0 ? '+' : ''}{total}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         </div>
-      ) : renderCharacterSheet()}
+
+        <FormModal isOpen={editingCharacterImg} onClose={() => setEditingCharacterImg(false)} title="Imagem do Personagem" onSubmit={handleSaveCharacterImage}>
+          <TextInput label="URL da imagem" value={tempCharacterImg} onChange={(e) => setTempCharacterImg(e.target.value)} placeholder="https://..." />
+          <ImageUpload label="Ou faça upload" onChange={handleCharacterImageFileChange} currentImage={tempCharacterImg} />
+          <ModalButtons primaryText="Aplicar" primaryType="submit" onSecondary={() => setEditingCharacterImg(false)} />
+        </FormModal>
+      </>
+    );
+  };
+
+  if (isLoadingAuth) return <div className="min-h-screen flex items-center justify-center bg-black text-[#00ff66] font-black uppercase">Sincronizando com a Névoa...</div>;
+  if (!isAuthenticated) return <div className="min-h-screen flex items-center justify-center bg-black text-red-500 font-black">Acesso negado. Faça login.</div>;
+
+  return (
+    <div className="min-h-screen bg-[#020502]">
+      <Navbar abaAtiva={abaAtiva} setAbaAtiva={setAbaAtiva} />
+      <div className={`${activeCharacter ? 'max-w-[1400px]' : 'max-w-[1000px]'} mx-auto py-12 px-6`}>
+        {!activeCharacter ? (
+          <div>
+            <h2 className="text-[#f1e5ac] text-2xl font-serif mb-10 tracking-[0.2em] uppercase italic">Grimório de Heróis</h2>
+            <div className="space-y-6">
+              <div className="flex justify-between items-center">
+                <h3 className="text-[#4a5a4a] text-xs font-black uppercase tracking-[0.2em]">Personagens: {characters.length}</h3>
+                <button onClick={createCharacter} className="flex items-center gap-2 bg-[#00ff66] text-black px-4 py-2 rounded-lg text-[10px] font-black uppercase hover:brightness-110 transition-all">
+                  <Plus size={14} /> Criar Novo
+                </button>
+              </div>
+              {characters.length === 0 ? (
+                <div className="text-center text-[#8a9a8a] text-sm py-20 border border-dashed border-[#1a2a1a] rounded-2xl">Nenhum personagem encontrado na taverna.</div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {characters.map((char) => (
+                    <Card
+                      key={char.id} id={char.id} title={char.name} subtitle={`${char.class} • Nível ${char.level}`}
+                      metaLeft={{ icon: 'hp', label: `${char.hp_current ?? 0}/${char.hp_max ?? 0}` }}
+                      metaRight={{ icon: 'ca', label: `${char.ac ?? 10}` }}
+                      showMetaDivider={false} metaLarge image={char.img}
+                      dropdownOpen={dropdownOpen === String(char.id)}
+                      onDropdownToggle={() => setDropdownOpen((prev) => prev === String(char.id) ? null : String(char.id))}
+                      dropdownRef={dropdownRef} onDelete={() => deleteCharacter(char.id)}
+                      onAccess={() => { setActiveCharacter(char); setDropdownOpen(null); }}
+                      accessLabel="Acessar" deleteLabel="Excluir"
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        ) : renderCharacterSheet()}
+      </div>
+      <Footer />
     </div>
-    <Footer />
-  </div>
-);
+  );
 }
