@@ -294,16 +294,23 @@ export default function CampanhasPage() {
   };
 
   const handleLeaveCampaign = async (campaignId: string | number) => {
-    if (!currentUserId) return;
+    if (!currentUserId) {
+      alert('Usuário não autenticado!');
+      return;
+    }
     if (!confirm('Tem certeza que deseja sair desta campanha?')) return;
 
+    console.log('[LeaveCampaign] campaignId:', campaignId, 'userId:', currentUserId);
+
     // Busca o personagem vinculado a essa campanha (usa maybeSingle para não lançar erro se não encontrar)
-    const { data: memberData } = await supabase
+    const { data: memberData, error: memberFetchError } = await supabase
       .from('campaign_members')
       .select('current_character_id')
       .eq('campaign_id', campaignId)
       .eq('user_id', currentUserId)
       .maybeSingle();
+
+    console.log('[LeaveCampaign] memberData:', memberData, 'memberFetchError:', memberFetchError);
 
     // Remove o jogador da campanha
     const { data: deleted, error: leaveError } = await supabase
