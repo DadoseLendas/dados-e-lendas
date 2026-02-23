@@ -289,6 +289,52 @@ export default function CampanhasPage() {
     }
   };
 
+  const handleLeaveCampaign = async (campaignId: string | number) => {
+    if (!currentUserId) return;
+    if (!confirm('Tem certeza que deseja sair desta campanha?')) return;
+
+    // Busca o personagem vinculado a essa campanha
+    const { data: memberData, error: memberFetchError } = await supabase
+      .from('campaign_members')
+      .select('current_character_id')
+      .eq('campaign_id', campaignId)
+      .eq('user_id', currentUserId)
+      .single();
+
+    if (memberFetchError) {
+      alert('Erro ao buscar dados da campanha: ' + memberFetchError.message);
+      return;
+    }
+
+    // Remove o jogador da campanha
+    const { error: leaveError } = await supabase
+      .from('campaign_members')
+      .delete()
+      .eq('campaign_id', campaignId)
+      .eq('user_id', currentUserId);
+
+    if (leaveError) {
+      alert('Erro ao sair da campanha: ' + leaveError.message);
+      return;
+    }
+
+    // Deslinka o personagem
+    if (memberData?.current_character_id) {
+      const { error: unlinkError } = await supabase
+        .from('characters')
+        .update({ is_linked: false })
+        .eq('id', memberData.current_character_id)
+        .eq('owner_id', currentUserId);
+
+      if (unlinkError) {
+        console.warn('Saiu da campanha, mas não foi possível deslinkar o personagem:', unlinkError.message);
+      }
+    }
+
+    setCampaigns((prev) => prev.filter((campaign) => campaign.id !== campaignId));
+    setDropdownOpen(null);
+  };
+
   const openEditModal = (campaign: any) => {
     setEditingCampaignId(campaign.id);
     setEditCampaignName(campaign.name ?? '');
@@ -410,7 +456,7 @@ export default function CampanhasPage() {
                     alert('Código copiado!');
                   }}
                   onEdit={() => openEditModal(campaign)}
-                  onDelete={campaign.isOwner ? () => handleDeleteCampaign(campaign.id) : undefined}
+                  onDelete={campaign.isOwner ? () => handleDeleteCampaign(campaign.id) : !campaign.isOwner ? () => handleLeaveCampaign(campaign.id) : undefined}
                   onAccess={() => setDropdownOpen(null)}
                   showEditOption={campaign.isOwner}
                   showCopyOption={campaign.isOwner}
