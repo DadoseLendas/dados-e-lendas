@@ -245,17 +245,17 @@ export default function CampanhasPage() {
 
       if (error || !campaign) return alert('Código inválido.');
 
+      // Trava: impedir que o mestre entre como jogador na própria campanha
+      if (campaign.dm_id === currentUserId) {
+        return alert('Você já é o Mestre desta campanha!');
+      }
+
       const { data: chars } = await supabase
         .from('characters')
         .select('id, name')
         .eq('owner_id', currentUserId);
 
       if (!chars || chars.length === 0) return alert('Crie um personagem primeiro!');
-
-      // NOVA TRAVA: Impedir que o mestre entre como jogador na própria campanha
-      if (campaign.dm_id === currentUserId) {
-        return alert('Você já é o Mestre desta campanha!');
-      }
       setTempCampaign(campaign);
       setUserCharacters(chars);
       setStep(2);
@@ -297,18 +297,13 @@ export default function CampanhasPage() {
     if (!currentUserId) return;
     if (!confirm('Tem certeza que deseja sair desta campanha?')) return;
 
-    // Busca o personagem vinculado a essa campanha
-    const { data: memberData, error: memberFetchError } = await supabase
+    // Busca o personagem vinculado a essa campanha (usa maybeSingle para não lançar erro se não encontrar)
+    const { data: memberData } = await supabase
       .from('campaign_members')
       .select('current_character_id')
       .eq('campaign_id', campaignId)
       .eq('user_id', currentUserId)
-      .single();
-
-    if (memberFetchError) {
-      alert('Erro ao buscar dados da campanha: ' + memberFetchError.message);
-      return;
-    }
+      .maybeSingle();
 
     // Remove o jogador da campanha
     const { error: leaveError } = await supabase
@@ -322,7 +317,7 @@ export default function CampanhasPage() {
       return;
     }
 
-    // Deslinka o personagem
+    // Deslinka o personagem se havia um vinculado
     if (memberData?.current_character_id) {
       const { error: unlinkError } = await supabase
         .from('characters')
