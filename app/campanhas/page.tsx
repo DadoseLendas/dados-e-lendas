@@ -21,14 +21,14 @@ export default function CampanhasPage() {
   const [showModal, setShowModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showJoinModal, setShowJoinModal] = useState(false);
-  
+
   // Criação
   const [campaignName, setCampaignName] = useState('');
   const [campaignImg, setCampaignImg] = useState(''); // Estado da imagem reativado
   const [editingCampaignId, setEditingCampaignId] = useState<string | number | null>(null);
   const [editCampaignName, setEditCampaignName] = useState('');
   const [editCampaignImg, setEditCampaignImg] = useState('');
-  
+
   // Lógica de entrada (Join)
   const [joinCode, setJoinCode] = useState('');
   const [step, setStep] = useState(1);
@@ -117,13 +117,13 @@ export default function CampanhasPage() {
         const formatted = [...allCampaigns]
           .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
           .map(c => ({
-          id: c.id,
-          name: c.name,
-          code: c.code,
-          date: new Date(c.created_at).toLocaleDateString('pt-BR'),
-          isOwner: c.dm_id === currentUserId,
-          img: c.image_url || 'https://via.placeholder.com/400x200/0a120a/00ff66?text=RPG'
-        }));
+            id: c.id,
+            name: c.name,
+            code: c.code,
+            date: new Date(c.created_at).toLocaleDateString('pt-BR'),
+            isOwner: c.dm_id === currentUserId,
+            img: c.image_url || 'https://via.placeholder.com/400x200/0a120a/00ff66?text=RPG'
+          }));
         setCampaigns(formatted);
       } else {
         setCampaigns([]);
@@ -256,6 +256,9 @@ export default function CampanhasPage() {
       setUserCharacters(chars);
       setStep(2);
     } else {
+      if (!selectedCharacterId) return alert('Selecione um personagem!');
+
+      // Entra na campanha
       const { error: joinError } = await supabase
         .from('campaign_members')
         .insert({
@@ -264,11 +267,24 @@ export default function CampanhasPage() {
           current_character_id: parseInt(selectedCharacterId)
         });
 
-      if (joinError) return alert('Erro ao entrar.');
+      if (joinError) return alert('Erro ao entrar na campanha: ' + joinError.message);
+
+      // Marca o personagem como vinculado a uma campanha
+      const { error: linkError } = await supabase
+        .from('characters')
+        .update({ is_linked: true })
+        .eq('id', parseInt(selectedCharacterId))
+        .eq('owner_id', currentUserId);
+
+      if (linkError) {
+        console.warn('Entrou na campanha, mas não foi possível marcar is_linked:', linkError.message);
+      }
 
       setShowJoinModal(false);
       setStep(1);
       setJoinCode('');
+      setSelectedCharacterId('');
+      setTempCampaign(null);
       fetchCampaigns();
     }
   };
@@ -408,17 +424,17 @@ export default function CampanhasPage() {
 
       {/* MODAL CRIAR CORRIGIDO */}
       <FormModal isOpen={showModal} onClose={() => setShowModal(false)} title="Criar Campanha" onSubmit={handleCreateCampaign}>
-        <TextInput 
-          label="Nome da aventura" 
-          value={campaignName} 
-          onChange={(e) => setCampaignName(e.target.value)} 
-          placeholder="Nome da campanha" 
+        <TextInput
+          label="Nome da aventura"
+          value={campaignName}
+          onChange={(e) => setCampaignName(e.target.value)}
+          placeholder="Nome da campanha"
         />
-        
-        <ImageUpload 
-          label="Capa da Campanha" 
-          onChange={handleImageChange} 
-          currentImage={campaignImg} 
+
+        <ImageUpload
+          label="Capa da Campanha"
+          onChange={handleImageChange}
+          currentImage={campaignImg}
         />
 
         <ModalButtons primaryText="Fundar Campanha" primaryType="submit" onSecondary={() => setShowModal(false)} />
@@ -445,7 +461,7 @@ export default function CampanhasPage() {
         {step === 1 ? (
           <TextInput label="Código" value={joinCode} onChange={(e) => setJoinCode(e.target.value)} placeholder="Código" />
         ) : (
-          <select 
+          <select
             className="w-full bg-[#111] border border-[#222] text-[#f1e5ac] p-3 rounded-lg"
             value={selectedCharacterId}
             onChange={(e) => setSelectedCharacterId(e.target.value)}
