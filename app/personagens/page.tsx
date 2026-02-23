@@ -250,7 +250,31 @@ export default function PersonagensPage() {
     };
 
     return (
-      <>
+        <>
+    {/* Botões de navegação */}
+    <div className="flex justify-between items-center mb-6">
+      <button
+        onClick={() => setActiveCharacter(null)}
+        className="flex items-center gap-2 text-[#4a5a4a] hover:text-[#00ff66] text-xs font-black transition-colors"
+      >
+        <ArrowLeft size={14} /> VOLTAR
+      </button>
+      <button
+        onClick={() => saveToDatabase(activeCharacter)}
+        className="flex items-center gap-2 bg-[#00ff66] text-black px-6 py-2 rounded-full text-xs font-black uppercase tracking-widest hover:scale-105 transition-all"
+        disabled={loadingAction}
+      >
+        <Save size={14} /> {loadingAction ? 'Salvando...' : 'Salvar Ficha'}
+      </button>
+    </div>
+
+    {/* Nota da raça se houver */}
+    {raceInfo?.note && (
+      <div className="bg-blue-500/10 border border-blue-500/50 p-4 rounded-xl flex items-center gap-3 text-blue-400 mb-6">
+        <AlertCircle size={20} />
+        <p className="text-[11px] font-bold uppercase">{raceInfo.note}</p>
+      </div>
+    )}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* COLUNA 1 - col-span-4 */}
           <div className="lg:col-span-4 space-y-4">
