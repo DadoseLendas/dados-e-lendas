@@ -10,6 +10,7 @@ import { FormModal, TextInput, ImageUpload, ModalButtons } from '@/app/component
 import { Sword, Plus, ArrowLeft, ShieldAlert, Heart, Sparkles, Trash2, Save, AlertCircle, BookOpen, Shield, Zap, Package, Box } from 'lucide-react';
 import Link from 'next/link';
 
+
 // --- DADOS DE RAÇAS (Adicionado) ---
 const RACE_DATA: Record<string, { stats: Record<string, number>, traits: string, note?: string }> = {
   "Anão": { stats: { con: 2 }, traits: "Visão no Escuro, Resiliência Anã, Treino de Combate Anão, Proficiência com ferramentas, Talento Com Pedra" },
@@ -25,19 +26,19 @@ const RACE_DATA: Record<string, { stats: Record<string, number>, traits: string,
 };
 
 const CLASS_DATA: Record<string, { hp: number; primaryAttr: string; savingThrows: string[] }> = {
-  "Artífice":    { hp: 8,  primaryAttr: "Inteligência",          savingThrows: ["con", "int"] },
-  "Bárbaro":     { hp: 12, primaryAttr: "Força",                 savingThrows: ["str", "con"] },
-  "Bardo":       { hp: 8,  primaryAttr: "Carisma",               savingThrows: ["dex", "cha"] },
-  "Bruxo":       { hp: 8,  primaryAttr: "Carisma",               savingThrows: ["wis", "cha"] },
-  "Clérigo":     { hp: 8,  primaryAttr: "Sabedoria",             savingThrows: ["wis", "cha"] },
-  "Druida":      { hp: 8,  primaryAttr: "Sabedoria",             savingThrows: ["int", "wis"] },
-  "Feiticeiro":  { hp: 6,  primaryAttr: "Carisma",               savingThrows: ["con", "cha"] },
-  "Guardião":    { hp: 10, primaryAttr: "Destreza & Sabedoria",  savingThrows: ["str", "dex"] },
-  "Guerreiro":   { hp: 10, primaryAttr: "Força ou Destreza",     savingThrows: ["str", "con"] },
-  "Ladino":      { hp: 8,  primaryAttr: "Destreza",              savingThrows: ["dex", "int"] },
-  "Mago":        { hp: 6,  primaryAttr: "Inteligência",          savingThrows: ["int", "wis"] },
-  "Monge":       { hp: 8,  primaryAttr: "Destreza & Sabedoria",  savingThrows: ["str", "dex"] },
-  "Paladino":    { hp: 10, primaryAttr: "Força & Carisma",       savingThrows: ["wis", "cha"] },
+  "Artífice": { hp: 8, primaryAttr: "Inteligência", savingThrows: ["con", "int"] },
+  "Bárbaro": { hp: 12, primaryAttr: "Força", savingThrows: ["str", "con"] },
+  "Bardo": { hp: 8, primaryAttr: "Carisma", savingThrows: ["dex", "cha"] },
+  "Bruxo": { hp: 8, primaryAttr: "Carisma", savingThrows: ["wis", "cha"] },
+  "Clérigo": { hp: 8, primaryAttr: "Sabedoria", savingThrows: ["wis", "cha"] },
+  "Druida": { hp: 8, primaryAttr: "Sabedoria", savingThrows: ["int", "wis"] },
+  "Feiticeiro": { hp: 6, primaryAttr: "Carisma", savingThrows: ["con", "cha"] },
+  "Guardião": { hp: 10, primaryAttr: "Destreza & Sabedoria", savingThrows: ["str", "dex"] },
+  "Guerreiro": { hp: 10, primaryAttr: "Força ou Destreza", savingThrows: ["str", "con"] },
+  "Ladino": { hp: 8, primaryAttr: "Destreza", savingThrows: ["dex", "int"] },
+  "Mago": { hp: 6, primaryAttr: "Inteligência", savingThrows: ["int", "wis"] },
+  "Monge": { hp: 8, primaryAttr: "Destreza & Sabedoria", savingThrows: ["str", "dex"] },
+  "Paladino": { hp: 10, primaryAttr: "Força & Carisma", savingThrows: ["wis", "cha"] },
 };
 
 
@@ -85,6 +86,9 @@ export default function PersonagensPage() {
   const [abaAtiva, setAbaAtiva] = useState<string>('personagens');
 
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const [raceModalOpen, setRaceModalOpen] = useState(false);
+  const [raceModalSelections, setRaceModalSelections] = useState<Record<string, string>>({});
 
   // --- LÓGICA DE CÁLCULO (Adicionado) ---
   const getModifier = (value: number) => Math.floor((value - 10) / 2);
@@ -250,31 +254,130 @@ export default function PersonagensPage() {
     };
 
     return (
-        <>
-    {/* Botões de navegação */}
-    <div className="flex justify-between items-center mb-6">
-      <button
-        onClick={() => setActiveCharacter(null)}
-        className="flex items-center gap-2 text-[#4a5a4a] hover:text-[#00ff66] text-xs font-black transition-colors"
-      >
-        <ArrowLeft size={14} /> VOLTAR
-      </button>
-      <button
-        onClick={() => saveToDatabase(activeCharacter)}
-        className="flex items-center gap-2 bg-[#00ff66] text-black px-6 py-2 rounded-full text-xs font-black uppercase tracking-widest hover:scale-105 transition-all"
-        disabled={loadingAction}
-      >
-        <Save size={14} /> {loadingAction ? 'Salvando...' : 'Salvar Ficha'}
-      </button>
-    </div>
+      <>
+        {/* Modal de regras de raça */}
+        {raceModalOpen && (() => {
+          const race = activeCharacter.race;
 
-    {/* Nota da raça se houver */}
-    {raceInfo?.note && (
-      <div className="bg-blue-500/10 border border-blue-500/50 p-4 rounded-xl flex items-center gap-3 text-blue-400 mb-6">
-        <AlertCircle size={20} />
-        <p className="text-[11px] font-bold uppercase">{raceInfo.note}</p>
-      </div>
-    )}
+          // Meio-Elfo: escolher +1 em 2 atributos (exceto CHA)
+          if (race === 'Meio-Elfo') {
+            const options = (['str', 'dex', 'con', 'int', 'wis'] as const);
+            const selected = Object.values(raceModalSelections).filter(Boolean);
+            return (
+              <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center">
+                <div className="bg-[#050a05] border border-[#1a2a1a] rounded-2xl p-6 w-full max-w-sm space-y-4">
+                  <h3 className="text-[#f1e5ac] text-xs font-black uppercase text-center">Meio-Elfo: Escolha 2 Atributos</h3>
+                  <p className="text-[10px] text-[#4a5a4a] text-center uppercase">Selecione 2 atributos para receber +1 (exceto Carisma)</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {options.map((s) => {
+                      const isSelected = raceModalSelections[s] === s;
+                      const selectedCount = Object.values(raceModalSelections).filter(Boolean).length;
+                      return (
+                        <button
+                          key={s}
+                          onClick={() => {
+                            if (isSelected) {
+                              setRaceModalSelections((prev) => ({ ...prev, [s]: '' }));
+                            } else if (selectedCount < 2) {
+                              setRaceModalSelections((prev) => ({ ...prev, [s]: s }));
+                            }
+                          }}
+                          className={`p-2 rounded border text-[10px] font-black uppercase transition-all ${isSelected ? 'bg-[#00ff66] text-black border-[#00ff66]' : 'bg-black/40 text-gray-300 border-[#1a2a1a] hover:border-[#00ff66]/50'}`}
+                        >
+                          {statLabels[s]}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <button
+                    disabled={selected.length < 2}
+                    onClick={() => {
+                      const newStats = { ...activeCharacter.stats };
+                      Object.values(raceModalSelections).filter(Boolean).forEach((s) => {
+                        newStats[s as keyof typeof newStats] += 1;
+                      });
+                      updateCharacter('stats', newStats);
+                      setRaceModalOpen(false);
+                      setRaceModalSelections({});
+                    }}
+                    className="w-full bg-[#00ff66] text-black py-2 rounded-full text-xs font-black uppercase disabled:opacity-30 disabled:cursor-not-allowed hover:scale-105 transition-all"
+                  >
+                    Confirmar
+                  </button>
+                </div>
+              </div>
+            );
+          }
+
+          // Humano (Variante): escolher 2 atributos para +1
+          if (race === 'Humano (Variante)') {
+            const options = (['str', 'dex', 'con', 'int', 'wis', 'cha'] as const);
+            const selected = Object.values(raceModalSelections).filter(Boolean);
+            return (
+              <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center">
+                <div className="bg-[#050a05] border border-[#1a2a1a] rounded-2xl p-6 w-full max-w-sm space-y-4">
+                  <h3 className="text-[#f1e5ac] text-xs font-black uppercase text-center">Humano (Variante): Escolha 2 Atributos</h3>
+                  <p className="text-[10px] text-[#4a5a4a] text-center uppercase">Selecione 2 atributos diferentes para receber +1</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {options.map((s) => {
+                      const isSelected = raceModalSelections[s] === s;
+                      const selectedCount = Object.values(raceModalSelections).filter(Boolean).length;
+                      return (
+                        <button
+                          key={s}
+                          onClick={() => {
+                            if (isSelected) {
+                              setRaceModalSelections((prev) => ({ ...prev, [s]: '' }));
+                            } else if (selectedCount < 2) {
+                              setRaceModalSelections((prev) => ({ ...prev, [s]: s }));
+                            }
+                          }}
+                          className={`p-2 rounded border text-[10px] font-black uppercase transition-all ${isSelected ? 'bg-[#00ff66] text-black border-[#00ff66]' : 'bg-black/40 text-gray-300 border-[#1a2a1a] hover:border-[#00ff66]/50'}`}
+                        >
+                          {statLabels[s]}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <button
+                    disabled={selected.length < 2}
+                    onClick={() => {
+                      const newStats = { ...activeCharacter.stats };
+                      Object.values(raceModalSelections).filter(Boolean).forEach((s) => {
+                        newStats[s as keyof typeof newStats] += 1;
+                      });
+                      updateCharacter('stats', newStats);
+                      setRaceModalOpen(false);
+                      setRaceModalSelections({});
+                    }}
+                    className="w-full bg-[#00ff66] text-black py-2 rounded-full text-xs font-black uppercase disabled:opacity-30 disabled:cursor-not-allowed hover:scale-105 transition-all"
+                  >
+                    Confirmar
+                  </button>
+                </div>
+              </div>
+            );
+          }
+
+          return null;
+        })()}
+        {/* Botões de navegação */}
+        <div className="flex justify-between items-center mb-6">
+          <button
+            onClick={() => setActiveCharacter(null)}
+            className="flex items-center gap-2 text-[#4a5a4a] hover:text-[#00ff66] text-xs font-black transition-colors"
+          >
+            <ArrowLeft size={14} /> VOLTAR
+          </button>
+          <button
+            onClick={() => saveToDatabase(activeCharacter)}
+            className="flex items-center gap-2 bg-[#00ff66] text-black px-6 py-2 rounded-full text-xs font-black uppercase tracking-widest hover:scale-105 transition-all"
+            disabled={loadingAction}
+          >
+            <Save size={14} /> {loadingAction ? 'Salvando...' : 'Salvar Ficha'}
+          </button>
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* COLUNA 1 - col-span-4 */}
           <div className="lg:col-span-4 space-y-4">
@@ -302,7 +405,14 @@ export default function PersonagensPage() {
                 <label className="text-[8px] text-[#4a5a4a] font-black uppercase">Raça</label>
                 <select
                   value={activeCharacter.race ?? ''}
-                  onChange={(e) => updateCharacter('race', e.target.value)}
+                  onChange={(e) => {
+                    const chosen = e.target.value;
+                    updateCharacter('race', chosen);
+                    if (chosen === 'Meio-Elfo' || chosen === 'Humano (Variante)') {
+                      setRaceModalSelections({});
+                      setRaceModalOpen(true);
+                    }
+                  }}
                   className="w-full bg-black/40 border border-[#1a2a1a] p-1.5 text-xs rounded text-white"
                 >
                   <option value="">Selecione...</option>
@@ -407,6 +517,7 @@ export default function PersonagensPage() {
           {/* COLUNA 2 - col-span-5 */}
           <div className="lg:col-span-5 space-y-4">
             {/* Atributos */}
+            {/* Atributos */}
             <div className="grid grid-cols-3 gap-3">
               {(['str', 'dex', 'con', 'int', 'wis', 'cha'] as const).map((s) => {
                 const totalVal = getTotalStat(s, activeCharacter.stats[s]);
@@ -423,7 +534,6 @@ export default function PersonagensPage() {
                     <div className="text-[#00ff66] text-xs font-black mt-1">
                       {mod >= 0 ? '+' : ''}{mod}
                     </div>
-                    <div className="text-[8px] text-gray-500 uppercase">Total: {totalVal}</div>
                   </div>
                 );
               })}
