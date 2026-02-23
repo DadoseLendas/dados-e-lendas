@@ -306,14 +306,22 @@ export default function CampanhasPage() {
       .maybeSingle();
 
     // Remove o jogador da campanha
-    const { error: leaveError } = await supabase
+    const { data: deleted, error: leaveError } = await supabase
       .from('campaign_members')
       .delete()
       .eq('campaign_id', campaignId)
-      .eq('user_id', currentUserId);
+      .eq('user_id', currentUserId)
+      .select();
+
+    console.log('[LeaveCampaign] deleted:', deleted, 'error:', leaveError);
 
     if (leaveError) {
       alert('Erro ao sair da campanha: ' + leaveError.message);
+      return;
+    }
+
+    if (!deleted || deleted.length === 0) {
+      alert('Não foi possível sair da campanha. Verifique as permissões (RLS) no Supabase: a política de DELETE em campaign_members deve permitir que o próprio usuário remova sua entrada.');
       return;
     }
 
