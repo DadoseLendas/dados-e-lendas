@@ -252,6 +252,10 @@ export default function CampanhasPage() {
 
       if (!chars || chars.length === 0) return alert('Crie um personagem primeiro!');
 
+      // NOVA TRAVA: Impedir que o mestre entre como jogador na própria campanha
+      if (campaign.dm_id === currentUserId) {
+        return alert('Você já é o Mestre desta campanha!');
+      }
       setTempCampaign(campaign);
       setUserCharacters(chars);
       setStep(2);
