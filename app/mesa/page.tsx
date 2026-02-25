@@ -1,8 +1,9 @@
 "use client";
 import { useState, useRef, useEffect } from 'react';
 import Navbar from '@/app/components/ui/navbar';
-import { Send, Dices, MessageSquare } from 'lucide-react';
+import { Send, Dices, MessageSquare, ScrollText } from 'lucide-react';
 import { createClient } from '@/utils/supabase/client';
+import FichaModal from '@/app/components/ui/ficha-modal';
 
 interface Message {
   id: string;
@@ -24,9 +25,31 @@ export default function TelaDeMesa() {
   const [diceBox, setDiceBox] = useState<any>(null);
   const [isDiceReady, setIsDiceReady] = useState(false);
   const initializedRef = useRef(false);
+
+  // Ficha do personagem
+  const [showFicha, setShowFicha] = useState(false);
+  const [fichaCharacterId, setFichaCharacterId] = useState<number | string | null>(null);
   
   // REFERÊNCIA PARA O TIMEOUT: Para evitar que uma rolagem limpe a outra
   const cleanupTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Busca o personagem vinculado à campanha ativa do usuário
+  useEffect(() => {
+    const fetchLinkedCharacter = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase
+        .from('campaign_members')
+        .select('current_character_id')
+        .eq('user_id', user.id)
+        .not('current_character_id', 'is', null)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (data?.current_character_id) setFichaCharacterId(data.current_character_id);
+    };
+    fetchLinkedCharacter();
+  }, []);
 
   useEffect(() => {
     const fetchMessages = async () => {
@@ -192,6 +215,20 @@ export default function TelaDeMesa() {
         )}
       </div>
 
+      {/* Botão Ficha — canto esquerdo */}
+      {fichaCharacterId && (
+        <button
+          onClick={() => setShowFicha(true)}
+          title="Ver Ficha do Personagem"
+          className="absolute left-6 top-1/2 -translate-y-1/2 z-50 flex flex-col items-center gap-2 bg-[#050a05] border border-[#1a2a1a] hover:border-[#00ff66] text-[#4a5a4a] hover:text-[#00ff66] p-4 rounded-xl transition-all group shadow-[0_0_20px_rgba(0,0,0,0.6)]"
+        >
+          <ScrollText size={22} />
+          <span className="text-[9px] font-black uppercase tracking-widest [writing-mode:vertical-rl] rotate-180 opacity-60 group-hover:opacity-100 transition-opacity">
+            Ficha
+          </span>
+        </button>
+      )}
+
       <div className="absolute bottom-6 right-6 z-50">
         <div className="w-[400px] h-[70vh] flex flex-col shadow-[0_0_40px_rgba(0,0,0,0.8)] rounded-xl overflow-hidden border border-[#1a2a1a] bg-[#050a05]">
           <div className="bg-[#0a120a] border-b border-[#1a2a1a] px-5 py-4 flex items-center gap-2">
@@ -247,6 +284,12 @@ export default function TelaDeMesa() {
           </div>
         </div>
       </div>
+
+      <FichaModal
+        isOpen={showFicha}
+        onClose={() => setShowFicha(false)}
+        characterId={fichaCharacterId}
+      />
     </div>
   );
 }
