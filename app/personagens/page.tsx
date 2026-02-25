@@ -203,8 +203,12 @@ export default function PersonagensPage() {
   };
 
   const deleteCharacter = async (id: any) => {
-    const { error } = await supabase.from('characters').delete().eq('id', id);
-    if (error) { alert('Erro ao excluir: ' + error.message); return; }
+    const { data: deleted, error } = await supabase.from('characters').delete().eq('id', id).select();
+    if (error) { alert('ERRO: ' + error.message); return; }
+    if (!deleted || deleted.length === 0) {
+      alert('RLS bloqueou: nenhuma linha excluída.\nid=' + id + ' tipo=' + typeof id);
+      return;
+    }
     setCharacters((prev) => prev.filter(c => c.id !== id));
     setActiveCharacter(null);
     setConfirmDeleteId(null);
@@ -802,6 +806,7 @@ export default function PersonagensPage() {
   if (!isAuthenticated) return <div className="min-h-screen flex items-center justify-center bg-black text-red-500 font-black">Acesso negado. Faça login.</div>;
 
   return (
+    <>
     <div className="min-h-screen bg-[#020502]">
       <Navbar abaAtiva={abaAtiva} setAbaAtiva={setAbaAtiva} />
       <div className={`${activeCharacter ? 'max-w-[1400px]' : 'max-w-[1000px]'} mx-auto py-12 px-6`}>
@@ -840,22 +845,26 @@ export default function PersonagensPage() {
       </div>
       <Footer />
 
+    </div>
+
       {/* Modal de confirmação de exclusão */}
       {confirmDeleteId !== null && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/80">
-          <div className="bg-[#0a120a] border border-[#1a2a1a] rounded-2xl p-6 w-80 space-y-5 shadow-[0_0_40px_rgba(0,0,0,0.9)]">
-            <h3 className="text-white text-xs font-black uppercase text-center tracking-widest">Excluir personagem?</h3>
-            <p className="text-[#4a5a4a] text-[10px] text-center uppercase">Esta ação não pode ser desfeita.</p>
-            <div className="flex gap-2">
+        <div style={{position:'fixed',inset:0,zIndex:9999,display:'flex',alignItems:'center',justifyContent:'center',background:'rgba(0,0,0,0.8)'}}>
+          <div style={{background:'#0a120a',border:'1px solid #1a2a1a',borderRadius:16,padding:24,width:320,display:'flex',flexDirection:'column',gap:20}}>
+            <h3 style={{color:'white',fontSize:12,fontWeight:900,textTransform:'uppercase',textAlign:'center',letterSpacing:'0.2em',margin:0}}>Excluir personagem?</h3>
+            <p style={{color:'#4a5a4a',fontSize:10,textAlign:'center',textTransform:'uppercase',margin:0}}>Esta ação não pode ser desfeita.</p>
+            <div style={{display:'flex',gap:8}}>
               <button
-                onClick={() => setConfirmDeleteId(null)}
-                className="flex-1 border border-[#1a2a1a] text-[#4a5a4a] text-[10px] font-black uppercase py-2 rounded-lg hover:border-[#00ff66]/40 transition-all"
+                type="button"
+                onMouseDown={() => setConfirmDeleteId(null)}
+                style={{flex:1,border:'1px solid #1a2a1a',color:'#4a5a4a',fontSize:10,fontWeight:900,textTransform:'uppercase',padding:'8px 0',borderRadius:8,background:'transparent',cursor:'pointer'}}
               >
                 Cancelar
               </button>
               <button
-                onClick={() => deleteCharacter(confirmDeleteId)}
-                className="flex-1 bg-red-600 text-white text-[10px] font-black uppercase py-2 rounded-lg hover:bg-red-500 transition-all"
+                type="button"
+                onMouseDown={() => deleteCharacter(confirmDeleteId)}
+                style={{flex:1,background:'#dc2626',color:'white',fontSize:10,fontWeight:900,textTransform:'uppercase',padding:'8px 0',borderRadius:8,border:'none',cursor:'pointer'}}
               >
                 Excluir
               </button>
@@ -863,6 +872,6 @@ export default function PersonagensPage() {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
