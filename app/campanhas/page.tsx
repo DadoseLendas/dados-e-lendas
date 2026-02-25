@@ -470,7 +470,8 @@ export default function CampanhasPage() {
                     alert('Código copiado!');
                   }}
                   onEdit={() => openEditModal(campaign)}
-                  onDelete={campaign.isOwner ? () => handleDeleteCampaign(campaign.id) : !campaign.isOwner ? () => handleLeaveCampaign(campaign.id) : undefined}
+                  onDelete={campaign.isOwner ? () => handleDeleteCampaign(campaign.id) : () => handleLeaveCampaign(campaign.id)}
+                  deleteLabel={campaign.isOwner ? 'Excluir' : 'Sair'}
                   onAccess={() => setDropdownOpen(null)}
                   showEditOption={campaign.isOwner}
                   showCopyOption={campaign.isOwner}
