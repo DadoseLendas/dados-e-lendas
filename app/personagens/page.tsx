@@ -697,7 +697,7 @@ export default function PersonagensPage() {
                           }
                           className="accent-[#00ff66] w-3 h-3"
                         />
-                        <span className="text-[9px] uppercase text-gray-300">{info.name}</span>
+                        <span className="text-[9px] uppercase text-gray-300">{info.name} <span className="text-gray-500">({info.attr})</span></span>
                       </div>
                       <span className="text-[10px] font-black text-[#00ff66]">{total >= 0 ? '+' : ''}{total}</span>
                     </div>
