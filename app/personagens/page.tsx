@@ -131,13 +131,14 @@ export default function PersonagensPage() {
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
+      if (confirmDeleteId !== null) return; // não feche nada se o modal de exclusão estiver aberto
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setDropdownOpen(null);
       }
     }
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  }, [confirmDeleteId]);
 
   const saveToDatabase = async (char: Character) => {
     setLoadingAction(true);
@@ -855,27 +856,29 @@ export default function PersonagensPage() {
 
       {/* Modal de confirmação de exclusão */}
       {confirmDeleteId !== null && (
-        <div style={{position:'fixed',inset:0,zIndex:9999,display:'flex',alignItems:'center',justifyContent:'center',background:'rgba(0,0,0,0.8)'}}>
-          <div style={{background:'#0a120a',border:'1px solid #1a2a1a',borderRadius:16,padding:24,width:320,display:'flex',flexDirection:'column',gap:16}}>
-            <h3 style={{color:'white',fontSize:12,fontWeight:900,textTransform:'uppercase',textAlign:'center',letterSpacing:'0.2em',margin:0}}>Excluir personagem?</h3>
-            <p style={{color:'#4a5a4a',fontSize:10,textAlign:'center',textTransform:'uppercase',margin:0}}>Esta ação não pode ser desfeita.</p>
+        <div style={{position:'fixed',inset:0,zIndex:9999,display:'flex',alignItems:'center',justifyContent:'center',background:'rgba(0,0,0,0.85)'}}>
+          <div style={{background:'#0a120a',border:'1px solid #1a2a1a',borderRadius:16,padding:24,width:340,display:'flex',flexDirection:'column',gap:16}}>
+            <h3 style={{color:'white',fontSize:14,fontWeight:900,textTransform:'uppercase',textAlign:'center',letterSpacing:'0.2em',margin:0}}>Excluir personagem?</h3>
+            <p style={{color:'#8a9a8a',fontSize:11,textAlign:'center',margin:0}}>Esta ação não pode ser desfeita.</p>
             {deleteError && (
-              <p style={{color:'#f87171',fontSize:10,textAlign:'center',margin:0,background:'#1a0000',padding:'8px',borderRadius:8}}>{deleteError}</p>
+              <div style={{background:'#7f1d1d',border:'1px solid #dc2626',borderRadius:8,padding:12}}>
+                <p style={{color:'#fca5a5',fontSize:12,textAlign:'center',margin:0,fontWeight:700}}>{deleteError}</p>
+              </div>
             )}
-            <div style={{display:'flex',gap:8}}>
+            <div style={{display:'flex',gap:8,marginTop:4}}>
               <button
                 type="button"
-                onMouseDown={() => { setConfirmDeleteId(null); setDeleteError(null); }}
+                onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(null); setDeleteError(null); }}
                 disabled={deleteLoading}
-                style={{flex:1,border:'1px solid #1a2a1a',color:'#4a5a4a',fontSize:10,fontWeight:900,textTransform:'uppercase',padding:'8px 0',borderRadius:8,background:'transparent',cursor:'pointer'}}
+                style={{flex:1,border:'1px solid #2a3a2a',color:'#8a9a8a',fontSize:11,fontWeight:700,padding:'10px 0',borderRadius:8,background:'transparent',cursor:'pointer'}}
               >
                 Cancelar
               </button>
               <button
                 type="button"
-                onMouseDown={() => deleteCharacter(confirmDeleteId)}
+                onClick={(e) => { e.stopPropagation(); deleteCharacter(confirmDeleteId); }}
                 disabled={deleteLoading}
-                style={{flex:1,background: deleteLoading ? '#7f1d1d' : '#dc2626',color:'white',fontSize:10,fontWeight:900,textTransform:'uppercase',padding:'8px 0',borderRadius:8,border:'none',cursor:'pointer'}}
+                style={{flex:1,background:deleteLoading?'#7f1d1d':'#dc2626',color:'white',fontSize:11,fontWeight:700,padding:'10px 0',borderRadius:8,border:'none',cursor:'pointer'}}
               >
                 {deleteLoading ? 'Excluindo...' : 'Excluir'}
               </button>
