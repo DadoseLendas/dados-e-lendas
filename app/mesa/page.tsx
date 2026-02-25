@@ -33,20 +33,19 @@ export default function TelaDeMesa() {
   // REFERÊNCIA PARA O TIMEOUT: Para evitar que uma rolagem limpe a outra
   const cleanupTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Busca o personagem vinculado à campanha ativa do usuário
+  // Busca o personagem vinculado a qualquer campanha do usuário
   useEffect(() => {
     const fetchLinkedCharacter = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
+      // Busca todos os membros do usuário e pega o primeiro com personagem
       const { data } = await supabase
         .from('campaign_members')
         .select('current_character_id')
         .eq('user_id', user.id)
-        .not('current_character_id', 'is', null)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (data?.current_character_id) setFichaCharacterId(data.current_character_id);
+        .not('current_character_id', 'is', null);
+      const first = Array.isArray(data) ? data[0] : null;
+      if (first?.current_character_id) setFichaCharacterId(first.current_character_id);
     };
     fetchLinkedCharacter();
   }, []);
@@ -216,18 +215,19 @@ export default function TelaDeMesa() {
       </div>
 
       {/* Botão Ficha — canto esquerdo */}
-      {fichaCharacterId && (
-        <button
-          onClick={() => setShowFicha(true)}
-          title="Ver Ficha do Personagem"
-          className="absolute left-6 top-1/2 -translate-y-1/2 z-50 flex flex-col items-center gap-2 bg-[#050a05] border border-[#1a2a1a] hover:border-[#00ff66] text-[#4a5a4a] hover:text-[#00ff66] p-4 rounded-xl transition-all group shadow-[0_0_20px_rgba(0,0,0,0.6)]"
-        >
-          <ScrollText size={22} />
-          <span className="text-[9px] font-black uppercase tracking-widest [writing-mode:vertical-rl] rotate-180 opacity-60 group-hover:opacity-100 transition-opacity">
-            Ficha
-          </span>
-        </button>
-      )}
+      <button
+        onClick={() => {
+          if (!fichaCharacterId) { alert('Nenhum personagem vinculado a uma campanha.'); return; }
+          setShowFicha(true);
+        }}
+        title="Ver Ficha do Personagem"
+        className="absolute left-6 top-1/2 -translate-y-1/2 z-50 flex flex-col items-center gap-2 bg-[#050a05] border border-[#1a2a1a] hover:border-[#00ff66] text-[#4a5a4a] hover:text-[#00ff66] p-4 rounded-xl transition-all group shadow-[0_0_20px_rgba(0,0,0,0.6)]"
+      >
+        <ScrollText size={22} />
+        <span className="text-[9px] font-black uppercase tracking-widest [writing-mode:vertical-rl] rotate-180 opacity-60 group-hover:opacity-100 transition-opacity">
+          Ficha
+        </span>
+      </button>
 
       <div className="absolute bottom-6 right-6 z-50">
         <div className="w-[400px] h-[70vh] flex flex-col shadow-[0_0_40px_rgba(0,0,0,0.8)] rounded-xl overflow-hidden border border-[#1a2a1a] bg-[#050a05]">
