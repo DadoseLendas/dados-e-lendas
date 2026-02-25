@@ -207,8 +207,9 @@ export default function PersonagensPage() {
   const deleteCharacter = async (id: any) => {
     const { error } = await supabase.from('characters').delete().eq('id', id);
     if (error) { console.error('Erro ao excluir:', error.message); return; }
-    setCharacters((prev) => prev.filter(c => c.id !== id));
-    if (activeCharacter?.id === id) setActiveCharacter(null);
+    // Busca do banco para confirmar — se o personagem voltar, o DELETE não funcionou no Supabase
+    await fetchCharacters();
+    setActiveCharacter(null);
     setConfirmDeleteId(null);
   };
 
