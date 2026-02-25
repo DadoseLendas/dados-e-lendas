@@ -839,7 +839,7 @@ export default function PersonagensPage() {
                       showMetaDivider={false} metaLarge image={char.img}
                       dropdownOpen={dropdownOpen === String(char.id)}
                       onDropdownToggle={() => setDropdownOpen((prev) => prev === String(char.id) ? null : String(char.id))}
-                      dropdownRef={dropdownRef} onDelete={() => { setDropdownOpen(null); setConfirmDeleteId(char.id); }}
+                      dropdownRef={dropdownRef} onDelete={() => { setDropdownOpen(null); deleteCharacter(char.id); }}
                       onAccess={() => { setActiveCharacter(char); setDropdownOpen(null); }}
                       accessLabel="Acessar" deleteLabel="Excluir"
                     />
