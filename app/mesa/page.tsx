@@ -1,7 +1,7 @@
 "use client";
 import { useState, useRef, useEffect } from 'react';
 import Navbar from '@/app/components/ui/navbar';
-import { Send, Dices, MessageSquare, ScrollText } from 'lucide-react';
+import { Send, Dices, MessageSquare, UserRound } from 'lucide-react';
 import { createClient } from '@/utils/supabase/client';
 import FichaModal from '@/app/components/ui/ficha-modal';
 
@@ -221,12 +221,9 @@ export default function TelaDeMesa() {
           setShowFicha(true);
         }}
         title="Ver Ficha do Personagem"
-        className="absolute left-6 top-1/2 -translate-y-1/2 z-50 flex flex-col items-center gap-2 bg-[#050a05] border border-[#1a2a1a] hover:border-[#00ff66] text-[#4a5a4a] hover:text-[#00ff66] p-4 rounded-xl transition-all group shadow-[0_0_20px_rgba(0,0,0,0.6)]"
+        className="absolute left-6 top-1/2 -translate-y-1/2 z-50 bg-[#050a05] border border-[#1a2a1a] hover:border-[#00ff66] text-[#4a5a4a] hover:text-[#00ff66] p-4 rounded-xl transition-all shadow-[0_0_20px_rgba(0,0,0,0.6)]"
       >
-        <ScrollText size={22} />
-        <span className="text-[9px] font-black uppercase tracking-widest [writing-mode:vertical-rl] rotate-180 opacity-60 group-hover:opacity-100 transition-opacity">
-          Ficha
-        </span>
+        <UserRound size={22} />
       </button>
 
       <div className="absolute bottom-6 right-6 z-50">
