@@ -204,7 +204,9 @@ export default function PersonagensPage() {
   const deleteCharacter = async (id: any) => {
     if (!confirm('Excluir este herói para sempre?')) return;
     const { error } = await supabase.from('characters').delete().eq('id', id);
-    if (!error) { setCharacters(characters.filter(c => c.id !== id)); setActiveCharacter(null); }
+    if (error) { alert('Erro ao excluir: ' + error.message); return; }
+    setCharacters((prev) => prev.filter(c => c.id !== id));
+    setActiveCharacter(null);
   };
 
   const updateCharacter = (field: string, value: any) => {
