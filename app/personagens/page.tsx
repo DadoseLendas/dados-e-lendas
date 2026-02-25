@@ -6,7 +6,6 @@ import { createClient } from '@/utils/supabase/client';
 import Navbar from '@/app/components/ui/navbar';
 import Footer from '@/app/components/ui/footer';
 import Card from '@/app/components/ui/card';
-import { FormModal, TextInput, ImageUpload, ModalButtons } from '@/app/components/ui/modal';
 import { Sword, Plus, ArrowLeft, ShieldAlert, Heart, Sparkles, Trash2, Save, AlertCircle, BookOpen, Shield, Zap, Package, Box } from 'lucide-react';
 import Link from 'next/link';
 
@@ -84,7 +83,7 @@ export default function PersonagensPage() {
   const [tempCharacterImg, setTempCharacterImg] = useState('');
   const [tempOffsetX, setTempOffsetX] = useState(50);
   const [tempOffsetY, setTempOffsetY] = useState(50);
-  const [framingOpen, setFramingOpen] = useState(false);
+  const [showFramingSliders, setShowFramingSliders] = useState(false);
   const [newInventoryItem, setNewInventoryItem] = useState('');
   const [newSpellName, setNewSpellName] = useState('');
   const [newItem, setNewItem] = useState('');
@@ -252,13 +251,6 @@ export default function PersonagensPage() {
       reader.onload = (event) => setTempCharacterImg(event.target?.result as string);
       reader.readAsDataURL(file);
     };
-    const handleSaveCharacterImage = async (e: React.FormEvent) => {
-      e.preventDefault();
-      const updated = { ...activeCharacter, img: tempCharacterImg || '/placeholder-rpg.png', imgOffsetX: tempOffsetX, imgOffsetY: tempOffsetY };
-      setActiveCharacter(updated);
-      setEditingCharacterImg(false);
-      await saveToDatabase(updated);
-    };
 
     return (
       <>
@@ -396,57 +388,13 @@ export default function PersonagensPage() {
                   backgroundImage: `url(${activeCharacter.img || '/placeholder.png'})`,
                   backgroundPosition: `${activeCharacter.imgOffsetX ?? 50}% ${activeCharacter.imgOffsetY ?? 50}%`
                 }}
-                onClick={() => { setTempOffsetX(activeCharacter.imgOffsetX ?? 50); setTempOffsetY(activeCharacter.imgOffsetY ?? 50); setFramingOpen(true); }}
+                onClick={() => { setTempCharacterImg(activeCharacter.img || ''); setTempOffsetX(activeCharacter.imgOffsetX ?? 50); setTempOffsetY(activeCharacter.imgOffsetY ?? 50); setShowFramingSliders(false); setEditingCharacterImg(true); }}
               >
                 <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/50 rounded-xl">
-                  <span className="text-[8px] text-white font-black uppercase tracking-widest text-center px-2">Ajustar enquadramento</span>
+                  <span className="text-[8px] text-white font-black uppercase tracking-widest text-center px-2">Editar imagem</span>
                 </div>
               </div>
-              <button
-                onClick={() => { setTempCharacterImg(activeCharacter.img || '/placeholder-rpg.png'); setTempOffsetX(activeCharacter.imgOffsetX ?? 50); setTempOffsetY(activeCharacter.imgOffsetY ?? 50); setEditingCharacterImg(true); }}
-                className="text-[8px] text-[#4a5a4a] hover:text-[#00ff66] uppercase tracking-widest transition-colors"
-              >
-                Trocar imagem
-              </button>
             </div>
-
-            {/* Popup de enquadramento */}
-            {framingOpen && (
-              <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80" onClick={(e) => e.target === e.currentTarget && setFramingOpen(false)}>
-                <div className="bg-[#0a120a] border border-[#1a2a1a] rounded-2xl p-6 w-80 space-y-5 shadow-[0_0_40px_rgba(0,0,0,0.8)]">
-                  <h3 className="text-[#f1e5ac] text-xs font-black uppercase text-center tracking-widest">Enquadramento</h3>
-                  <div
-                    className="w-full h-48 rounded-xl bg-cover border border-[#1a2a1a] mx-auto"
-                    style={{
-                      backgroundImage: `url(${activeCharacter.img || '/placeholder.png'})`,
-                      backgroundPosition: `${tempOffsetX}% ${tempOffsetY}%`
-                    }}
-                  />
-                  <div>
-                    <label className="block text-[#4a5a4a] text-[10px] font-black uppercase tracking-widest mb-2">Horizontal ({tempOffsetX}%)</label>
-                    <input type="range" min={0} max={100} value={tempOffsetX} onChange={(e) => setTempOffsetX(Number(e.target.value))} className="w-full accent-[#00ff66] cursor-pointer" />
-                  </div>
-                  <div>
-                    <label className="block text-[#4a5a4a] text-[10px] font-black uppercase tracking-widest mb-2">Vertical ({tempOffsetY}%)</label>
-                    <input type="range" min={0} max={100} value={tempOffsetY} onChange={(e) => setTempOffsetY(Number(e.target.value))} className="w-full accent-[#00ff66] cursor-pointer" />
-                  </div>
-                  <div className="flex gap-2">
-                    <button onClick={() => setFramingOpen(false)} className="flex-1 border border-[#1a2a1a] text-[#4a5a4a] text-[10px] font-black uppercase py-2 rounded-lg hover:border-[#00ff66]/40 transition-all">Cancelar</button>
-                    <button
-                      onClick={async () => {
-                        const updated = { ...activeCharacter, imgOffsetX: tempOffsetX, imgOffsetY: tempOffsetY };
-                        setActiveCharacter(updated);
-                        setFramingOpen(false);
-                        await saveToDatabase(updated);
-                      }}
-                      className="flex-1 bg-[#00ff66] text-black text-[10px] font-black uppercase py-2 rounded-lg hover:brightness-110 transition-all"
-                    >
-                      Salvar
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
 
             {/* Infos Básicas */}
             <div className="bg-black/60 border border-[#1a2a1a] p-4 rounded-xl grid grid-cols-2 gap-3">
@@ -766,39 +714,83 @@ export default function PersonagensPage() {
           </div>
         </div>
 
-        <FormModal isOpen={editingCharacterImg} onClose={() => setEditingCharacterImg(false)} title="Imagem do Personagem" onSubmit={handleSaveCharacterImage}>
-          <TextInput label="URL da imagem" value={tempCharacterImg} onChange={(e) => setTempCharacterImg(e.target.value)} placeholder="https://..." />
-          <ImageUpload label="Ou faça upload" onChange={handleCharacterImageFileChange} currentImage={undefined} />
-          {tempCharacterImg && (
-            <div className="text-center">
-              <label className="block text-[#4a5a4a] text-[10px] font-black uppercase tracking-[0.2em] mb-2">Preview</label>
-              <div
-                className="w-28 h-28 mx-auto rounded-xl bg-cover border border-[#1a2a1a]"
-                style={{
-                  backgroundImage: `url(${tempCharacterImg})`,
-                  backgroundPosition: `${tempOffsetX}% ${tempOffsetY}%`
-                }}
-              />
+        {/* Popup unificado: trocar imagem + enquadramento */}
+        {editingCharacterImg && (
+          <div
+            className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80"
+            onClick={(e) => e.target === e.currentTarget && setEditingCharacterImg(false)}
+          >
+            <div className="bg-[#0a120a] border border-[#1a2a1a] rounded-2xl p-6 w-96 space-y-4 shadow-[0_0_40px_rgba(0,0,0,0.8)]">
+              <h3 className="text-[#f1e5ac] text-xs font-black uppercase text-center tracking-widest">Imagem do Personagem</h3>
+
+              {/* Preview */}
+              {(tempCharacterImg || activeCharacter.img) && (
+                <div
+                  className="w-full h-44 rounded-xl border border-[#1a2a1a] bg-cover"
+                  style={{
+                    backgroundImage: `url(${tempCharacterImg || activeCharacter.img})`,
+                    backgroundPosition: `${tempOffsetX}% ${tempOffsetY}%`
+                  }}
+                />
+              )}
+
+              {/* Upload */}
+              <div>
+                <label className="block text-[#4a5a4a] text-[10px] font-black uppercase tracking-widest mb-1">Ou faça upload</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleCharacterImageFileChange}
+                  className="w-full bg-black border border-[#1a2a1a] rounded-lg py-2 px-3 text-white text-xs focus:outline-none focus:border-[#00ff66] file:mr-3 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:font-black file:bg-[#00ff66] file:text-black cursor-pointer"
+                />
+              </div>
+
+              {/* Botão enquadramento */}
+              <button
+                type="button"
+                onClick={() => setShowFramingSliders((v) => !v)}
+                className="w-full border border-[#1a2a1a] text-[#4a5a4a] hover:text-[#00ff66] hover:border-[#00ff66]/40 text-[10px] font-black uppercase py-2 rounded-lg transition-all flex items-center justify-center gap-2"
+              >
+                {showFramingSliders ? '▲ Ocultar enquadramento' : '▼ Ajustar enquadramento'}
+              </button>
+
+              {/* Sliders (condicional) */}
+              {showFramingSliders && (
+                <div className="space-y-3 border border-[#1a2a1a] rounded-xl p-3">
+                  <div>
+                    <label className="block text-[#4a5a4a] text-[10px] font-black uppercase tracking-widest mb-1">Horizontal ({tempOffsetX}%)</label>
+                    <input type="range" min={0} max={100} value={tempOffsetX} onChange={(e) => setTempOffsetX(Number(e.target.value))} className="w-full accent-[#00ff66] cursor-pointer" />
+                  </div>
+                  <div>
+                    <label className="block text-[#4a5a4a] text-[10px] font-black uppercase tracking-widest mb-1">Vertical ({tempOffsetY}%)</label>
+                    <input type="range" min={0} max={100} value={tempOffsetY} onChange={(e) => setTempOffsetY(Number(e.target.value))} className="w-full accent-[#00ff66] cursor-pointer" />
+                  </div>
+                </div>
+              )}
+
+              {/* Ações */}
+              <div className="flex gap-2 pt-1">
+                <button
+                  onClick={() => setEditingCharacterImg(false)}
+                  className="flex-1 border border-[#1a2a1a] text-[#4a5a4a] text-[10px] font-black uppercase py-2 rounded-lg hover:border-[#00ff66]/40 transition-all"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={async () => {
+                    const updated = { ...activeCharacter, img: tempCharacterImg || activeCharacter.img, imgOffsetX: tempOffsetX, imgOffsetY: tempOffsetY };
+                    setActiveCharacter(updated);
+                    setEditingCharacterImg(false);
+                    await saveToDatabase(updated);
+                  }}
+                  className="flex-1 bg-[#00ff66] text-black text-[10px] font-black uppercase py-2 rounded-lg hover:brightness-110 transition-all"
+                >
+                  Salvar
+                </button>
+              </div>
             </div>
-          )}
-          <div>
-            <label className="block text-[#4a5a4a] text-[10px] font-black uppercase tracking-[0.2em] mb-2">Enquadramento Horizontal ({tempOffsetX}%)</label>
-            <input
-              type="range" min={0} max={100} value={tempOffsetX}
-              onChange={(e) => setTempOffsetX(Number(e.target.value))}
-              className="w-full accent-[#00ff66] cursor-pointer"
-            />
           </div>
-          <div>
-            <label className="block text-[#4a5a4a] text-[10px] font-black uppercase tracking-[0.2em] mb-2">Enquadramento Vertical ({tempOffsetY}%)</label>
-            <input
-              type="range" min={0} max={100} value={tempOffsetY}
-              onChange={(e) => setTempOffsetY(Number(e.target.value))}
-              className="w-full accent-[#00ff66] cursor-pointer"
-            />
-          </div>
-          <ModalButtons primaryText="Aplicar" primaryType="submit" onSecondary={() => setEditingCharacterImg(false)} />
-        </FormModal>
+        )}
       </>
     );
   };
