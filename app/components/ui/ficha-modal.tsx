@@ -147,13 +147,13 @@ export default function FichaModal({ isOpen, onClose, characterId }: FichaModalP
     };
 
     return (
-        /* Backdrop — clique fora fecha, mesa visível atrás */
+        /* Backdrop semitransparente — mesa visível atrás */
         <div
-            className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4"
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-8"
             onClick={(e) => e.target === e.currentTarget && onClose()}
         >
-            {/* Painel da ficha — ocupa a maior parte da tela */}
-            <div className="bg-[#020502] border border-[#1a2a1a] rounded-2xl shadow-[0_0_60px_rgba(0,0,0,0.8)] w-full max-w-[1300px] h-[92vh] flex flex-col overflow-hidden">
+            {/* Painel da ficha */}
+            <div className="bg-[#020502]/95 border border-[#1a2a1a] rounded-2xl shadow-[0_0_80px_rgba(0,255,102,0.06),0_0_60px_rgba(0,0,0,0.9)] w-full max-w-[1300px] h-[88vh] flex flex-col overflow-hidden">
                 <div className="flex-1 overflow-y-auto px-6 py-8">
 
                     {loading && (
