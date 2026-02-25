@@ -147,14 +147,14 @@ export default function FichaModal({ isOpen, onClose, characterId }: FichaModalP
     };
 
     return (
-        /* Overlay — clique fora fecha */
+        /* Backdrop — clique fora fecha, mesa visível atrás */
         <div
-            className="fixed inset-0 bg-black/90 z-50 overflow-y-auto"
+            className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4"
             onClick={(e) => e.target === e.currentTarget && onClose()}
         >
-            {/* Mesma estrutura/fundo da página de personagens */}
-            <div className="min-h-screen bg-[#020502]">
-                <div className="max-w-[1400px] mx-auto py-12 px-6">
+            {/* Painel da ficha — ocupa a maior parte da tela */}
+            <div className="bg-[#020502] border border-[#1a2a1a] rounded-2xl shadow-[0_0_60px_rgba(0,0,0,0.8)] w-full max-w-[1300px] h-[92vh] flex flex-col overflow-hidden">
+                <div className="flex-1 overflow-y-auto px-6 py-8">
 
                     {loading && (
                         <div className="text-center text-[#8a9a8a] text-sm py-20">Carregando ficha...</div>
