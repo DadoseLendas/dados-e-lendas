@@ -106,6 +106,28 @@ export default function FichaModal({ isOpen, onClose, characterId }: FichaModalP
     const [character, setCharacter] = useState<Character | null>(null);
     const [loading, setLoading] = useState(false);
 
+    // ── Enquadramento ────────────────────────────────────────────────────────
+    const [framingOpen, setFramingOpen] = useState(false);
+    const [tempOffsetX, setTempOffsetX] = useState(50);
+    const [tempOffsetY, setTempOffsetY] = useState(50);
+    const [savingFrame, setSavingFrame] = useState(false);
+
+    const openFraming = () => {
+        setTempOffsetX(character?.imgOffsetX ?? 50);
+        setTempOffsetY(character?.imgOffsetY ?? 50);
+        setFramingOpen(true);
+    };
+
+    const saveFraming = async () => {
+        if (!character) return;
+        setSavingFrame(true);
+        await supabase.from('characters').update({ imgOffsetX: tempOffsetX, imgOffsetY: tempOffsetY }).eq('id', character.id);
+        setCharacter({ ...character, imgOffsetX: tempOffsetX, imgOffsetY: tempOffsetY });
+        setSavingFrame(false);
+        setFramingOpen(false);
+    };
+    // ─────────────────────────────────────────────────────────────────────────
+
     useEffect(() => {
         if (!isOpen || !characterId) return;
         const fetchCharacter = async () => {
@@ -192,13 +214,46 @@ export default function FichaModal({ isOpen, onClose, characterId }: FichaModalP
                                         {/* Foto */}
                                         <div className="bg-[#050a05] border border-[#1a2a1a] p-2 rounded-2xl flex flex-col items-center w-fit mx-auto">
                                             <div
-                                                className="w-36 h-36 bg-black rounded-xl bg-cover border border-[#1a2a1a]"
+                                                className="w-36 h-36 bg-black rounded-xl bg-cover border border-[#1a2a1a] cursor-pointer hover:brightness-110 transition-all relative group"
                                                 style={{
                                                     backgroundImage: `url(${character.img || '/placeholder.png'})`,
                                                     backgroundPosition: `${character.imgOffsetX ?? 50}% ${character.imgOffsetY ?? 50}%`
                                                 }}
-                                            />
+                                                onClick={openFraming}
+                                            >
+                                                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/50 rounded-xl">
+                                                    <span className="text-[8px] text-white font-black uppercase tracking-widest text-center px-2">Ajustar enquadramento</span>
+                                                </div>
+                                            </div>
                                         </div>
+
+                                        {/* Popup de enquadramento */}
+                                        {framingOpen && (
+                                            <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80" onClick={(e) => e.target === e.currentTarget && setFramingOpen(false)}>
+                                                <div className="bg-[#0a120a] border border-[#1a2a1a] rounded-2xl p-6 w-80 space-y-5 shadow-[0_0_40px_rgba(0,0,0,0.8)]">
+                                                    <h3 className="text-[#f1e5ac] text-xs font-black uppercase text-center tracking-widest">Enquadramento</h3>
+                                                    <div
+                                                        className="w-full h-40 rounded-xl bg-cover border border-[#1a2a1a] mx-auto"
+                                                        style={{
+                                                            backgroundImage: `url(${character.img || '/placeholder.png'})`,
+                                                            backgroundPosition: `${tempOffsetX}% ${tempOffsetY}%`
+                                                        }}
+                                                    />
+                                                    <div>
+                                                        <label className="block text-[#4a5a4a] text-[10px] font-black uppercase tracking-widest mb-2">Horizontal ({tempOffsetX}%)</label>
+                                                        <input type="range" min={0} max={100} value={tempOffsetX} onChange={(e) => setTempOffsetX(Number(e.target.value))} className="w-full accent-[#00ff66] cursor-pointer" />
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-[#4a5a4a] text-[10px] font-black uppercase tracking-widest mb-2">Vertical ({tempOffsetY}%)</label>
+                                                        <input type="range" min={0} max={100} value={tempOffsetY} onChange={(e) => setTempOffsetY(Number(e.target.value))} className="w-full accent-[#00ff66] cursor-pointer" />
+                                                    </div>
+                                                    <div className="flex gap-2">
+                                                        <button onClick={() => setFramingOpen(false)} className="flex-1 border border-[#1a2a1a] text-[#4a5a4a] text-[10px] font-black uppercase py-2 rounded-lg hover:border-[#00ff66]/40 transition-all">Cancelar</button>
+                                                        <button onClick={saveFraming} disabled={savingFrame} className="flex-1 bg-[#00ff66] text-black text-[10px] font-black uppercase py-2 rounded-lg hover:brightness-110 transition-all disabled:opacity-50">{savingFrame ? 'Salvando...' : 'Salvar'}</button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
 
                                         {/* Infos Básicas */}
                                         <div className="bg-black/60 border border-[#1a2a1a] p-2 rounded-xl grid grid-cols-2 gap-1.5">

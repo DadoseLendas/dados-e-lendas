@@ -251,10 +251,12 @@ export default function PersonagensPage() {
       reader.onload = (event) => setTempCharacterImg(event.target?.result as string);
       reader.readAsDataURL(file);
     };
-    const handleSaveCharacterImage = (e: React.FormEvent) => {
+    const handleSaveCharacterImage = async (e: React.FormEvent) => {
       e.preventDefault();
-      setActiveCharacter({ ...activeCharacter, img: tempCharacterImg || '/placeholder-rpg.png', imgOffsetX: tempOffsetX, imgOffsetY: tempOffsetY });
+      const updated = { ...activeCharacter, img: tempCharacterImg || '/placeholder-rpg.png', imgOffsetX: tempOffsetX, imgOffsetY: tempOffsetY };
+      setActiveCharacter(updated);
       setEditingCharacterImg(false);
+      await saveToDatabase(updated);
     };
 
     return (
