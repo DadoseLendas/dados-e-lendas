@@ -109,6 +109,13 @@ export default function Navbar({ abaAtiva, setAbaAtiva }: NavbarProps) {
                 >
                   Personagens
                 </button>
+
+                <button 
+                  onClick={() => { setAbaAtiva('mesa'); router.push('/mesa'); }}
+                  className={`${abaAtiva === 'mesa' ? 'text-[#00ff66] border-b-2 border-[#00ff66] pb-1' : 'text-[#8a9a8a] hover:text-[#00ff66]'} transition-all`}
+                >
+                  Mesa
+                </button>
               </div>
             )}
 
