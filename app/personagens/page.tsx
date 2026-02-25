@@ -203,14 +203,8 @@ export default function PersonagensPage() {
   };
 
   const deleteCharacter = async (id: any) => {
-    const { data: deleted, error } = await supabase.from('characters').delete().eq('id', id).select();
-    console.log('[deleteCharacter] id:', id, 'deleted:', deleted, 'error:', error);
+    const { error } = await supabase.from('characters').delete().eq('id', id);
     if (error) { alert('Erro ao excluir: ' + error.message); return; }
-    if (!deleted || deleted.length === 0) {
-      alert('Não foi possível excluir o personagem. Verifique as permissões (RLS) no Supabase: é preciso uma política de DELETE em characters que use auth.uid() = owner_id.');
-      setConfirmDeleteId(null);
-      return;
-    }
     setCharacters((prev) => prev.filter(c => c.id !== id));
     setActiveCharacter(null);
     setConfirmDeleteId(null);
