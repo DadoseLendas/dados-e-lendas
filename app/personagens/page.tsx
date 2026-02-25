@@ -82,6 +82,7 @@ export default function PersonagensPage() {
   const [confirmDeleteId, setConfirmDeleteId] = useState<any>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteStatus, setDeleteStatus] = useState<string | null>(null);
   const [editingCharacterImg, setEditingCharacterImg] = useState(false);
   const [tempCharacterImg, setTempCharacterImg] = useState('');
   const [tempOffsetX, setTempOffsetX] = useState(50);
@@ -206,19 +207,26 @@ export default function PersonagensPage() {
   };
 
   const deleteCharacter = async (id: any) => {
+    setDeleteStatus('1. Iniciando delete id=' + id + ' tipo=' + typeof id);
     setDeleteLoading(true);
-    setDeleteError(null);
     const { data: deleted, error } = await supabase.from('characters').delete().eq('id', id).select();
     setDeleteLoading(false);
-    if (error) { setDeleteError('Erro: ' + error.message); return; }
-    if (!deleted || deleted.length === 0) {
-      setDeleteError('RLS bloqueou a exclusão. Crie a política DELETE no Supabase.');
+    if (error) {
+      setDeleteStatus('ERRO: ' + error.message + ' | code=' + error.code);
+      setDeleteError('Erro: ' + error.message);
       return;
     }
+    if (!deleted || deleted.length === 0) {
+      setDeleteStatus('RLS BLOQUEOU: deleted=' + JSON.stringify(deleted));
+      setDeleteError('RLS bloqueou a exclusão.');
+      return;
+    }
+    setDeleteStatus('SUCESSO: ' + deleted.length + ' linha(s) excluída(s)');
     setCharacters((prev) => prev.filter(c => c.id !== id));
     setActiveCharacter(null);
     setConfirmDeleteId(null);
     setDeleteError(null);
+    setTimeout(() => setDeleteStatus(null), 3000);
   };
 
   const updateCharacter = (field: string, value: any) => {
@@ -814,6 +822,11 @@ export default function PersonagensPage() {
 
   return (
     <>
+    {deleteStatus && (
+      <div style={{position:'fixed',top:0,left:0,right:0,zIndex:99999,background:'#7f1d1d',color:'white',padding:'12px 24px',fontSize:13,fontWeight:700,textAlign:'center'}}>
+        {deleteStatus}
+      </div>
+    )}
     <div className="min-h-screen bg-[#020502]">
       <Navbar abaAtiva={abaAtiva} setAbaAtiva={setAbaAtiva} />
       <div className={`${activeCharacter ? 'max-w-[1400px]' : 'max-w-[1000px]'} mx-auto py-12 px-6`}>
