@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import type { ChangeEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
@@ -70,10 +70,11 @@ type Character = {
 
 export default function PersonagensPage() {
   const router = useRouter();
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [characters, setCharacters] = useState<Character[]>([]);
   const [activeCharacter, setActiveCharacter] = useState<Character | null>(null);
   const [loadingAction, setLoadingAction] = useState(false);
@@ -123,6 +124,7 @@ export default function PersonagensPage() {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
         setIsAuthenticated(true);
+        setCurrentUserId(session.user.id);
         await fetchCharacters();
       }
       setIsLoadingAuth(false);
@@ -207,26 +209,38 @@ export default function PersonagensPage() {
   };
 
   const deleteCharacter = async (id: any) => {
-    setDeleteStatus('1. Iniciando delete id=' + id + ' tipo=' + typeof id);
+    setDeleteStatus('Verificando posse...');
     setDeleteLoading(true);
-    const { data: deleted, error } = await supabase.from('characters').delete().eq('id', id).select();
-    setDeleteLoading(false);
-    if (error) {
-      setDeleteStatus('ERRO: ' + error.message + ' | code=' + error.code);
-      setDeleteError('Erro: ' + error.message);
+
+    // Busca o personagem para confirmar que pertence ao usuário logado
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { setDeleteStatus('Sem sessão'); setDeleteLoading(false); return; }
+
+    const { data: owned } = await supabase
+      .from('characters')
+      .select('id')
+      .eq('id', id)
+      .eq('owner_id', user.id)
+      .maybeSingle();
+
+    if (!owned) {
+      setDeleteStatus('Personagem não encontrado ou não é seu. id=' + id + ' user=' + user.id);
+      setDeleteLoading(false);
       return;
     }
-    if (!deleted || deleted.length === 0) {
-      setDeleteStatus('RLS BLOQUEOU: deleted=' + JSON.stringify(deleted));
-      setDeleteError('RLS bloqueou a exclusão.');
-      return;
-    }
-    setDeleteStatus('SUCESSO: ' + deleted.length + ' linha(s) excluída(s)');
+
+    // Pertence ao usuário — remove do state imediatamente
     setCharacters((prev) => prev.filter(c => c.id !== id));
     setActiveCharacter(null);
     setConfirmDeleteId(null);
     setDeleteError(null);
-    setTimeout(() => setDeleteStatus(null), 3000);
+    setDeleteStatus(null);
+    setDeleteLoading(false);
+
+    // Dispara o DELETE em background
+    supabase.from('characters').delete().eq('id', id).eq('owner_id', user.id).then(({ error }) => {
+      if (error) console.error('[DELETE background error]', error.message);
+    });
   };
 
   const updateCharacter = (field: string, value: any) => {
