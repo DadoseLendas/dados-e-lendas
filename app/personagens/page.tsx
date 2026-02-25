@@ -81,9 +81,6 @@ export default function PersonagensPage() {
 
   const [dropdownOpen, setDropdownOpen] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<any>(null);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
-  const [deleteLoading, setDeleteLoading] = useState(false);
-  const [deleteStatus, setDeleteStatus] = useState<string | null>(null);
   const [editingCharacterImg, setEditingCharacterImg] = useState(false);
   const [tempCharacterImg, setTempCharacterImg] = useState('');
   const [tempOffsetX, setTempOffsetX] = useState(50);
@@ -134,14 +131,13 @@ export default function PersonagensPage() {
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (confirmDeleteId !== null) return; // não feche nada se o modal de exclusão estiver aberto
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setDropdownOpen(null);
       }
     }
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [confirmDeleteId]);
+  }, []);
 
   const saveToDatabase = async (char: Character) => {
     setLoadingAction(true);
@@ -209,38 +205,11 @@ export default function PersonagensPage() {
   };
 
   const deleteCharacter = async (id: any) => {
-    setDeleteStatus('Verificando posse...');
-    setDeleteLoading(true);
-
-    // Busca o personagem para confirmar que pertence ao usuário logado
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { setDeleteStatus('Sem sessão'); setDeleteLoading(false); return; }
-
-    const { data: owned } = await supabase
-      .from('characters')
-      .select('id')
-      .eq('id', id)
-      .eq('owner_id', user.id)
-      .maybeSingle();
-
-    if (!owned) {
-      setDeleteStatus('Personagem não encontrado ou não é seu. id=' + id + ' user=' + user.id);
-      setDeleteLoading(false);
-      return;
-    }
-
-    // Pertence ao usuário — remove do state imediatamente
+    const { error } = await supabase.from('characters').delete().eq('id', id);
+    if (error) { console.error('Erro ao excluir:', error.message); return; }
     setCharacters((prev) => prev.filter(c => c.id !== id));
-    setActiveCharacter(null);
+    if (activeCharacter?.id === id) setActiveCharacter(null);
     setConfirmDeleteId(null);
-    setDeleteError(null);
-    setDeleteStatus(null);
-    setDeleteLoading(false);
-
-    // Dispara o DELETE em background
-    supabase.from('characters').delete().eq('id', id).eq('owner_id', user.id).then(({ error }) => {
-      if (error) console.error('[DELETE background error]', error.message);
-    });
   };
 
   const updateCharacter = (field: string, value: any) => {
@@ -836,11 +805,6 @@ export default function PersonagensPage() {
 
   return (
     <>
-    {deleteStatus && (
-      <div style={{position:'fixed',top:0,left:0,right:0,zIndex:99999,background:'#7f1d1d',color:'white',padding:'12px 24px',fontSize:13,fontWeight:700,textAlign:'center'}}>
-        {deleteStatus}
-      </div>
-    )}
     <div className="min-h-screen bg-[#020502]">
       <Navbar abaAtiva={abaAtiva} setAbaAtiva={setAbaAtiva} />
       <div className={`${activeCharacter ? 'max-w-[1400px]' : 'max-w-[1000px]'} mx-auto py-12 px-6`}>
@@ -866,7 +830,7 @@ export default function PersonagensPage() {
                       showMetaDivider={false} metaLarge image={char.img}
                       dropdownOpen={dropdownOpen === String(char.id)}
                       onDropdownToggle={() => setDropdownOpen((prev) => prev === String(char.id) ? null : String(char.id))}
-                      dropdownRef={dropdownRef} onDelete={() => { setDropdownOpen(null); deleteCharacter(char.id); }}
+                      dropdownRef={dropdownRef} onDelete={() => { setDropdownOpen(null); setConfirmDeleteId(char.id); }}
                       onAccess={() => { setActiveCharacter(char); setDropdownOpen(null); }}
                       accessLabel="Acessar" deleteLabel="Excluir"
                     />
@@ -881,33 +845,19 @@ export default function PersonagensPage() {
 
     </div>
 
-      {/* Modal de confirmação de exclusão */}
       {confirmDeleteId !== null && (
-        <div style={{position:'fixed',inset:0,zIndex:9999,display:'flex',alignItems:'center',justifyContent:'center',background:'rgba(0,0,0,0.85)'}}>
-          <div style={{background:'#0a120a',border:'1px solid #1a2a1a',borderRadius:16,padding:24,width:340,display:'flex',flexDirection:'column',gap:16}}>
-            <h3 style={{color:'white',fontSize:14,fontWeight:900,textTransform:'uppercase',textAlign:'center',letterSpacing:'0.2em',margin:0}}>Excluir personagem?</h3>
-            <p style={{color:'#8a9a8a',fontSize:11,textAlign:'center',margin:0}}>Esta ação não pode ser desfeita.</p>
-            {deleteError && (
-              <div style={{background:'#7f1d1d',border:'1px solid #dc2626',borderRadius:8,padding:12}}>
-                <p style={{color:'#fca5a5',fontSize:12,textAlign:'center',margin:0,fontWeight:700}}>{deleteError}</p>
-              </div>
-            )}
-            <div style={{display:'flex',gap:8,marginTop:4}}>
-              <button
-                type="button"
-                onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(null); setDeleteError(null); }}
-                disabled={deleteLoading}
-                style={{flex:1,border:'1px solid #2a3a2a',color:'#8a9a8a',fontSize:11,fontWeight:700,padding:'10px 0',borderRadius:8,background:'transparent',cursor:'pointer'}}
-              >
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80">
+          <div className="bg-[#0a120a] border border-[#1a2a1a] rounded-2xl p-6 w-80 flex flex-col gap-5">
+            <h3 className="text-white text-xs font-black uppercase text-center tracking-widest">Excluir personagem?</h3>
+            <p className="text-[#4a5a4a] text-[10px] text-center uppercase">Esta ação não pode ser desfeita.</p>
+            <div className="flex gap-2">
+              <button type="button" onClick={() => setConfirmDeleteId(null)}
+                className="flex-1 border border-[#1a2a1a] text-[#4a5a4a] text-[10px] font-black uppercase py-2 rounded-lg">
                 Cancelar
               </button>
-              <button
-                type="button"
-                onClick={(e) => { e.stopPropagation(); deleteCharacter(confirmDeleteId); }}
-                disabled={deleteLoading}
-                style={{flex:1,background:deleteLoading?'#7f1d1d':'#dc2626',color:'white',fontSize:11,fontWeight:700,padding:'10px 0',borderRadius:8,border:'none',cursor:'pointer'}}
-              >
-                {deleteLoading ? 'Excluindo...' : 'Excluir'}
+              <button type="button" onClick={() => deleteCharacter(confirmDeleteId)}
+                className="flex-1 bg-red-600 text-white text-[10px] font-black uppercase py-2 rounded-lg">
+                Excluir
               </button>
             </div>
           </div>
