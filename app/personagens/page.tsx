@@ -80,6 +80,8 @@ export default function PersonagensPage() {
 
   const [dropdownOpen, setDropdownOpen] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<any>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const [editingCharacterImg, setEditingCharacterImg] = useState(false);
   const [tempCharacterImg, setTempCharacterImg] = useState('');
   const [tempOffsetX, setTempOffsetX] = useState(50);
@@ -203,15 +205,19 @@ export default function PersonagensPage() {
   };
 
   const deleteCharacter = async (id: any) => {
+    setDeleteLoading(true);
+    setDeleteError(null);
     const { data: deleted, error } = await supabase.from('characters').delete().eq('id', id).select();
-    if (error) { alert('ERRO: ' + error.message); return; }
+    setDeleteLoading(false);
+    if (error) { setDeleteError('Erro: ' + error.message); return; }
     if (!deleted || deleted.length === 0) {
-      alert('RLS bloqueou: nenhuma linha excluída.\nid=' + id + ' tipo=' + typeof id);
+      setDeleteError('RLS bloqueou a exclusão. Crie a política DELETE no Supabase.');
       return;
     }
     setCharacters((prev) => prev.filter(c => c.id !== id));
     setActiveCharacter(null);
     setConfirmDeleteId(null);
+    setDeleteError(null);
   };
 
   const updateCharacter = (field: string, value: any) => {
@@ -850,13 +856,17 @@ export default function PersonagensPage() {
       {/* Modal de confirmação de exclusão */}
       {confirmDeleteId !== null && (
         <div style={{position:'fixed',inset:0,zIndex:9999,display:'flex',alignItems:'center',justifyContent:'center',background:'rgba(0,0,0,0.8)'}}>
-          <div style={{background:'#0a120a',border:'1px solid #1a2a1a',borderRadius:16,padding:24,width:320,display:'flex',flexDirection:'column',gap:20}}>
+          <div style={{background:'#0a120a',border:'1px solid #1a2a1a',borderRadius:16,padding:24,width:320,display:'flex',flexDirection:'column',gap:16}}>
             <h3 style={{color:'white',fontSize:12,fontWeight:900,textTransform:'uppercase',textAlign:'center',letterSpacing:'0.2em',margin:0}}>Excluir personagem?</h3>
             <p style={{color:'#4a5a4a',fontSize:10,textAlign:'center',textTransform:'uppercase',margin:0}}>Esta ação não pode ser desfeita.</p>
+            {deleteError && (
+              <p style={{color:'#f87171',fontSize:10,textAlign:'center',margin:0,background:'#1a0000',padding:'8px',borderRadius:8}}>{deleteError}</p>
+            )}
             <div style={{display:'flex',gap:8}}>
               <button
                 type="button"
-                onMouseDown={() => setConfirmDeleteId(null)}
+                onMouseDown={() => { setConfirmDeleteId(null); setDeleteError(null); }}
+                disabled={deleteLoading}
                 style={{flex:1,border:'1px solid #1a2a1a',color:'#4a5a4a',fontSize:10,fontWeight:900,textTransform:'uppercase',padding:'8px 0',borderRadius:8,background:'transparent',cursor:'pointer'}}
               >
                 Cancelar
@@ -864,9 +874,10 @@ export default function PersonagensPage() {
               <button
                 type="button"
                 onMouseDown={() => deleteCharacter(confirmDeleteId)}
-                style={{flex:1,background:'#dc2626',color:'white',fontSize:10,fontWeight:900,textTransform:'uppercase',padding:'8px 0',borderRadius:8,border:'none',cursor:'pointer'}}
+                disabled={deleteLoading}
+                style={{flex:1,background: deleteLoading ? '#7f1d1d' : '#dc2626',color:'white',fontSize:10,fontWeight:900,textTransform:'uppercase',padding:'8px 0',borderRadius:8,border:'none',cursor:'pointer'}}
               >
-                Excluir
+                {deleteLoading ? 'Excluindo...' : 'Excluir'}
               </button>
             </div>
           </div>
