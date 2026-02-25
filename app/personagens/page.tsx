@@ -63,6 +63,8 @@ type Character = {
   inventory: { id: number; name: string }[];
   spells: { id: number; name: string; level: string }[];
   img: string;
+  imgOffsetX?: number;
+  imgOffsetY?: number;
   is_linked?: boolean;
   owner_id?: string;
 }
@@ -80,6 +82,8 @@ export default function PersonagensPage() {
   const [dropdownOpen, setDropdownOpen] = useState<string | null>(null);
   const [editingCharacterImg, setEditingCharacterImg] = useState(false);
   const [tempCharacterImg, setTempCharacterImg] = useState('');
+  const [tempOffsetX, setTempOffsetX] = useState(50);
+  const [tempOffsetY, setTempOffsetY] = useState(50);
   const [newInventoryItem, setNewInventoryItem] = useState('');
   const [newSpellName, setNewSpellName] = useState('');
   const [newItem, setNewItem] = useState('');
@@ -239,7 +243,7 @@ export default function PersonagensPage() {
     if (!activeCharacter) return null;
     const raceInfo = RACE_DATA[activeCharacter.race];
 
-    const openCharacterImageModal = () => { setTempCharacterImg(activeCharacter.img || '/placeholder-rpg.png'); setEditingCharacterImg(true); };
+    const openCharacterImageModal = () => { setTempCharacterImg(activeCharacter.img || '/placeholder-rpg.png'); setTempOffsetX(activeCharacter.imgOffsetX ?? 50); setTempOffsetY(activeCharacter.imgOffsetY ?? 50); setEditingCharacterImg(true); };
     const handleCharacterImageFileChange = (e: ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (!file) return;
@@ -249,7 +253,7 @@ export default function PersonagensPage() {
     };
     const handleSaveCharacterImage = (e: React.FormEvent) => {
       e.preventDefault();
-      updateCharacter('img', tempCharacterImg || '/placeholder-rpg.png');
+      setActiveCharacter({ ...activeCharacter, img: tempCharacterImg || '/placeholder-rpg.png', imgOffsetX: tempOffsetX, imgOffsetY: tempOffsetY });
       setEditingCharacterImg(false);
     };
 
@@ -382,12 +386,16 @@ export default function PersonagensPage() {
           {/* COLUNA 1 - col-span-4 */}
           <div className="lg:col-span-4 space-y-4">
             {/* Foto */}
-            <div className="bg-[#050a05] border border-[#1a2a1a] p-4 rounded-2xl">
+            <div className="bg-[#050a05] border border-[#1a2a1a] p-2 rounded-2xl flex flex-col items-center gap-1 w-fit mx-auto">
               <div
-                className="w-full aspect-video bg-black rounded-xl bg-cover bg-center border border-[#1a2a1a] cursor-pointer"
-                style={{ backgroundImage: `url(${activeCharacter.img || '/placeholder.png'})` }}
-                onClick={() => setEditingCharacterImg(true)}
+                className="w-52 h-52 bg-black rounded-xl bg-cover border border-[#1a2a1a] cursor-pointer hover:brightness-110 transition-all"
+                style={{
+                  backgroundImage: `url(${activeCharacter.img || '/placeholder.png'})`,
+                  backgroundPosition: `${activeCharacter.imgOffsetX ?? 50}% ${activeCharacter.imgOffsetY ?? 50}%`
+                }}
+                onClick={() => { setTempCharacterImg(activeCharacter.img || '/placeholder-rpg.png'); setTempOffsetX(activeCharacter.imgOffsetX ?? 50); setTempOffsetY(activeCharacter.imgOffsetY ?? 50); setEditingCharacterImg(true); }}
               />
+              <span className="text-[8px] text-[#4a5a4a] uppercase tracking-widest">Clique para editar</span>
             </div>
 
             {/* Infos Básicas */}
@@ -710,7 +718,35 @@ export default function PersonagensPage() {
 
         <FormModal isOpen={editingCharacterImg} onClose={() => setEditingCharacterImg(false)} title="Imagem do Personagem" onSubmit={handleSaveCharacterImage}>
           <TextInput label="URL da imagem" value={tempCharacterImg} onChange={(e) => setTempCharacterImg(e.target.value)} placeholder="https://..." />
-          <ImageUpload label="Ou faça upload" onChange={handleCharacterImageFileChange} currentImage={tempCharacterImg} />
+          <ImageUpload label="Ou faça upload" onChange={handleCharacterImageFileChange} currentImage={undefined} />
+          {tempCharacterImg && (
+            <div className="text-center">
+              <label className="block text-[#4a5a4a] text-[10px] font-black uppercase tracking-[0.2em] mb-2">Preview</label>
+              <div
+                className="w-28 h-28 mx-auto rounded-xl bg-cover border border-[#1a2a1a]"
+                style={{
+                  backgroundImage: `url(${tempCharacterImg})`,
+                  backgroundPosition: `${tempOffsetX}% ${tempOffsetY}%`
+                }}
+              />
+            </div>
+          )}
+          <div>
+            <label className="block text-[#4a5a4a] text-[10px] font-black uppercase tracking-[0.2em] mb-2">Enquadramento Horizontal ({tempOffsetX}%)</label>
+            <input
+              type="range" min={0} max={100} value={tempOffsetX}
+              onChange={(e) => setTempOffsetX(Number(e.target.value))}
+              className="w-full accent-[#00ff66] cursor-pointer"
+            />
+          </div>
+          <div>
+            <label className="block text-[#4a5a4a] text-[10px] font-black uppercase tracking-[0.2em] mb-2">Enquadramento Vertical ({tempOffsetY}%)</label>
+            <input
+              type="range" min={0} max={100} value={tempOffsetY}
+              onChange={(e) => setTempOffsetY(Number(e.target.value))}
+              className="w-full accent-[#00ff66] cursor-pointer"
+            />
+          </div>
           <ModalButtons primaryText="Aplicar" primaryType="submit" onSecondary={() => setEditingCharacterImg(false)} />
         </FormModal>
       </>

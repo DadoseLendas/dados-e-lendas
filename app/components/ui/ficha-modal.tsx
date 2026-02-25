@@ -90,6 +90,8 @@ type Character = {
     inventory: { id: number; name: string }[];
     spells: { id: number; name: string; level?: string }[];
     img: string;
+    imgOffsetX?: number;
+    imgOffsetY?: number;
 };
 
 interface FichaModalProps {
@@ -153,7 +155,7 @@ export default function FichaModal({ isOpen, onClose, characterId }: FichaModalP
             onClick={(e) => e.target === e.currentTarget && onClose()}
         >
             {/* Painel da ficha */}
-            <div className="bg-[#020502]/95 border border-[#1a2a1a] rounded-2xl shadow-[0_0_80px_rgba(0,255,102,0.06),0_0_60px_rgba(0,0,0,0.9)] w-full max-w-[1300px] h-[88vh] flex flex-col overflow-hidden">
+            <div className="bg-[#020502]/95 border border-[#1a2a1a] rounded-2xl shadow-[0_0_80px_rgba(0,255,102,0.06),0_0_60px_rgba(0,0,0,0.9)] w-2/3 min-w-[480px] h-[88vh] flex flex-col overflow-hidden">
                 <div className="flex-1 overflow-y-auto px-6 py-8">
 
                     {loading && (
@@ -181,136 +183,132 @@ export default function FichaModal({ isOpen, onClose, characterId }: FichaModalP
                                     </span>
                                 </div>
 
-                                {/* Grid idêntico ao da página (12 colunas) */}
-                                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                                {/* Layout: 3 colunas iguais */}
+                                <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
 
-                                    {/* ── COLUNA 1 — col-span-4 ─────────────────────────────── */}
-                                    <div className="lg:col-span-4 space-y-4">
+                                    {/* ── COLUNA 1 ─────────────────────────────── */}
+                                    <div className="space-y-3">
 
                                         {/* Foto */}
-                                        <div className="bg-[#050a05] border border-[#1a2a1a] p-4 rounded-2xl">
+                                        <div className="bg-[#050a05] border border-[#1a2a1a] p-2 rounded-2xl flex flex-col items-center w-fit mx-auto">
                                             <div
-                                                className="w-full aspect-video bg-black rounded-xl bg-cover bg-center border border-[#1a2a1a]"
-                                                style={{ backgroundImage: `url(${character.img || '/placeholder.png'})` }}
+                                                className="w-36 h-36 bg-black rounded-xl bg-cover border border-[#1a2a1a]"
+                                                style={{
+                                                    backgroundImage: `url(${character.img || '/placeholder.png'})`,
+                                                    backgroundPosition: `${character.imgOffsetX ?? 50}% ${character.imgOffsetY ?? 50}%`
+                                                }}
                                             />
                                         </div>
 
                                         {/* Infos Básicas */}
-                                        <div className="bg-black/60 border border-[#1a2a1a] p-4 rounded-xl grid grid-cols-2 gap-3">
+                                        <div className="bg-black/60 border border-[#1a2a1a] p-2 rounded-xl grid grid-cols-2 gap-1.5">
                                             <div className="col-span-2">
-                                                <label className="text-[8px] text-[#4a5a4a] font-black uppercase">Nome</label>
-                                                <div className="w-full bg-black/40 border border-[#1a2a1a] p-1.5 text-xs rounded text-white text-center">
+                                                <label className="text-[7px] text-[#4a5a4a] font-black uppercase">Nome</label>
+                                                <div className="w-full bg-black/40 border border-[#1a2a1a] px-2 py-1 text-[10px] rounded text-white text-center">
                                                     {character.name || '—'}
                                                 </div>
                                             </div>
                                             <div className="col-span-2">
-                                                <label className="text-[8px] text-[#4a5a4a] font-black uppercase">Raça</label>
-                                                <div className="w-full bg-black/40 border border-[#1a2a1a] p-1.5 text-xs rounded text-white">
+                                                <label className="text-[7px] text-[#4a5a4a] font-black uppercase">Raça</label>
+                                                <div className="w-full bg-black/40 border border-[#1a2a1a] px-2 py-1 text-[10px] rounded text-white">
                                                     {character.race || '—'}
                                                 </div>
                                             </div>
                                             <div className="col-span-2">
-                                                <label className="text-[8px] text-[#4a5a4a] font-black uppercase">Classe</label>
-                                                <div className="w-full bg-black/40 border border-[#1a2a1a] p-1.5 text-xs rounded text-white">
+                                                <label className="text-[7px] text-[#4a5a4a] font-black uppercase">Classe</label>
+                                                <div className="w-full bg-black/40 border border-[#1a2a1a] px-2 py-1 text-[10px] rounded text-white">
                                                     {character.class || '—'}
                                                 </div>
                                                 {CLASS_DATA[character.class] && (
-                                                    <div className="mt-1 flex justify-between text-[8px] text-[#4a5a4a] font-black uppercase px-1">
+                                                    <div className="mt-0.5 flex justify-between text-[7px] text-[#4a5a4a] font-black uppercase px-1">
                                                         <span>{CLASS_DATA[character.class].hp} +con</span>
                                                         <span>{CLASS_DATA[character.class].primaryAttr}</span>
                                                     </div>
                                                 )}
                                             </div>
                                             <div>
-                                                <label className="text-[8px] text-[#4a5a4a] font-black uppercase">Nível</label>
-                                                <div className="w-full bg-black/40 border border-[#1a2a1a] p-1.5 text-xs rounded text-[#00ff66] font-bold text-center">
+                                                <label className="text-[7px] text-[#4a5a4a] font-black uppercase">Nível</label>
+                                                <div className="w-full bg-black/40 border border-[#1a2a1a] px-2 py-1 text-[10px] rounded text-[#00ff66] font-bold text-center">
                                                     {character.level ?? 1}
                                                 </div>
                                             </div>
                                             <div>
-                                                <label className="text-[8px] text-[#4a5a4a] font-black uppercase">XP</label>
-                                                <div className="w-full bg-black/40 border border-[#1a2a1a] p-1.5 text-xs rounded text-[#f1e5ac] text-center">
+                                                <label className="text-[7px] text-[#4a5a4a] font-black uppercase">XP</label>
+                                                <div className="w-full bg-black/40 border border-[#1a2a1a] px-2 py-1 text-[10px] rounded text-[#f1e5ac] text-center">
                                                     {character.experiencePoints ?? 0}
                                                 </div>
                                             </div>
                                             <div>
-                                                <label className="text-[8px] text-[#4a5a4a] font-black uppercase">Alinhamento</label>
-                                                <div className="w-full bg-black/40 border border-[#1a2a1a] p-1.5 text-xs rounded text-white">
+                                                <label className="text-[7px] text-[#4a5a4a] font-black uppercase">Alinhamento</label>
+                                                <div className="w-full bg-black/40 border border-[#1a2a1a] px-2 py-1 text-[10px] rounded text-white">
                                                     {character.alignment || '—'}
                                                 </div>
                                             </div>
-                                            <div className="col-span-2">
-                                                <label className="text-[8px] text-[#4a5a4a] font-black uppercase">Antecedente</label>
-                                                <div className="w-full bg-black/40 border border-[#1a2a1a] p-1.5 text-xs rounded text-white">
+                                            <div>
+                                                <label className="text-[7px] text-[#4a5a4a] font-black uppercase">Antecedente</label>
+                                                <div className="w-full bg-black/40 border border-[#1a2a1a] px-2 py-1 text-[10px] rounded text-white">
                                                     {character.background || '—'}
                                                 </div>
                                             </div>
                                         </div>
 
                                         {/* CA e Iniciativa */}
-                                        <div className="grid grid-cols-2 gap-4">
+                                        <div className="grid grid-cols-2 gap-3">
                                             <div className="bg-[#0a150a] border-2 border-[#1a2a1a] rounded-xl p-3 text-center">
-                                                <Shield className="mx-auto text-[#00ff66] mb-1" size={18} />
-                                                <div className="text-2xl font-black text-white">{character.ac ?? 10}</div>
-                                                <span className="text-[8px] text-[#4a5a4a] font-black uppercase">Classe de Armadura</span>
+                                                <Shield className="mx-auto text-[#00ff66] mb-1" size={16} />
+                                                <div className="text-xl font-black text-white">{character.ac ?? 10}</div>
+                                                <span className="text-[7px] text-[#4a5a4a] font-black uppercase">Armadura</span>
                                             </div>
                                             <div className="bg-[#0a150a] border-2 border-[#1a2a1a] rounded-xl p-3 text-center">
-                                                <Zap className="mx-auto text-[#f1e5ac] mb-1" size={18} />
-                                                <div className="text-2xl font-black text-white">
+                                                <Zap className="mx-auto text-[#f1e5ac] mb-1" size={16} />
+                                                <div className="text-xl font-black text-white">
                                                     {fmtMod(getModifier(getTotalStat('dex', character.stats.dex, character.race)))}
                                                 </div>
-                                                <span className="text-[8px] text-[#4a5a4a] font-black uppercase">Iniciativa</span>
+                                                <span className="text-[7px] text-[#4a5a4a] font-black uppercase">Iniciativa</span>
                                             </div>
                                         </div>
 
                                         {/* HP */}
-                                        <div className="bg-[#050a05] border border-[#1a2a1a] p-4 rounded-xl">
+                                        <div className="bg-[#050a05] border border-[#1a2a1a] p-3 rounded-xl">
                                             <HealthBar current={character.hp_current} max={character.hp_max} />
                                         </div>
                                     </div>
 
-                                    {/* ── COLUNA 2 — col-span-5 ─────────────────────────────── */}
-                                    <div className="lg:col-span-5 space-y-4">
+                                    {/* ── COLUNA 2 ─────────────────────────────── */}
+                                    <div className="space-y-3">
 
                                         {/* Atributos */}
-                                        <div className="grid grid-cols-3 gap-3">
+                                        <div className="grid grid-cols-3 gap-2">
                                             {(['str', 'dex', 'con', 'int', 'wis', 'cha'] as const).map((s) => {
                                                 const totalVal = getTotalStat(s, character.stats[s], character.race);
                                                 const mod = getModifier(totalVal);
                                                 return (
-                                                    <div key={s} className="bg-black border border-[#1a2a1a] rounded-xl p-3 text-center">
-                                                        <span className="text-[9px] text-[#4a5a4a] font-black uppercase">{statLabels[s]}</span>
-                                                        <div className="w-full bg-transparent text-center text-xl font-black text-white my-0.5">
-                                                            {character.stats[s]}
-                                                        </div>
-                                                        <div className="text-[#00ff66] text-xs font-black mt-1">{fmtMod(mod)}</div>
+                                                    <div key={s} className="bg-black border border-[#1a2a1a] rounded-xl p-2 text-center">
+                                                        <span className="text-[8px] text-[#4a5a4a] font-black uppercase">{statLabels[s]}</span>
+                                                        <div className="text-lg font-black text-white my-0.5">{character.stats[s]}</div>
+                                                        <div className="text-[#00ff66] text-[10px] font-black">{fmtMod(mod)}</div>
                                                     </div>
                                                 );
                                             })}
                                         </div>
 
                                         {/* Salvaguardas */}
-                                        <div className="bg-black/40 border border-[#1a2a1a] p-4 rounded-xl">
-                                            <h3 className="text-[9px] text-[#4a5a4a] font-black uppercase mb-3 flex items-center gap-2">
-                                                <ShieldAlert size={12} /> Salvaguardas
+                                        <div className="bg-black/40 border border-[#1a2a1a] p-3 rounded-xl">
+                                            <h3 className="text-[9px] text-[#4a5a4a] font-black uppercase mb-2 flex items-center gap-2">
+                                                <ShieldAlert size={11} /> Salvaguardas
                                             </h3>
-                                            <div className="grid grid-cols-2 gap-x-6 gap-y-2">
+                                            <div className="grid grid-cols-2 gap-x-4 gap-y-1">
                                                 {(['str', 'dex', 'con', 'int', 'wis', 'cha'] as const).map((s) => {
                                                     const proficient = character.savingThrows?.[s];
                                                     const mod = getModifier(getTotalStat(s, character.stats[s], character.race));
                                                     const total = mod + (proficient ? (character.proficiencyBonus ?? 2) : 0);
                                                     return (
-                                                        <div key={s} className="flex items-center justify-between border-b border-[#1a2a1a]/50 py-1">
-                                                            <div className="flex items-center gap-2">
-                                                                <input
-                                                                    type="checkbox"
-                                                                    checked={!!proficient}
-                                                                    readOnly
-                                                                    className="accent-[#00ff66] w-3 h-3 pointer-events-none"
-                                                                />
-                                                                <span className="text-[10px] uppercase text-gray-300">{s}</span>
+                                                        <div key={s} className="flex items-center justify-between border-b border-[#1a2a1a]/50 py-0.5">
+                                                            <div className="flex items-center gap-1.5">
+                                                                <input type="checkbox" checked={!!proficient} readOnly className="accent-[#00ff66] w-3 h-3 pointer-events-none" />
+                                                                <span className="text-[9px] uppercase text-gray-300">{s}</span>
                                                             </div>
-                                                            <span className="text-[10px] font-black text-[#00ff66]">{fmtMod(total)}</span>
+                                                            <span className="text-[9px] font-black text-[#00ff66]">{fmtMod(total)}</span>
                                                         </div>
                                                     );
                                                 })}
@@ -318,88 +316,66 @@ export default function FichaModal({ isOpen, onClose, characterId }: FichaModalP
                                         </div>
 
                                         {/* Magias e Habilidades */}
-                                        <div className="bg-[#050a05] border border-[#1a2a1a] p-5 rounded-xl">
-                                            <h3 className="text-[#f1e5ac] text-[10px] font-black uppercase mb-4 flex items-center gap-2">
-                                                <Sparkles size={14} /> Magias &amp; Habilidades
+                                        <div className="bg-[#050a05] border border-[#1a2a1a] p-3 rounded-xl">
+                                            <h3 className="text-[#f1e5ac] text-[9px] font-black uppercase mb-3 flex items-center gap-2">
+                                                <Sparkles size={12} /> Magias &amp; Habilidades
                                             </h3>
-                                            <div className="max-h-[200px] overflow-y-auto space-y-2 mb-4 pr-2">
-                                                {/* Habilidades da Raça */}
+                                            <div className="max-h-[180px] overflow-y-auto space-y-1.5 pr-1">
                                                 {raceInfo?.traits && raceInfo.traits.split(', ').map((trait) => (
-                                                    <div
-                                                        key={trait}
-                                                        className="bg-[#0a1a0a] p-2 rounded border border-[#1a2a1a]/60 flex justify-between items-center"
-                                                    >
-                                                        <span className="text-[10px] uppercase font-bold text-[#4a7a4a]">{trait}</span>
-                                                        <span className="text-[8px] text-[#2a4a2a] font-black uppercase">Raça</span>
+                                                    <div key={trait} className="bg-[#0a1a0a] p-1.5 rounded border border-[#1a2a1a]/60 flex justify-between items-center">
+                                                        <span className="text-[9px] uppercase font-bold text-[#4a7a4a]">{trait}</span>
+                                                        <span className="text-[7px] text-[#2a4a2a] font-black uppercase">Raça</span>
                                                     </div>
                                                 ))}
-                                                {/* Separador */}
-                                                {raceInfo?.traits && character.spells?.length > 0 && (
-                                                    <div className="border-t border-[#1a2a1a] my-2" />
-                                                )}
-                                                {/* Spells */}
+                                                {raceInfo?.traits && character.spells?.length > 0 && <div className="border-t border-[#1a2a1a] my-1" />}
                                                 {character.spells?.map((spell: any) => (
-                                                    <div
-                                                        key={spell.id}
-                                                        className="bg-black/60 p-2 rounded border border-[#1a2a1a] flex justify-between items-center"
-                                                    >
-                                                        <span className="text-[10px] uppercase font-bold text-gray-300">{spell.name}</span>
+                                                    <div key={spell.id} className="bg-black/60 p-1.5 rounded border border-[#1a2a1a]">
+                                                        <span className="text-[9px] uppercase font-bold text-gray-300">{spell.name}</span>
                                                     </div>
                                                 ))}
                                             </div>
                                         </div>
 
                                         {/* Inventário */}
-                                        <div className="bg-[#050a05] border border-[#1a2a1a] p-4 rounded-xl">
-                                            <h3 className="text-[#00ff66] text-[10px] font-black uppercase mb-2 flex items-center gap-2">
-                                                <Box size={14} /> Inventário
+                                        <div className="bg-[#050a05] border border-[#1a2a1a] p-3 rounded-xl">
+                                            <h3 className="text-[#00ff66] text-[9px] font-black uppercase mb-2 flex items-center gap-2">
+                                                <Box size={12} /> Inventário
                                             </h3>
-                                            <div className="max-h-[150px] overflow-y-auto space-y-1 mb-2 pr-1">
+                                            <div className="max-h-[140px] overflow-y-auto space-y-1 pr-1">
                                                 {character.inventory?.length ? character.inventory.map((item: any) => (
                                                     <div key={item.id} className="flex justify-between items-center bg-black/40 p-1.5 rounded border border-[#1a2a1a]">
                                                         <span className="text-[9px] uppercase text-gray-400">{item.name}</span>
                                                     </div>
                                                 )) : (
-                                                    <p className="text-[10px] text-[#4a5a4a] py-2 text-center">Inventário vazio.</p>
+                                                    <p className="text-[9px] text-[#4a5a4a] py-2 text-center">Inventário vazio.</p>
                                                 )}
                                             </div>
                                         </div>
                                     </div>
 
-                                    {/* ── COLUNA 3 — col-span-3 — Perícias ─────────────────── */}
-                                    <div className="lg:col-span-3">
-                                        <div className="bg-black border border-[#1a2a1a] p-4 rounded-xl h-full">
-                                            <h3 className="text-[#f1e5ac] text-[10px] font-black uppercase mb-4 text-center">Perícias</h3>
-                                            <div className="space-y-1 overflow-y-auto pr-2">
-                                                {Object.entries(skillsData).map(([key, info]) => {
-                                                    const mod = getModifier(getTotalStat(info.attr, character.stats[info.attr], character.race));
-                                                    const proficient = character.skills?.[key];
-                                                    const total = mod + (proficient ? (character.proficiencyBonus ?? 2) : 0);
-                                                    return (
-                                                        <div
-                                                            key={key}
-                                                            className="flex items-center justify-between bg-black/40 p-2 rounded border border-[#1a2a1a] hover:border-[#00ff66]/50 transition-colors"
-                                                        >
-                                                            <div className="flex items-center gap-2">
-                                                                <input
-                                                                    type="checkbox"
-                                                                    checked={!!proficient}
-                                                                    readOnly
-                                                                    className="accent-[#00ff66] w-3 h-3 pointer-events-none"
-                                                                />
-                                                                <span className="text-[9px] uppercase text-gray-300">
-                                                                    {info.name} <span className="text-gray-500">({info.attr})</span>
-                                                                </span>
-                                                            </div>
-                                                            <span className="text-[10px] font-black text-[#00ff66]">{fmtMod(total)}</span>
+                                    {/* ── COLUNA 3 — Perícias ───────────────────── */}
+                                    <div className="bg-black border border-[#1a2a1a] p-3 rounded-xl h-fit">
+                                        <h3 className="text-[#f1e5ac] text-[9px] font-black uppercase mb-3 text-center">Perícias</h3>
+                                        <div className="space-y-1">
+                                            {Object.entries(skillsData).map(([key, info]) => {
+                                                const mod = getModifier(getTotalStat(info.attr, character.stats[info.attr], character.race));
+                                                const proficient = character.skills?.[key];
+                                                const total = mod + (proficient ? (character.proficiencyBonus ?? 2) : 0);
+                                                return (
+                                                    <div key={key} className="flex items-center justify-between bg-black/40 px-2 py-1 rounded border border-[#1a2a1a]">
+                                                        <div className="flex items-center gap-1.5">
+                                                            <input type="checkbox" checked={!!proficient} readOnly className="accent-[#00ff66] w-3 h-3 pointer-events-none" />
+                                                            <span className="text-[9px] uppercase text-gray-300 leading-tight">{info.name}</span>
                                                         </div>
-                                                    );
-                                                })}
-                                            </div>
+                                                        <span className="text-[9px] font-black text-[#00ff66] ml-1 shrink-0">{fmtMod(total)}</span>
+                                                    </div>
+                                                );
+                                            })}
                                         </div>
                                     </div>
 
-                                </div>
+                                </div>{/* fim grid 3 colunas */}
+                                
                             </>
                         );
                     })()}
