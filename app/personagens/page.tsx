@@ -79,6 +79,7 @@ export default function PersonagensPage() {
   const [loadingAction, setLoadingAction] = useState(false);
 
   const [dropdownOpen, setDropdownOpen] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<any>(null);
   const [editingCharacterImg, setEditingCharacterImg] = useState(false);
   const [tempCharacterImg, setTempCharacterImg] = useState('');
   const [tempOffsetX, setTempOffsetX] = useState(50);
@@ -202,11 +203,11 @@ export default function PersonagensPage() {
   };
 
   const deleteCharacter = async (id: any) => {
-    if (!confirm('Excluir este herói para sempre?')) return;
     const { error } = await supabase.from('characters').delete().eq('id', id);
     if (error) { alert('Erro ao excluir: ' + error.message); return; }
     setCharacters((prev) => prev.filter(c => c.id !== id));
     setActiveCharacter(null);
+    setConfirmDeleteId(null);
   };
 
   const updateCharacter = (field: string, value: any) => {
@@ -826,7 +827,7 @@ export default function PersonagensPage() {
                       showMetaDivider={false} metaLarge image={char.img}
                       dropdownOpen={dropdownOpen === String(char.id)}
                       onDropdownToggle={() => setDropdownOpen((prev) => prev === String(char.id) ? null : String(char.id))}
-                      dropdownRef={dropdownRef} onDelete={() => deleteCharacter(char.id)}
+                      dropdownRef={dropdownRef} onDelete={() => { setDropdownOpen(null); setConfirmDeleteId(char.id); }}
                       onAccess={() => { setActiveCharacter(char); setDropdownOpen(null); }}
                       accessLabel="Acessar" deleteLabel="Excluir"
                     />
@@ -838,6 +839,30 @@ export default function PersonagensPage() {
         ) : renderCharacterSheet()}
       </div>
       <Footer />
+
+      {/* Modal de confirmação de exclusão */}
+      {confirmDeleteId !== null && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/80">
+          <div className="bg-[#0a120a] border border-[#1a2a1a] rounded-2xl p-6 w-80 space-y-5 shadow-[0_0_40px_rgba(0,0,0,0.9)]">
+            <h3 className="text-white text-xs font-black uppercase text-center tracking-widest">Excluir personagem?</h3>
+            <p className="text-[#4a5a4a] text-[10px] text-center uppercase">Esta ação não pode ser desfeita.</p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setConfirmDeleteId(null)}
+                className="flex-1 border border-[#1a2a1a] text-[#4a5a4a] text-[10px] font-black uppercase py-2 rounded-lg hover:border-[#00ff66]/40 transition-all"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => deleteCharacter(confirmDeleteId)}
+                className="flex-1 bg-red-600 text-white text-[10px] font-black uppercase py-2 rounded-lg hover:bg-red-500 transition-all"
+              >
+                Excluir
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
