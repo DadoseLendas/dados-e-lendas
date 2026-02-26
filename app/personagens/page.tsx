@@ -132,7 +132,8 @@ export default function PersonagensPage() {
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      const target = event.target as HTMLElement;
+      if (!target.closest('.dropdown-container')) {
         setDropdownOpen(null);
       }
     }
