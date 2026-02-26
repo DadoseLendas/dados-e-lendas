@@ -37,6 +37,7 @@ export default function CampanhasPage() {
   const [selectedCharacterId, setSelectedCharacterId] = useState('');
 
   const [dropdownOpen, setDropdownOpen] = useState<string | null>(null);
+  const [confirmAction, setConfirmAction] = useState<{ id: string | number; type: 'delete' | 'leave' } | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -299,8 +300,6 @@ export default function CampanhasPage() {
       alert('Usuário não autenticado!');
       return;
     }
-    if (!confirm('Tem certeza que deseja sair desta campanha?')) return;
-
     console.log('[LeaveCampaign] campaignId:', campaignId, 'userId:', currentUserId);
 
     // Busca o personagem vinculado a essa campanha (usa maybeSingle para não lançar erro se não encontrar)
@@ -406,8 +405,6 @@ export default function CampanhasPage() {
 
   const handleDeleteCampaign = async (campaignId: string | number) => {
     if (!currentUserId) return;
-    if (!confirm('Tem certeza que deseja excluir esta campanha?')) return;
-
     const { error } = await supabase
       .from('campaigns')
       .delete()
@@ -471,7 +468,7 @@ export default function CampanhasPage() {
                     alert('Código copiado!');
                   }}
                   onEdit={() => openEditModal(campaign)}
-                  onDelete={campaign.isOwner ? () => handleDeleteCampaign(campaign.id) : () => handleLeaveCampaign(campaign.id)}
+                  onDelete={campaign.isOwner ? () => { setDropdownOpen(null); setConfirmAction({ id: campaign.id, type: 'delete' }); } : () => { setDropdownOpen(null); setConfirmAction({ id: campaign.id, type: 'leave' }); }}
                   deleteLabel={campaign.isOwner ? 'Excluir' : 'Sair'}
                   onAccess={() => setDropdownOpen(null)}
                   showEditOption={campaign.isOwner}
@@ -534,6 +531,37 @@ export default function CampanhasPage() {
         )}
         <ModalButtons primaryText={step === 1 ? "Próximo" : "Entrar"} primaryType="submit" onSecondary={() => setShowJoinModal(false)} />
       </FormModal>
+
+      {confirmAction !== null && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80">
+          <div className="bg-[#0a120a] border border-[#1a2a1a] rounded-2xl p-6 w-80 flex flex-col gap-5">
+            <h3 className="text-[#f1e5ac] font-serif text-lg font-bold text-center">
+              {confirmAction.type === 'delete' ? 'Excluir campanha?' : 'Sair da campanha?'}
+            </h3>
+            <p className="text-[#a0a0a0] text-sm text-center">Esta ação não pode ser desfeita.</p>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setConfirmAction(null)}
+                className="flex-1 py-2 rounded-lg border border-[#2a3a2a] text-[#a0a0a0] hover:text-white hover:border-[#3a4a3a] transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (confirmAction.type === 'delete') handleDeleteCampaign(confirmAction.id);
+                  else handleLeaveCampaign(confirmAction.id);
+                  setConfirmAction(null);
+                }}
+                className="flex-1 py-2 rounded-lg bg-red-900/60 border border-red-800 text-red-300 hover:bg-red-800/80 transition-colors font-semibold"
+              >
+                {confirmAction.type === 'delete' ? 'Excluir' : 'Sair'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <Footer />
     </>
