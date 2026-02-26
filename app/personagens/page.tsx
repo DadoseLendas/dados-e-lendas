@@ -81,6 +81,7 @@ export default function PersonagensPage() {
 
   const [dropdownOpen, setDropdownOpen] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<any>(null);
+  const [deleteStatus, setDeleteStatus] = useState<string | null>(null);
   const [editingCharacterImg, setEditingCharacterImg] = useState(false);
   const [tempCharacterImg, setTempCharacterImg] = useState('');
   const [tempOffsetX, setTempOffsetX] = useState(50);
@@ -205,14 +206,17 @@ export default function PersonagensPage() {
   };
 
   const deleteCharacter = async (id: any) => {
-    // Remove referências nas tabelas que têm FK para characters (evita constraint error)
-    await supabase.from('campaign_members').update({ current_character_id: null }).eq('current_character_id', id);
-    await supabase.from('campaign_logs').delete().eq('character_id', id);
-    const { error } = await supabase.from('characters').delete().eq('id', id);
-    if (error) { console.error('Erro ao excluir:', error.message); return; }
-    await fetchCharacters();
-    setActiveCharacter(null);
-    setConfirmDeleteId(null);
+    const r1 = await supabase.from('campaign_members').update({ current_character_id: null }).eq('current_character_id', id);
+    const r2 = await supabase.from('campaign_logs').delete().eq('character_id', id);
+    const r3 = await supabase.from('characters').delete().eq('id', id);
+    const msg = `members:${r1.error?.message ?? 'ok'} | logs:${r2.error?.message ?? 'ok'} | chars:${r3.error?.message ?? 'ok'}`;
+    setDeleteStatus(msg);
+    if (!r3.error) {
+      await fetchCharacters();
+      setActiveCharacter(null);
+      setConfirmDeleteId(null);
+      setTimeout(() => setDeleteStatus(null), 5000);
+    }
   };
 
   const updateCharacter = (field: string, value: any) => {
@@ -808,6 +812,11 @@ export default function PersonagensPage() {
 
   return (
     <>
+    {deleteStatus && (
+      <div style={{position:'fixed',top:0,left:0,right:0,zIndex:99999,background:'#1a0a0a',color:'#fca5a5',padding:'12px 24px',fontSize:12,fontWeight:700,textAlign:'center',wordBreak:'break-all'}}>
+        {deleteStatus}
+      </div>
+    )}
     <div className="min-h-screen bg-[#020502]">
       <Navbar abaAtiva={abaAtiva} setAbaAtiva={setAbaAtiva} />
       <div className={`${activeCharacter ? 'max-w-[1400px]' : 'max-w-[1000px]'} mx-auto py-12 px-6`}>
