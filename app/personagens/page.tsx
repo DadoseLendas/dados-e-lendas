@@ -776,7 +776,7 @@ export default function PersonagensPage() {
                 </div>
               )}
 
-              {/* Ações */}
+              {/* Ações. */}
               <div className="flex gap-2 pt-1">
                 <button
                   onClick={() => setEditingCharacterImg(false)}
