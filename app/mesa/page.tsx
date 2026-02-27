@@ -121,7 +121,7 @@ export default function TelaDeMesa() {
     const initDice = async () => {
       try {
         const { default: DiceBox } = await import('@3d-dice/dice-box');
-        const box = new DiceBox({ container: "#dice-box", assetPath: "/dice-box-assets/assets/", theme: "default", scale: 6 });
+        const box = new DiceBox({ container: "#dice-box", assetPath: "/dice-box-assets/assets/", theme: "default", scale: 7, gravity: 2.5, spinForce: 6, throwForce: 5, });
         await box.init(); setDiceBox(box); setIsDiceReady(true);
       } catch (e) { console.error(e); }
     };
@@ -130,6 +130,17 @@ export default function TelaDeMesa() {
 
   return (
     <div className="h-screen w-screen bg-black overflow-hidden flex flex-col relative font-sans select-none text-white">
+      <style jsx global>{`
+          .dice-box-canvas {
+            position: absolute !important;
+            top: 50% !important;
+            left: 50% !important;
+            transform: translate(-50%, -50%) !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            object-fit: contain !important;
+          }
+        `}</style>
       <div className="relative z-50">
         <Navbar abaAtiva="mesa" setAbaAtiva={() => {}} />
       </div>
