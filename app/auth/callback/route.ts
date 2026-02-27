@@ -6,13 +6,6 @@ export async function GET(request: Request) {
   const code = searchParams.get('code')
   const next = searchParams.get('next') ?? '/'
 
-  // Helper para garantir a URL correta na Vercel
-  const getURL = () => {
-    let url = process.env.NEXT_PUBLIC_SITE_URL ?? origin;
-    url = url.includes('http') ? url : `https://${url}`;
-    return url.endsWith('/') ? url.slice(0, -1) : url;
-  };
-
   if (code) {
     const supabase = await createClient()
     const { error } = await supabase.auth.exchangeCodeForSession(code)
@@ -28,15 +21,21 @@ export async function GET(request: Request) {
           .eq('id', user.id)
           .single()
 
+        // Se não tem perfil, obriga a completar o cadastro
         if (!profile) {
-          return NextResponse.redirect(`${getURL()}/completar-cadastro`)
+          // Usamos NextRequest para pegar a URL base exata em que o app está rodando agora
+          const completeUrl = new URL('/completar-cadastro', request.url)
+          return NextResponse.redirect(completeUrl)
         }
       }
 
-      return NextResponse.redirect(`${getURL()}${next}`)
+      // Redireciona para onde o usuário queria ir ou para a Home
+      const redirectUrl = new URL(next, request.url)
+      return NextResponse.redirect(redirectUrl)
     }
   }
 
   // Fallback em caso de erro crítico no código de autenticação
-  return NextResponse.redirect(`${getURL()}/login?error=auth-code-error`)
+  const errorUrl = new URL('/login?error=auth-code-error', request.url)
+  return NextResponse.redirect(errorUrl)
 }

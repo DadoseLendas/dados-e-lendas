@@ -2,22 +2,27 @@
 
 import { useState } from 'react'
 import { createClient } from '@/utils/supabase/client'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Playfair_Display, Inter } from 'next/font/google'
 import { ChevronRight } from 'lucide-react'
+
 
 const playfair = Playfair_Display({ subsets: ['latin'] })
 const inter = Inter({ subsets: ['latin'] })
 
 export default function LoginPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const supabase = createClient()
   
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   
+  // Lê a razão do logout automático (se houver) e já define como erro inicial
+  const sessionReason = searchParams.get('reason')
+
   // Estados de erro
   const [emailError, setEmailError] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
@@ -63,7 +68,17 @@ export default function LoginPage() {
     })
 
     if (error) {
-      setFormError("Credenciais inválidas. Verifique seu email e senha.")
+      // TRATAMENTO ESPECÍFICO DE UX: O Fim da Frustração
+      if (error.message === "Email not confirmed") {
+        setFormError("Seu pergaminho ainda não foi assinado! Verifique sua caixa de e-mail (e spam) para confirmar sua conta.");
+      } 
+      else if (error.message === "Invalid login credentials") {
+        setFormError("Credenciais inválidas. Os deuses não reconhecem este e-mail ou senha.");
+      } 
+      else {
+        // Fallback para qualquer outro erro (ex: muito tempo sem logar, rede caindo)
+        setFormError(`Erro místico: ${error.message}`);
+      }
       setLoading(false)
     } else {
       router.push('/')
@@ -94,8 +109,9 @@ export default function LoginPage() {
 
         {/* Feedback de Erro Geral */}
         {formError && (
-          <div className="rounded border border-red-500/50 bg-red-900/20 p-3 text-sm text-red-200 text-center animate-pulse">
-            ⚠️ {formError}
+          <div className="rounded-lg border border-red-500/50 bg-red-900/20 p-4 text-sm text-red-200 text-center animate-in fade-in zoom-in duration-300 shadow-[inset_0_0_15px_rgba(239,68,68,0.1)]">
+            <span className="font-bold uppercase tracking-widest block mb-1 text-[10px] text-red-400">Acesso Negado</span>
+            {formError}
           </div>
         )}
 

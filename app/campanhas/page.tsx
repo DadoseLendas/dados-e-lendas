@@ -470,7 +470,10 @@ export default function CampanhasPage() {
                   onEdit={() => openEditModal(campaign)}
                   onDelete={campaign.isOwner ? () => { setDropdownOpen(null); setConfirmAction({ id: campaign.id, type: 'delete' }); } : () => { setDropdownOpen(null); setConfirmAction({ id: campaign.id, type: 'leave' }); }}
                   deleteLabel={campaign.isOwner ? 'Excluir' : 'Sair'}
-                  onAccess={() => setDropdownOpen(null)}
+                  onAccess={() => { 
+                    setDropdownOpen(null); 
+                    window.location.href = `/mesa/${campaign.id}`; // O Elo Perdido!
+                  }}
                   showEditOption={campaign.isOwner}
                   showCopyOption={campaign.isOwner}
                   accessLabel="Jogar"

@@ -1,11 +1,13 @@
 "use client";
 import { useState, useRef, useEffect } from 'react';
+import { useParams } from 'next/navigation'; // <-- Importado para capturar a URL
 import Navbar from '@/app/components/ui/navbar';
 import { UserRound, Home, BookOpen, Map as MapIcon, ShieldCheck, ChevronLeft, ChevronRight, X, Upload } from 'lucide-react';
 import { createClient } from '@/utils/supabase/client';
 import FichaModal from '@/app/components/ui/ficha-modal';
 import ChatWidget from '@/app/components/ui/chat-widget'; 
-import DiceBox from '@3d-dice/dice-box';
+import CampaignBooksWidget from '@/app/components/ui/campaign-books-widget'; // <-- Injetando nosso Widget de Livros
+import DiceRoller from '@/app/components/ui/dice-roller'; // <-- Injetando o Motor 3D
 
 interface Token {
   id: string;
@@ -16,7 +18,10 @@ interface Token {
 
 export default function TelaDeMesa() {
   const supabase = createClient();
-  const campaignId = "00000000-0000-0000-0000-000000000000";
+  
+  // A MÁGICA: Pega o ID que estiver na URL (ex: /mesa/123-abc vira '123-abc')
+  const params = useParams();
+  const campaignId = params.id as string;
   
   //interface e Mapa
   const [sidebarAberta, setSidebarAberta] = useState(true);
@@ -112,36 +117,33 @@ export default function TelaDeMesa() {
   // --- Logic de Dados/Ficha ---
   const [showFicha, setShowFicha] = useState(false);
   const [fichaCharacterId, setFichaCharacterId] = useState<number | string | null>(null);
-  const [isDiceReady, setIsDiceReady] = useState(false);
-  const [diceBox, setDiceBox] = useState<any>(null);
-  const initializedRef = useRef(false);
+  
+  // Função de rolagem que virá do componente DiceRoller
+  const [rollDiceFunc, setRollDiceFunc] = useState<((diceType: string) => Promise<number | null>) | null>(null);
 
+  // Busca qual personagem o jogador está usando NESTA campanha (dinâmica)
   useEffect(() => {
-    if (initializedRef.current) return;
-    initializedRef.current = true;
-    const initDice = async () => {
-      try {
-        const { default: DiceBox } = await import('@3d-dice/dice-box');
-        const box = new DiceBox({ container: "#dice-box", assetPath: "/dice-box-assets/assets/", theme: "default", scale: 5, gravity: 2.5, spinForce: 6, throwForce: 5, });
-        await box.init(); setDiceBox(box); setIsDiceReady(true);
-      } catch (e) { console.error(e); }
+    const fetchLinkedCharacter = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user || !campaignId) return;
+
+      const { data } = await supabase
+        .from('campaign_members')
+        .select('current_character_id')
+        .eq('campaign_id', campaignId)
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (data?.current_character_id) {
+        setFichaCharacterId(data.current_character_id);
+      }
     };
-    initDice();
-  }, []);
+    fetchLinkedCharacter();
+  }, [supabase, campaignId]);
 
   return (
     <div className="h-screen w-screen bg-black overflow-hidden flex flex-col relative font-sans select-none text-white">
-      <style jsx global>{`
-          .dice-box-canvas {
-            position: absolute !important;
-            top: 50% !important;
-            left: 50% !important;
-            transform: translate(-50%, -50%) !important;
-            width: 100vw !important;
-            height: 100vh !important;
-            object-fit: contain !important;
-          }
-        `}</style>
+      
       <div className="relative z-50">
         <Navbar abaAtiva="mesa" setAbaAtiva={() => {}} />
       </div>
@@ -154,13 +156,25 @@ export default function TelaDeMesa() {
       >
         {/*sidebar*/}
         <aside className={`absolute left-4 top-1/2 -translate-y-1/2 bg-[#0a120a]/70 backdrop-blur-lg border border-white/10 rounded-2xl transition-all duration-300 flex flex-col items-center py-5 gap-5 z-40 shadow-2xl ${sidebarAberta ? 'w-12 opacity-100' : 'w-0 opacity-0 -translate-x-10 pointer-events-none'}`}>
-          <button onClick={() => window.location.href = '/'} className="p-2 text-white/30 hover:text-[#00ff66] transition-colors"><Home size={20} /></button>
-          <button onClick={() => setShowFicha(true)} className="p-2 text-white/30 hover:text-[#00ff66] transition-colors"><UserRound size={20} /></button>
-          <button onClick={() => setModalAtivo('Biblioteca')} className="p-2 text-white/30 hover:text-[#00ff66] transition-colors"><BookOpen size={20} /></button>
+          <button onClick={() => window.location.href = '/campanhas'} className="p-2 text-white/30 hover:text-[#00ff66] transition-colors"><Home size={20} /></button>
+          
+          <button 
+            onClick={() => {
+              if (!fichaCharacterId) { alert('Você não vinculou um personagem a esta mesa!'); return; }
+              setShowFicha(true);
+            }} 
+            className={`p-2 transition-colors ${fichaCharacterId ? 'text-white hover:text-[#00ff66]' : 'text-white/20'}`}
+          >
+            <UserRound size={20} />
+          </button>
+          
           <div className="w-6 h-[1px] bg-white/5" />
           <button onClick={() => setModalAtivo('Mapa')} className="p-2 text-white/30 hover:text-[#00ff66] transition-colors"><MapIcon size={20} /></button>
           <button onClick={() => setModalAtivo('Token')} className="p-2 text-white/30 hover:text-[#00ff66] transition-colors"><ShieldCheck size={20} /></button>
         </aside>
+
+        {/* COMPONENTE AUTÔNOMO DE LIVROS DA CAMPANHA */}
+        <CampaignBooksWidget campaignId={campaignId} />
 
         {/*area central*/}
         <main 
@@ -230,14 +244,16 @@ export default function TelaDeMesa() {
         </main>
 
         <div className="w-[360px] h-full bg-[#080808] border-l border-white/5 z-40 relative">
-          <ChatWidget campaignId={campaignId} isDiceReady={isDiceReady} onRollDice={async (t) => {
-             const result = await diceBox.roll([{ qty: 1, sides: parseInt(t.replace('d', '')) }]);
-             setTimeout(() => diceBox.clear(), 3000);
-             return result[0].value;
-          }} />
+          <ChatWidget 
+            campaignId={campaignId} 
+            isDiceReady={!!rollDiceFunc} 
+            onRollDice={rollDiceFunc || (async () => null)} 
+          />
         </div>
       </div>
 
+      {/* COMPONENTE EXTRAÍDO DOS DADOS FÍSICOS */}
+      <DiceRoller onReady={(func) => setRollDiceFunc(() => func)} />
       
       {modalAtivo && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 backdrop-blur-sm p-6">
@@ -272,7 +288,6 @@ export default function TelaDeMesa() {
         </div>
       )}
 
-      <div id="dice-box" className="fixed inset-0 pointer-events-none z-[9999]"></div>
       <FichaModal isOpen={showFicha} onClose={() => setShowFicha(false)} characterId={fichaCharacterId} />
     </div>
   );
