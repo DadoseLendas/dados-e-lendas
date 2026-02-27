@@ -5,6 +5,7 @@ import { UserRound, Home, BookOpen, Map as MapIcon, ShieldCheck, ChevronLeft, Ch
 import { createClient } from '@/utils/supabase/client';
 import FichaModal from '@/app/components/ui/ficha-modal';
 import ChatWidget from '@/app/components/ui/chat-widget'; 
+import DiceBox from '@3d-dice/dice-box';
 
 interface Token {
   id: string;
@@ -15,7 +16,7 @@ interface Token {
 
 export default function TelaDeMesa() {
   const supabase = createClient();
-  const campaignId = "00000000-0000-0000-0000-000000000000"; 
+  const campaignId = "00000000-0000-0000-0000-000000000000";
   
   //interface e Mapa
   const [sidebarAberta, setSidebarAberta] = useState(true);
@@ -121,7 +122,7 @@ export default function TelaDeMesa() {
     const initDice = async () => {
       try {
         const { default: DiceBox } = await import('@3d-dice/dice-box');
-        const box = new DiceBox({ container: "#dice-box", assetPath: "/dice-box-assets/assets/", theme: "default", scale: 7, gravity: 2.5, spinForce: 6, throwForce: 5, });
+        const box = new DiceBox({ container: "#dice-box", assetPath: "/dice-box-assets/assets/", theme: "default", scale: 5, gravity: 2.5, spinForce: 6, throwForce: 5, });
         await box.init(); setDiceBox(box); setIsDiceReady(true);
       } catch (e) { console.error(e); }
     };
