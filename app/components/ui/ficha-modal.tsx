@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import {
-    ArrowLeft, Shield, Zap, ShieldAlert, Sparkles, Box,
+    ArrowLeft, Shield, Zap, ShieldAlert, Sparkles, Box, Save, Plus, Trash2,
 } from 'lucide-react';
 
 // ─── Dados estáticos (espelho de personagens/page.tsx) ────────────────────────
@@ -98,13 +98,19 @@ interface FichaModalProps {
     isOpen: boolean;
     onClose: () => void;
     characterId: number | string | null;
+    onUpdate?: (character: Character) => void;
 }
 
 // ─── Componente ───────────────────────────────────────────────────────────────
-export default function FichaModal({ isOpen, onClose, characterId }: FichaModalProps) {
+export default function FichaModal({ isOpen, onClose, characterId, onUpdate }: FichaModalProps) {
     const supabase = createClient();
     const [character, setCharacter] = useState<Character | null>(null);
+    const [draft, setDraft] = useState<Character | null>(null);
     const [loading, setLoading] = useState(false);
+    const [saving, setSaving] = useState(false);
+    const [saveSuccess, setSaveSuccess] = useState(false);
+    const [newInventoryItem, setNewInventoryItem] = useState('');
+    const [newSpellName, setNewSpellName] = useState('');
 
     // ── Enquadramento ────────────────────────────────────────────────────────
     const [framingOpen, setFramingOpen] = useState(false);
@@ -113,18 +119,92 @@ export default function FichaModal({ isOpen, onClose, characterId }: FichaModalP
     const [savingFrame, setSavingFrame] = useState(false);
 
     const openFraming = () => {
-        setTempOffsetX(character?.imgOffsetX ?? 50);
-        setTempOffsetY(character?.imgOffsetY ?? 50);
+        setTempOffsetX(draft?.imgOffsetX ?? 50);
+        setTempOffsetY(draft?.imgOffsetY ?? 50);
         setFramingOpen(true);
     };
 
     const saveFraming = async () => {
-        if (!character) return;
+        if (!draft) return;
         setSavingFrame(true);
-        await supabase.from('characters').update({ imgOffsetX: tempOffsetX, imgOffsetY: tempOffsetY }).eq('id', character.id);
-        setCharacter({ ...character, imgOffsetX: tempOffsetX, imgOffsetY: tempOffsetY });
+        await supabase.from('characters').update({ imgOffsetX: tempOffsetX, imgOffsetY: tempOffsetY }).eq('id', draft.id);
+        const updated = { ...draft, imgOffsetX: tempOffsetX, imgOffsetY: tempOffsetY };
+        setCharacter(updated);
+        setDraft(updated);
+        onUpdate?.(updated);
         setSavingFrame(false);
         setFramingOpen(false);
+    };
+
+    // ── Helpers de edição ────────────────────────────────────────────────────
+    const updateDraft = (field: string, value: any) =>
+        setDraft(prev => prev ? { ...prev, [field]: value } : prev);
+
+    const updateStat = (key: string, value: number) =>
+        setDraft(prev => prev ? { ...prev, stats: { ...prev.stats, [key]: value } } : prev);
+
+    const toggleSavingThrow = (key: string) =>
+        setDraft(prev => prev ? {
+            ...prev,
+            savingThrows: { ...prev.savingThrows, [key]: !prev.savingThrows?.[key] }
+        } : prev);
+
+    const toggleSkill = (key: string) =>
+        setDraft(prev => prev ? {
+            ...prev,
+            skills: { ...prev.skills, [key]: !prev.skills?.[key] }
+        } : prev);
+
+    const addInventoryItem = () => {
+        if (!newInventoryItem.trim() || !draft) return;
+        updateDraft('inventory', [...(draft.inventory ?? []), { id: Date.now(), name: newInventoryItem.trim() }]);
+        setNewInventoryItem('');
+    };
+
+    const removeInventoryItem = (id: number) =>
+        setDraft(prev => prev ? { ...prev, inventory: prev.inventory.filter(i => i.id !== id) } : prev);
+
+    const addSpell = () => {
+        if (!newSpellName.trim() || !draft) return;
+        updateDraft('spells', [...(draft.spells ?? []), { id: Date.now(), name: newSpellName.trim() }]);
+        setNewSpellName('');
+    };
+
+    const removeSpell = (id: number) =>
+        setDraft(prev => prev ? { ...prev, spells: prev.spells.filter(s => s.id !== id) } : prev);
+
+    // ── Salvar no Supabase ───────────────────────────────────────────────────
+    const saveCharacter = async () => {
+        if (!draft) return;
+        setSaving(true);
+        const payload: Record<string, any> = { ...draft };
+        let saved: Character | null = null;
+        let saveError: any = null;
+        for (let attempt = 0; attempt < 5; attempt++) {
+            const { data, error } = await supabase
+                .from('characters')
+                .update(payload)
+                .eq('id', draft.id)
+                .select('*')
+                .single();
+            if (!error && data) { saved = data as Character; saveError = null; break; }
+            if (error) {
+                const match = error.message?.match(/Could not find the '([^']+)' column/);
+                const col = match?.[1];
+                if (col && col in payload) { delete payload[col]; saveError = error; continue; }
+                saveError = error; break;
+            }
+        }
+        if (saveError) {
+            alert('Erro ao salvar: ' + saveError.message);
+        } else if (saved) {
+            setCharacter(saved);
+            setDraft(saved);
+            onUpdate?.(saved);
+            setSaveSuccess(true);
+            setTimeout(() => setSaveSuccess(false), 2000);
+        }
+        setSaving(false);
     };
     // ─────────────────────────────────────────────────────────────────────────
 
@@ -133,12 +213,16 @@ export default function FichaModal({ isOpen, onClose, characterId }: FichaModalP
         const fetchCharacter = async () => {
             setLoading(true);
             setCharacter(null);
+            setDraft(null);
             const { data, error } = await supabase
                 .from('characters')
                 .select('*')
                 .eq('id', characterId)
                 .single();
-            if (!error && data) setCharacter(data as Character);
+            if (!error && data) {
+                setCharacter(data as Character);
+                setDraft(data as Character);
+            }
             setLoading(false);
         };
         fetchCharacter();
@@ -153,7 +237,12 @@ export default function FichaModal({ isOpen, onClose, characterId }: FichaModalP
 
     if (!isOpen) return null;
 
-    // ── Barra de vida (idêntica à página) ─────────────────────────────────────
+    // ── estilos comuns ────────────────────────────────────────────────────────
+    const inputCls = "w-full bg-black/40 border border-[#1a2a1a] px-2 py-1 text-[10px] rounded text-white outline-none focus:border-[#00ff66]/50 transition-colors";
+    const selectCls = "w-full bg-[#050a05] border border-[#1a2a1a] px-2 py-1 text-[10px] rounded text-white outline-none focus:border-[#00ff66]/50 transition-colors cursor-pointer";
+    const numInputCls = "w-full bg-black/40 border border-[#1a2a1a] px-2 py-1 text-[10px] rounded text-[#00ff66] font-bold text-center outline-none focus:border-[#00ff66]/50 transition-colors";
+
+    // ── Barra de vida ─────────────────────────────────────────────────────────
     const HealthBar = ({ current, max }: { current: number; max: number }) => {
         const pct = Math.min(Math.max(max > 0 ? (current / max) * 100 : 0, 0), 100);
         const color = pct > 50 ? 'bg-[#00ff66]' : pct > 20 ? 'bg-yellow-500' : 'bg-red-600';
@@ -171,28 +260,25 @@ export default function FichaModal({ isOpen, onClose, characterId }: FichaModalP
     };
 
     return (
-        /* Backdrop semitransparente — mesa visível atrás */
         <div
             className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-8"
             onClick={(e) => e.target === e.currentTarget && onClose()}
         >
-            {/* Painel da ficha */}
             <div className="bg-[#020502]/95 border border-[#1a2a1a] rounded-2xl shadow-[0_0_80px_rgba(0,255,102,0.06),0_0_60px_rgba(0,0,0,0.9)] w-2/3 min-w-[480px] h-[88vh] flex flex-col overflow-hidden">
                 <div className="flex-1 overflow-y-auto px-6 py-8">
 
                     {loading && (
                         <div className="text-center text-[#8a9a8a] text-sm py-20">Carregando ficha...</div>
                     )}
-                    {!loading && !character && (
+                    {!loading && !draft && (
                         <div className="text-center text-red-400 text-sm py-20">Não foi possível carregar a ficha.</div>
                     )}
 
-                    {!loading && character && (() => {
-                        const raceInfo = RACE_DATA[character.race];
-
+                    {!loading && draft && (() => {
+                        const raceInfo = RACE_DATA[draft.race];
                         return (
                             <>
-                                {/* Barra de navegação — mesmo estilo do "VOLTAR" */}
+                                {/* Barra de navegação */}
                                 <div className="flex justify-between items-center mb-6">
                                     <button
                                         onClick={onClose}
@@ -201,14 +287,26 @@ export default function FichaModal({ isOpen, onClose, characterId }: FichaModalP
                                         <ArrowLeft size={14} /> FECHAR
                                     </button>
                                     <span className="text-[#f1e5ac] text-xs font-serif tracking-widest uppercase italic opacity-60">
-                                        Ficha — {character.name}
+                                        Ficha — {draft.name}
                                     </span>
+                                    <button
+                                        onClick={saveCharacter}
+                                        disabled={saving}
+                                        className={`flex items-center gap-2 text-xs font-black uppercase px-4 py-1.5 rounded-lg transition-all ${
+                                            saveSuccess
+                                                ? 'bg-[#00ff66]/20 text-[#00ff66] border border-[#00ff66]/40'
+                                                : 'bg-[#00ff66] text-black hover:brightness-110'
+                                        } disabled:opacity-50`}
+                                    >
+                                        <Save size={12} />
+                                        {saving ? 'Salvando...' : saveSuccess ? 'Salvo!' : 'Salvar'}
+                                    </button>
                                 </div>
 
-                                {/* Layout: 3 colunas iguais */}
+                                {/* Layout: 3 colunas */}
                                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
 
-                                    {/* ── COLUNA 1 ─────────────────────────────── */}
+                                    {/* ── COLUNA 1 ─────────────────────────── */}
                                     <div className="space-y-3">
 
                                         {/* Foto */}
@@ -216,8 +314,8 @@ export default function FichaModal({ isOpen, onClose, characterId }: FichaModalP
                                             <div
                                                 className="w-36 h-36 bg-black rounded-xl bg-cover border border-[#1a2a1a] cursor-pointer hover:brightness-110 transition-all relative group"
                                                 style={{
-                                                    backgroundImage: `url(${character.img || '/placeholder.png'})`,
-                                                    backgroundPosition: `${character.imgOffsetX ?? 50}% ${character.imgOffsetY ?? 50}%`
+                                                    backgroundImage: `url(${draft.img || '/placeholder.png'})`,
+                                                    backgroundPosition: `${draft.imgOffsetX ?? 50}% ${draft.imgOffsetY ?? 50}%`
                                                 }}
                                                 onClick={openFraming}
                                             >
@@ -235,7 +333,7 @@ export default function FichaModal({ isOpen, onClose, characterId }: FichaModalP
                                                     <div
                                                         className="w-full h-40 rounded-xl bg-cover border border-[#1a2a1a] mx-auto"
                                                         style={{
-                                                            backgroundImage: `url(${character.img || '/placeholder.png'})`,
+                                                            backgroundImage: `url(${draft.img || '/placeholder.png'})`,
                                                             backgroundPosition: `${tempOffsetX}% ${tempOffsetY}%`
                                                         }}
                                                     />
@@ -259,51 +357,49 @@ export default function FichaModal({ isOpen, onClose, characterId }: FichaModalP
                                         <div className="bg-black/60 border border-[#1a2a1a] p-2 rounded-xl grid grid-cols-2 gap-1.5">
                                             <div className="col-span-2">
                                                 <label className="text-[7px] text-[#4a5a4a] font-black uppercase">Nome</label>
-                                                <div className="w-full bg-black/40 border border-[#1a2a1a] px-2 py-1 text-[10px] rounded text-white text-center">
-                                                    {character.name || '—'}
-                                                </div>
+                                                <input className={inputCls + " text-center"} value={draft.name} onChange={(e) => updateDraft('name', e.target.value)} />
                                             </div>
                                             <div className="col-span-2">
                                                 <label className="text-[7px] text-[#4a5a4a] font-black uppercase">Raça</label>
-                                                <div className="w-full bg-black/40 border border-[#1a2a1a] px-2 py-1 text-[10px] rounded text-white">
-                                                    {character.race || '—'}
-                                                </div>
+                                                <select className={selectCls} value={draft.race} onChange={(e) => updateDraft('race', e.target.value)}>
+                                                    {Object.keys(RACE_DATA).map(r => <option key={r} value={r}>{r}</option>)}
+                                                </select>
                                             </div>
                                             <div className="col-span-2">
                                                 <label className="text-[7px] text-[#4a5a4a] font-black uppercase">Classe</label>
-                                                <div className="w-full bg-black/40 border border-[#1a2a1a] px-2 py-1 text-[10px] rounded text-white">
-                                                    {character.class || '—'}
-                                                </div>
-                                                {CLASS_DATA[character.class] && (
+                                                <select className={selectCls} value={draft.class} onChange={(e) => updateDraft('class', e.target.value)}>
+                                                    {Object.keys(CLASS_DATA).map(c => <option key={c} value={c}>{c}</option>)}
+                                                </select>
+                                                {CLASS_DATA[draft.class] && (
                                                     <div className="mt-0.5 flex justify-between text-[7px] text-[#4a5a4a] font-black uppercase px-1">
-                                                        <span>{CLASS_DATA[character.class].hp} +con</span>
-                                                        <span>{CLASS_DATA[character.class].primaryAttr}</span>
+                                                        <span>{CLASS_DATA[draft.class].hp} +con</span>
+                                                        <span>{CLASS_DATA[draft.class].primaryAttr}</span>
                                                     </div>
                                                 )}
                                             </div>
                                             <div>
                                                 <label className="text-[7px] text-[#4a5a4a] font-black uppercase">Nível</label>
-                                                <div className="w-full bg-black/40 border border-[#1a2a1a] px-2 py-1 text-[10px] rounded text-[#00ff66] font-bold text-center">
-                                                    {character.level ?? 1}
-                                                </div>
+                                                <input type="number" min={1} max={20} className={numInputCls} value={draft.level ?? 1} onChange={(e) => updateDraft('level', Number(e.target.value))} />
                                             </div>
                                             <div>
                                                 <label className="text-[7px] text-[#4a5a4a] font-black uppercase">XP</label>
-                                                <div className="w-full bg-black/40 border border-[#1a2a1a] px-2 py-1 text-[10px] rounded text-[#f1e5ac] text-center">
-                                                    {character.experiencePoints ?? 0}
-                                                </div>
+                                                <input type="number" min={0} className={inputCls + " text-[#f1e5ac] text-center"} value={draft.experiencePoints ?? 0} onChange={(e) => updateDraft('experiencePoints', Number(e.target.value))} />
                                             </div>
                                             <div>
                                                 <label className="text-[7px] text-[#4a5a4a] font-black uppercase">Alinhamento</label>
-                                                <div className="w-full bg-black/40 border border-[#1a2a1a] px-2 py-1 text-[10px] rounded text-white">
-                                                    {character.alignment || '—'}
-                                                </div>
+                                                <input className={inputCls} value={draft.alignment || ''} onChange={(e) => updateDraft('alignment', e.target.value)} />
                                             </div>
                                             <div>
                                                 <label className="text-[7px] text-[#4a5a4a] font-black uppercase">Antecedente</label>
-                                                <div className="w-full bg-black/40 border border-[#1a2a1a] px-2 py-1 text-[10px] rounded text-white">
-                                                    {character.background || '—'}
-                                                </div>
+                                                <input className={inputCls} value={draft.background || ''} onChange={(e) => updateDraft('background', e.target.value)} />
+                                            </div>
+                                            <div>
+                                                <label className="text-[7px] text-[#4a5a4a] font-black uppercase">Bônus Prof.</label>
+                                                <input type="number" min={2} max={6} className={numInputCls} value={draft.proficiencyBonus ?? 2} onChange={(e) => updateDraft('proficiencyBonus', Number(e.target.value))} />
+                                            </div>
+                                            <div className="flex items-center gap-2 col-span-2 mt-1">
+                                                <input type="checkbox" id="inspiration" checked={!!draft.inspiration} onChange={(e) => updateDraft('inspiration', e.target.checked)} className="accent-[#00ff66] w-3 h-3 cursor-pointer" />
+                                                <label htmlFor="inspiration" className="text-[9px] text-[#4a5a4a] font-black uppercase cursor-pointer">Inspiração</label>
                                             </div>
                                         </div>
 
@@ -311,36 +407,51 @@ export default function FichaModal({ isOpen, onClose, characterId }: FichaModalP
                                         <div className="grid grid-cols-2 gap-3">
                                             <div className="bg-[#0a150a] border-2 border-[#1a2a1a] rounded-xl p-3 text-center">
                                                 <Shield className="mx-auto text-[#00ff66] mb-1" size={16} />
-                                                <div className="text-xl font-black text-white">{character.ac ?? 10}</div>
+                                                <input type="number" min={0} className="w-full bg-transparent text-xl font-black text-white text-center outline-none border-b border-[#1a2a1a] focus:border-[#00ff66]/50" value={draft.ac ?? 10} onChange={(e) => updateDraft('ac', Number(e.target.value))} />
                                                 <span className="text-[7px] text-[#4a5a4a] font-black uppercase">Armadura</span>
                                             </div>
                                             <div className="bg-[#0a150a] border-2 border-[#1a2a1a] rounded-xl p-3 text-center">
                                                 <Zap className="mx-auto text-[#f1e5ac] mb-1" size={16} />
                                                 <div className="text-xl font-black text-white">
-                                                    {fmtMod(getModifier(getTotalStat('dex', character.stats.dex, character.race)))}
+                                                    {fmtMod(getModifier(getTotalStat('dex', draft.stats.dex, draft.race)))}
                                                 </div>
                                                 <span className="text-[7px] text-[#4a5a4a] font-black uppercase">Iniciativa</span>
                                             </div>
                                         </div>
 
                                         {/* HP */}
-                                        <div className="bg-[#050a05] border border-[#1a2a1a] p-3 rounded-xl">
-                                            <HealthBar current={character.hp_current} max={character.hp_max} />
+                                        <div className="bg-[#050a05] border border-[#1a2a1a] p-3 rounded-xl space-y-2">
+                                            <HealthBar current={draft.hp_current} max={draft.hp_max} />
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <div>
+                                                    <label className="text-[7px] text-[#4a5a4a] font-black uppercase">HP Atual</label>
+                                                    <input type="number" className={numInputCls} value={draft.hp_current ?? 0} onChange={(e) => updateDraft('hp_current', Number(e.target.value))} />
+                                                </div>
+                                                <div>
+                                                    <label className="text-[7px] text-[#4a5a4a] font-black uppercase">HP Máx</label>
+                                                    <input type="number" className={numInputCls + " text-white"} value={draft.hp_max ?? 0} onChange={(e) => updateDraft('hp_max', Number(e.target.value))} />
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
 
-                                    {/* ── COLUNA 2 ─────────────────────────────── */}
+                                    {/* ── COLUNA 2 ─────────────────────────── */}
                                     <div className="space-y-3">
 
                                         {/* Atributos */}
                                         <div className="grid grid-cols-3 gap-2">
                                             {(['str', 'dex', 'con', 'int', 'wis', 'cha'] as const).map((s) => {
-                                                const totalVal = getTotalStat(s, character.stats[s], character.race);
+                                                const totalVal = getTotalStat(s, draft.stats[s], draft.race);
                                                 const mod = getModifier(totalVal);
                                                 return (
                                                     <div key={s} className="bg-black border border-[#1a2a1a] rounded-xl p-2 text-center">
                                                         <span className="text-[8px] text-[#4a5a4a] font-black uppercase">{statLabels[s]}</span>
-                                                        <div className="text-lg font-black text-white my-0.5">{character.stats[s]}</div>
+                                                        <input
+                                                            type="number" min={1} max={30}
+                                                            className="w-full bg-transparent text-lg font-black text-white text-center outline-none my-0.5 border-b border-[#1a2a1a] focus:border-[#00ff66]/50"
+                                                            value={draft.stats[s]}
+                                                            onChange={(e) => updateStat(s, Number(e.target.value))}
+                                                        />
                                                         <div className="text-[#00ff66] text-[10px] font-black">{fmtMod(mod)}</div>
                                                     </div>
                                                 );
@@ -354,13 +465,13 @@ export default function FichaModal({ isOpen, onClose, characterId }: FichaModalP
                                             </h3>
                                             <div className="grid grid-cols-2 gap-x-4 gap-y-1">
                                                 {(['str', 'dex', 'con', 'int', 'wis', 'cha'] as const).map((s) => {
-                                                    const proficient = character.savingThrows?.[s];
-                                                    const mod = getModifier(getTotalStat(s, character.stats[s], character.race));
-                                                    const total = mod + (proficient ? (character.proficiencyBonus ?? 2) : 0);
+                                                    const proficient = draft.savingThrows?.[s];
+                                                    const mod = getModifier(getTotalStat(s, draft.stats[s], draft.race));
+                                                    const total = mod + (proficient ? (draft.proficiencyBonus ?? 2) : 0);
                                                     return (
                                                         <div key={s} className="flex items-center justify-between border-b border-[#1a2a1a]/50 py-0.5">
                                                             <div className="flex items-center gap-1.5">
-                                                                <input type="checkbox" checked={!!proficient} readOnly className="accent-[#00ff66] w-3 h-3 pointer-events-none" />
+                                                                <input type="checkbox" checked={!!proficient} onChange={() => toggleSavingThrow(s)} className="accent-[#00ff66] w-3 h-3 cursor-pointer" />
                                                                 <span className="text-[9px] uppercase text-gray-300">{s}</span>
                                                             </div>
                                                             <span className="text-[9px] font-black text-[#00ff66]">{fmtMod(total)}</span>
@@ -370,24 +481,29 @@ export default function FichaModal({ isOpen, onClose, characterId }: FichaModalP
                                             </div>
                                         </div>
 
-                                        {/* Magias e Habilidades */}
+                                        {/* Magias & Habilidades */}
                                         <div className="bg-[#050a05] border border-[#1a2a1a] p-3 rounded-xl">
                                             <h3 className="text-[#f1e5ac] text-[9px] font-black uppercase mb-3 flex items-center gap-2">
                                                 <Sparkles size={12} /> Magias &amp; Habilidades
                                             </h3>
-                                            <div className="max-h-[180px] overflow-y-auto space-y-1.5 pr-1">
+                                            <div className="max-h-[140px] overflow-y-auto space-y-1.5 pr-1 mb-2">
                                                 {raceInfo?.traits && raceInfo.traits.split(', ').map((trait) => (
                                                     <div key={trait} className="bg-[#0a1a0a] p-1.5 rounded border border-[#1a2a1a]/60 flex justify-between items-center">
                                                         <span className="text-[9px] uppercase font-bold text-[#4a7a4a]">{trait}</span>
                                                         <span className="text-[7px] text-[#2a4a2a] font-black uppercase">Raça</span>
                                                     </div>
                                                 ))}
-                                                {raceInfo?.traits && character.spells?.length > 0 && <div className="border-t border-[#1a2a1a] my-1" />}
-                                                {character.spells?.map((spell: any) => (
-                                                    <div key={spell.id} className="bg-black/60 p-1.5 rounded border border-[#1a2a1a]">
+                                                {raceInfo?.traits && draft.spells?.length > 0 && <div className="border-t border-[#1a2a1a] my-1" />}
+                                                {draft.spells?.map((spell: any) => (
+                                                    <div key={spell.id} className="bg-black/60 p-1.5 rounded border border-[#1a2a1a] flex justify-between items-center">
                                                         <span className="text-[9px] uppercase font-bold text-gray-300">{spell.name}</span>
+                                                        <button onClick={() => removeSpell(spell.id)} className="text-red-500/60 hover:text-red-400 transition-colors ml-2 shrink-0"><Trash2 size={10} /></button>
                                                     </div>
                                                 ))}
+                                            </div>
+                                            <div className="flex gap-1">
+                                                <input className={inputCls + " flex-1"} placeholder="Nova magia..." value={newSpellName} onChange={(e) => setNewSpellName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addSpell()} />
+                                                <button onClick={addSpell} className="bg-[#f1e5ac]/10 border border-[#f1e5ac]/20 text-[#f1e5ac] px-2 rounded hover:bg-[#f1e5ac]/20 transition-colors"><Plus size={10} /></button>
                                             </div>
                                         </div>
 
@@ -396,30 +512,35 @@ export default function FichaModal({ isOpen, onClose, characterId }: FichaModalP
                                             <h3 className="text-[#00ff66] text-[9px] font-black uppercase mb-2 flex items-center gap-2">
                                                 <Box size={12} /> Inventário
                                             </h3>
-                                            <div className="max-h-[140px] overflow-y-auto space-y-1 pr-1">
-                                                {character.inventory?.length ? character.inventory.map((item: any) => (
+                                            <div className="max-h-[120px] overflow-y-auto space-y-1 pr-1 mb-2">
+                                                {draft.inventory?.length ? draft.inventory.map((item: any) => (
                                                     <div key={item.id} className="flex justify-between items-center bg-black/40 p-1.5 rounded border border-[#1a2a1a]">
                                                         <span className="text-[9px] uppercase text-gray-400">{item.name}</span>
+                                                        <button onClick={() => removeInventoryItem(item.id)} className="text-red-500/60 hover:text-red-400 transition-colors ml-2 shrink-0"><Trash2 size={10} /></button>
                                                     </div>
                                                 )) : (
-                                                    <p className="text-[9px] text-[#4a5a4a] py-2 text-center">Inventário vazio.</p>
+                                                    <p className="text-[9px] text-[#4a5a4a] py-1 text-center">Inventário vazio.</p>
                                                 )}
+                                            </div>
+                                            <div className="flex gap-1">
+                                                <input className={inputCls + " flex-1"} placeholder="Novo item..." value={newInventoryItem} onChange={(e) => setNewInventoryItem(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addInventoryItem()} />
+                                                <button onClick={addInventoryItem} className="bg-[#00ff66]/10 border border-[#00ff66]/20 text-[#00ff66] px-2 rounded hover:bg-[#00ff66]/20 transition-colors"><Plus size={10} /></button>
                                             </div>
                                         </div>
                                     </div>
 
-                                    {/* ── COLUNA 3 — Perícias ───────────────────── */}
+                                    {/* ── COLUNA 3 — Perícias ──────────────── */}
                                     <div className="bg-black border border-[#1a2a1a] p-3 rounded-xl h-fit">
                                         <h3 className="text-[#f1e5ac] text-[9px] font-black uppercase mb-3 text-center">Perícias</h3>
                                         <div className="space-y-1">
                                             {Object.entries(skillsData).map(([key, info]) => {
-                                                const mod = getModifier(getTotalStat(info.attr, character.stats[info.attr], character.race));
-                                                const proficient = character.skills?.[key];
-                                                const total = mod + (proficient ? (character.proficiencyBonus ?? 2) : 0);
+                                                const mod = getModifier(getTotalStat(info.attr, draft.stats[info.attr], draft.race));
+                                                const proficient = draft.skills?.[key];
+                                                const total = mod + (proficient ? (draft.proficiencyBonus ?? 2) : 0);
                                                 return (
                                                     <div key={key} className="flex items-center justify-between bg-black/40 px-2 py-1 rounded border border-[#1a2a1a]">
                                                         <div className="flex items-center gap-1.5">
-                                                            <input type="checkbox" checked={!!proficient} readOnly className="accent-[#00ff66] w-3 h-3 pointer-events-none" />
+                                                            <input type="checkbox" checked={!!proficient} onChange={() => toggleSkill(key)} className="accent-[#00ff66] w-3 h-3 cursor-pointer" />
                                                             <span className="text-[9px] uppercase text-gray-300 leading-tight">{info.name}</span>
                                                         </div>
                                                         <span className="text-[9px] font-black text-[#00ff66] ml-1 shrink-0">{fmtMod(total)}</span>
@@ -430,7 +551,6 @@ export default function FichaModal({ isOpen, onClose, characterId }: FichaModalP
                                     </div>
 
                                 </div>{/* fim grid 3 colunas */}
-                                
                             </>
                         );
                     })()}
