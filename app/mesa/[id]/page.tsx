@@ -1,7 +1,6 @@
 "use client";
 import { useState, useRef, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import Navbar from '@/app/components/ui/navbar';
 import { UserRound, Home, BookOpen, Map as MapIcon, ShieldCheck, ChevronLeft, ChevronRight, X, Upload } from 'lucide-react';
 import { createClient } from '@/utils/supabase/client';
 import FichaModal from '@/app/components/ui/ficha-modal';
@@ -118,37 +117,47 @@ export default function TelaDeMesa() {
   // --- Logic de Dados/Ficha ---
   const [showFicha, setShowFicha] = useState(false);
   const [fichaCharacterId, setFichaCharacterId] = useState<number | string | null>(null);
+  const [isDM, setIsDM] = useState(false);
   
   // Função de rolagem que virá do componente DiceRoller
   const [rollDiceFunc, setRollDiceFunc] = useState<((diceType: string) => Promise<number | null>) | null>(null);
 
-  // Busca qual personagem o jogador está usando NESTA campanha (dinâmica)
+  // Busca role do usuário e personagem vinculado
   useEffect(() => {
-    const fetchLinkedCharacter = async () => {
+    const fetchUserRole = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user || !campaignId) return;
 
-      const { data } = await supabase
+      // Verifica se é DM
+      const { data: campaign } = await supabase
+        .from('campaigns')
+        .select('dm_id')
+        .eq('id', campaignId)
+        .maybeSingle();
+
+      if (campaign?.dm_id === user.id) {
+        setIsDM(true);
+        return; // DM não precisa de personagem vinculado
+      }
+
+      // Busca personagem do jogador nesta campanha
+      const { data: member } = await supabase
         .from('campaign_members')
         .select('current_character_id')
         .eq('campaign_id', campaignId)
         .eq('user_id', user.id)
         .maybeSingle();
 
-      if (data?.current_character_id) {
-        setFichaCharacterId(data.current_character_id);
+      if (member?.current_character_id) {
+        setFichaCharacterId(member.current_character_id);
       }
     };
-    fetchLinkedCharacter();
+    fetchUserRole();
   }, [supabase, campaignId]);
 
   return (
     <div className="h-screen w-screen bg-black overflow-hidden flex flex-col relative font-sans select-none text-white">
       
-      <div className="relative z-50">
-        <Navbar abaAtiva="mesa" setAbaAtiva={() => {}} />
-      </div>
-
       <div 
         className="flex flex-1 relative overflow-hidden bg-black" 
         onMouseMove={handleMouseMove} 
@@ -157,25 +166,35 @@ export default function TelaDeMesa() {
       >
         {/*sidebar*/}
         <aside className={`absolute left-4 top-1/2 -translate-y-1/2 bg-[#0a120a]/70 backdrop-blur-lg border border-white/10 rounded-2xl transition-all duration-300 flex flex-col items-center py-5 gap-5 z-40 shadow-2xl ${sidebarAberta ? 'w-12 opacity-100' : 'w-0 opacity-0 -translate-x-10 pointer-events-none'}`}>
-          <button onClick={() => router.push('/campanhas')} className="p-2 text-white/30 hover:text-[#00ff66] transition-colors"><Home size={20} /></button>
-          
-          <button 
-            onClick={() => {
-              if (!fichaCharacterId) { alert('Você não vinculou um personagem a esta mesa!'); return; }
-              setShowFicha(true);
-            }} 
-            className={`p-2 transition-colors ${fichaCharacterId ? 'text-white hover:text-[#00ff66]' : 'text-white/20'}`}
-          >
-            <UserRound size={20} />
-          </button>
-          
+          <button onClick={() => router.push('/campanhas')} className="p-2 text-white/30 hover:text-[#00ff66] transition-colors" title="Voltar"><Home size={20} /></button>
+
+          {/* Jogador: vê ficha do personagem */}
+          {!isDM && (
+            <button 
+              onClick={() => {
+                if (!fichaCharacterId) { alert('Você não vinculou um personagem a esta mesa!'); return; }
+                setShowFicha(true);
+              }} 
+              className={`p-2 transition-colors ${fichaCharacterId ? 'text-white hover:text-[#00ff66]' : 'text-white/20'}`}
+              title="Minha Ficha"
+            >
+              <UserRound size={20} />
+            </button>
+          )}
+
           <div className="w-6 h-[1px] bg-white/5" />
-          <button onClick={() => setModalAtivo('Mapa')} className="p-2 text-white/30 hover:text-[#00ff66] transition-colors"><MapIcon size={20} /></button>
-          <button onClick={() => setModalAtivo('Token')} className="p-2 text-white/30 hover:text-[#00ff66] transition-colors"><ShieldCheck size={20} /></button>
+
+          {/* Mestre: vê controles de mapa e token */}
+          {isDM && (
+            <>
+              <button onClick={() => setModalAtivo('Mapa')} className="p-2 text-white/30 hover:text-[#00ff66] transition-colors" title="Carregar Mapa"><MapIcon size={20} /></button>
+              <button onClick={() => setModalAtivo('Token')} className="p-2 text-white/30 hover:text-[#00ff66] transition-colors" title="Adicionar Token"><ShieldCheck size={20} /></button>
+            </>
+          )}
         </aside>
 
-        {/* COMPONENTE AUTÔNOMO DE LIVROS DA CAMPANHA */}
-        <CampaignBooksWidget campaignId={campaignId} />
+        {/* COMPONENTE AUTÔNOMO DE LIVROS DA CAMPANHA — apenas Mestre */}
+        {isDM && <CampaignBooksWidget campaignId={campaignId} />}
 
         {/*area central*/}
         <main 
