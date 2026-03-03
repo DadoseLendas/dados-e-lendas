@@ -1,8 +1,8 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import {
-    ArrowLeft, Shield, Zap, ShieldAlert, Sparkles, Box, Save, Plus, Trash2,
+    ArrowLeft, Shield, Zap, ShieldAlert, Sparkles, Box, Save, Plus, Trash2, Dice5,
 } from 'lucide-react';
 
 // ─── Dados estáticos (espelho de personagens/page.tsx) ────────────────────────
@@ -99,10 +99,12 @@ interface FichaModalProps {
     onClose: () => void;
     characterId: number | string | null;
     onUpdate?: (character: Character) => void;
+    campaignId: string;
+    onRollDice: (diceType: string, isSecret: boolean) => Promise<number | null>;
 }
 
 // ─── Componente ───────────────────────────────────────────────────────────────
-export default function FichaModal({ isOpen, onClose, characterId, onUpdate }: FichaModalProps) {
+export default function FichaModal({ isOpen, onClose, characterId, onUpdate, campaignId, onRollDice }: FichaModalProps) {
     const supabase = createClient();
     //const [character, setCharacter] = useState<Character | null>(null);
     const [draft, setDraft] = useState<Character | null>(null);
@@ -111,6 +113,46 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate }: F
     const [saveSuccess, setSaveSuccess] = useState(false);
     const [newInventoryItem, setNewInventoryItem] = useState('');
     const [newSpellName, setNewSpellName] = useState('');
+    const [currentUserName, setCurrentUserName] = useState('Aventureiro');
+    const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
+    useEffect(() => {
+        const fetchUser = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return;
+            setCurrentUserId(user.id);
+            setCurrentUserName(user.user_metadata?.name || user.email?.split('@')[0] || 'Aventureiro');
+        };
+        fetchUser();
+    }, [supabase]);
+
+    // ── Rolagem de dados ────────────────────────────────────────────────────
+    type RollResult = { label: string; modifier: number; roll: number; total: number };
+    const [rollResult, setRollResult] = useState<RollResult | null>(null);
+    const rollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    const rollD20 = async (label: string, modifier: number) => {
+        const result = await onRollDice('d20', false);
+        if (!result) return;
+        const roll = result;
+        const total = roll + modifier;
+        if (rollTimerRef.current) clearTimeout(rollTimerRef.current);
+        setRollResult({ label, modifier, roll, total });
+        rollTimerRef.current = setTimeout(() => setRollResult(null), 5000);
+
+        if (currentUserId) {
+            const modStr = modifier >= 0 ? `+${modifier}` : `${modifier}`;
+            await supabase.from('chat_messages').insert([{
+                campaign_id: campaignId,
+                user_name: currentUserName,
+                text: `rolou ${label} (d20${modStr}): ${total}`,
+                is_roll: true,
+                is_secret: false,
+                channel: 'campanha',
+                sender_id: currentUserId,
+            }]);
+        }
+    };
 
     // ── Enquadramento ────────────────────────────────────────────────────────
     const [framingOpen, setFramingOpen] = useState(false);
@@ -264,7 +306,7 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate }: F
             className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-8"
             onClick={(e) => e.target === e.currentTarget && onClose()}
         >
-            <div className="bg-[#020502]/95 border border-[#1a2a1a] rounded-2xl shadow-[0_0_80px_rgba(0,255,102,0.06),0_0_60px_rgba(0,0,0,0.9)] w-2/3 min-w-[480px] h-[88vh] flex flex-col overflow-hidden">
+            <div className="bg-[#020502]/95 border border-[#1a2a1a] rounded-2xl shadow-[0_0_80px_rgba(0,255,102,0.06),0_0_60px_rgba(0,0,0,0.9)] w-2/3 min-w-[480px] h-[88vh] flex flex-col overflow-hidden relative">
                 <div className="flex-1 overflow-y-auto px-6 py-8">
 
                     {loading && (
@@ -444,7 +486,7 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate }: F
                                                 const totalVal = getTotalStat(s, draft.stats[s], draft.race);
                                                 const mod = getModifier(totalVal);
                                                 return (
-                                                    <div key={s} className="bg-black border border-[#1a2a1a] rounded-xl p-2 text-center">
+                                                    <div key={s} className="bg-black border border-[#1a2a1a] rounded-xl p-2 text-center group relative">
                                                         <span className="text-[8px] text-[#4a5a4a] font-black uppercase">{statLabels[s]}</span>
                                                         <input
                                                             type="number" min={1} max={30}
@@ -452,7 +494,14 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate }: F
                                                             value={draft.stats[s]}
                                                             onChange={(e) => updateStat(s, Number(e.target.value))}
                                                         />
-                                                        <div className="text-[#00ff66] text-[10px] font-black">{fmtMod(mod)}</div>
+                                                        <button
+                                                            onClick={() => rollD20(statLabels[s], mod)}
+                                                            title={`Rolar ${statLabels[s]}`}
+                                                            className="flex items-center justify-center gap-1 mx-auto text-[#00ff66] text-[10px] font-black hover:text-white transition-colors cursor-pointer"
+                                                        >
+                                                            {fmtMod(mod)}
+                                                            <Dice5 size={9} className="opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                        </button>
                                                     </div>
                                                 );
                                             })}
@@ -469,12 +518,19 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate }: F
                                                     const mod = getModifier(getTotalStat(s, draft.stats[s], draft.race));
                                                     const total = mod + (proficient ? (draft.proficiencyBonus ?? 2) : 0);
                                                     return (
-                                                        <div key={s} className="flex items-center justify-between border-b border-[#1a2a1a]/50 py-0.5">
+                                                        <div key={s} className="flex items-center justify-between border-b border-[#1a2a1a]/50 py-0.5 group">
                                                             <div className="flex items-center gap-1.5">
                                                                 <input type="checkbox" checked={!!proficient} onChange={() => toggleSavingThrow(s)} className="accent-[#00ff66] w-3 h-3 cursor-pointer" />
-                                                                <span className="text-[9px] uppercase text-gray-300">{s}</span>
+                                                                <span className="text-[9px] uppercase text-gray-300">{statLabels[s]}</span>
                                                             </div>
-                                                            <span className="text-[9px] font-black text-[#00ff66]">{fmtMod(total)}</span>
+                                                            <button
+                                                                onClick={() => rollD20(`Salv. ${statLabels[s]}`, total)}
+                                                                title={`Rolar salvaguarda de ${statLabels[s]}`}
+                                                                className="flex items-center gap-1 text-[9px] font-black text-[#00ff66] hover:text-white transition-colors cursor-pointer"
+                                                            >
+                                                                {fmtMod(total)}
+                                                                <Dice5 size={9} className="opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                            </button>
                                                         </div>
                                                     );
                                                 })}
@@ -538,12 +594,20 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate }: F
                                                 const proficient = draft.skills?.[key];
                                                 const total = mod + (proficient ? (draft.proficiencyBonus ?? 2) : 0);
                                                 return (
-                                                    <div key={key} className="flex items-center justify-between bg-black/40 px-2 py-1 rounded border border-[#1a2a1a]">
+                                                    <div key={key} className="flex items-center justify-between bg-black/40 px-2 py-1 rounded border border-[#1a2a1a] group">
                                                         <div className="flex items-center gap-1.5">
                                                             <input type="checkbox" checked={!!proficient} onChange={() => toggleSkill(key)} className="accent-[#00ff66] w-3 h-3 cursor-pointer" />
                                                             <span className="text-[9px] uppercase text-gray-300 leading-tight">{info.name}</span>
+                                                            <span className="text-[7px] text-[#2a4a2a] uppercase">{info.attr}</span>
                                                         </div>
-                                                        <span className="text-[9px] font-black text-[#00ff66] ml-1 shrink-0">{fmtMod(total)}</span>
+                                                        <button
+                                                            onClick={() => rollD20(info.name, total)}
+                                                            title={`Rolar ${info.name}`}
+                                                            className="flex items-center gap-1 text-[9px] font-black text-[#00ff66] hover:text-white transition-colors cursor-pointer ml-1 shrink-0"
+                                                        >
+                                                            {fmtMod(total)}
+                                                            <Dice5 size={9} className="opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                        </button>
                                                     </div>
                                                 );
                                             })}
@@ -556,6 +620,24 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate }: F
                     })()}
 
                 </div>
+
+                {/* ── Toast de resultado de rolagem ──────────────────────── */}
+                {rollResult && (
+                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 pointer-events-none">
+                        <div className="flex items-center gap-3 px-5 py-3 rounded-2xl border border-[#1a2a1a] bg-[#0a120a]/90 shadow-[0_0_30px_rgba(0,0,0,0.8)] backdrop-blur-sm">
+                            <Dice5 size={20} className="text-[#4a5a4a]" />
+                            <div className="text-left">
+                                <div className="text-[8px] text-[#4a5a4a] font-black uppercase tracking-widest">{rollResult.label}</div>
+                                <div className="flex items-baseline gap-2">
+                                    <span className="text-2xl font-black text-white">{rollResult.total}</span>
+                                    <span className="text-[10px] text-[#4a5a4a]">
+                                        d20({rollResult.roll}) {rollResult.modifier >= 0 ? '+' : ''}{rollResult.modifier}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );

@@ -314,7 +314,13 @@ export default function TelaDeMesa() {
         </div>
       )}
 
-      <FichaModal isOpen={showFicha} onClose={() => setShowFicha(false)} characterId={fichaCharacterId} />
+      <FichaModal
+        isOpen={showFicha}
+        onClose={() => setShowFicha(false)}
+        characterId={fichaCharacterId}
+        campaignId={campaignId}
+        onRollDice={rollDiceFunc ?? (async () => null)}
+      />
     </div>
   );
 }
