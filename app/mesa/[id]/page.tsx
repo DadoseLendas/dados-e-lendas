@@ -1,6 +1,6 @@
 "use client";
 import { useState, useRef, useEffect } from 'react';
-import { useParams } from 'next/navigation'; // <-- Importado para capturar a URL
+import { useParams, useRouter } from 'next/navigation';
 import Navbar from '@/app/components/ui/navbar';
 import { UserRound, Home, BookOpen, Map as MapIcon, ShieldCheck, ChevronLeft, ChevronRight, X, Upload } from 'lucide-react';
 import { createClient } from '@/utils/supabase/client';
@@ -18,6 +18,7 @@ interface Token {
 
 export default function TelaDeMesa() {
   const supabase = createClient();
+  const router = useRouter();
   
   // A MÁGICA: Pega o ID que estiver na URL (ex: /mesa/123-abc vira '123-abc')
   const params = useParams();
@@ -156,7 +157,7 @@ export default function TelaDeMesa() {
       >
         {/*sidebar*/}
         <aside className={`absolute left-4 top-1/2 -translate-y-1/2 bg-[#0a120a]/70 backdrop-blur-lg border border-white/10 rounded-2xl transition-all duration-300 flex flex-col items-center py-5 gap-5 z-40 shadow-2xl ${sidebarAberta ? 'w-12 opacity-100' : 'w-0 opacity-0 -translate-x-10 pointer-events-none'}`}>
-          <button onClick={() => window.location.href = '/campanhas'} className="p-2 text-white/30 hover:text-[#00ff66] transition-colors"><Home size={20} /></button>
+          <button onClick={() => router.push('/campanhas')} className="p-2 text-white/30 hover:text-[#00ff66] transition-colors"><Home size={20} /></button>
           
           <button 
             onClick={() => {

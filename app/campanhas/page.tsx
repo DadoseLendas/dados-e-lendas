@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect, useRef, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import Navbar from '@/app/components/ui/navbar';
 import Footer from '@/app/components/ui/footer';
 import type { ChangeEvent } from 'react';
@@ -10,6 +11,7 @@ import { createClient } from '@/utils/supabase/client';
 
 export default function CampanhasPage() {
   const supabase = useMemo(() => createClient(), []);
+  const router = useRouter();
   const [abaAtiva, setAbaAtiva] = useState('campanhas');
   const [campaigns, setCampaigns] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -472,7 +474,7 @@ export default function CampanhasPage() {
                   deleteLabel={campaign.isOwner ? 'Excluir' : 'Sair'}
                   onAccess={() => { 
                     setDropdownOpen(null); 
-                    window.location.href = `/mesa/${campaign.id}`; // O Elo Perdido!
+                    router.push(`/mesa/${campaign.id}`);
                   }}
                   showEditOption={campaign.isOwner}
                   showCopyOption={campaign.isOwner}
