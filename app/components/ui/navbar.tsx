@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { User, LogOut, LogIn, UserPlus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
+import Image from 'next/image';
 
 interface NavbarProps {
   abaAtiva: string;
@@ -56,7 +57,7 @@ export default function Navbar({ abaAtiva, setAbaAtiva }: NavbarProps) {
   }, [supabase]);
 
   const handleLogout = async () => {
-    await (supabase.auth as any).signOut();
+    await supabase.auth.signOut();
     setIsUserLoggedIn(false);
     setAvatarUrl(null);
     setDisplayName(null);
@@ -73,11 +74,13 @@ export default function Navbar({ abaAtiva, setAbaAtiva }: NavbarProps) {
           className="flex items-center gap-3 cursor-pointer group" 
           onClick={() => { setAbaAtiva('home'); router.push('/'); }}
         >
-          <div className="p-1.5 rounded-md bg-transparent transition-transform group-hover:scale-105">
-            <img 
+          <div className="p-1.5 rounded-md bg-transparent transition-transform group-hover:scale-105 relative w-10 h-10 md:w-12 md:h-12">
+            <Image 
               src="/logo.png" 
               alt="Dados e Lendas" 
-              className="w-10 h-10 md:w-12 md:h-12 rounded-full object-cover filter drop-shadow-[0_0_8px_rgba(0,255,102,0.3)]" 
+              fill
+              sizes="(max-width: 48px) 100vw, 48px"
+              className="rounded-full object-cover filter drop-shadow-[0_0_8px_rgba(0,255,102,0.3)]" 
             />
           </div>
           <span className="font-bold text-white tracking-[0.2em] font-serif hidden sm:block uppercase text-xs md:text-base group-hover:text-[#00ff66] transition-colors">
@@ -138,9 +141,15 @@ export default function Navbar({ abaAtiva, setAbaAtiva }: NavbarProps) {
                     <span className="hidden md:block text-sm font-bold font-serif tracking-wider transition-colors group-hover:text-[#00ff66] duration-300 text-[#00ff66]">
                       {displayName || 'Aventureiro'}
                     </span>
-                    <div className={`w-10 h-10 rounded-full border-2 transition-all flex items-center justify-center overflow-hidden ${abaAtiva === 'perfil' ? 'border-[#00ff66] shadow-[0_0_8px_#00ff66]' : 'border-[#1a2a1a] group-hover:border-[#00ff66]'}`}>
+                    <div className={`relative w-10 h-10 rounded-full border-2 transition-all flex items-center justify-center overflow-hidden ${abaAtiva === 'perfil' ? 'border-[#00ff66] shadow-[0_0_8px_#00ff66]' : 'border-[#1a2a1a] group-hover:border-[#00ff66]'}`}>
                         {avatarUrl ? (
-                          <img src={avatarUrl} alt="User" className="w-full h-full object-cover" />
+                          <Image 
+                             src={avatarUrl} 
+                             alt="User" 
+                             fill
+                             sizes="(max-width: 40px) 100vw, 40px"
+                             className="object-cover" 
+                          />
                         ) : (
                           <User size={20} className={abaAtiva === 'perfil' ? 'text-[#00ff66]' : 'text-[#4a5a4a] group-hover:text-[#00ff66]'} />
                         )}

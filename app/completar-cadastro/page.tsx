@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/utils/supabase/client' 
 import { useRouter } from 'next/navigation'
 import { Playfair_Display, Inter } from 'next/font/google'
+import Image from 'next/image'
 
 const playfair = Playfair_Display({ subsets: ['latin'] })
 const inter = Inter({ subsets: ['latin'] })
@@ -123,10 +124,12 @@ export default function CompleteProfilePage() {
         
         <div className="text-center flex flex-col items-center">
           <div className="relative mb-6 h-20 w-20">
-            <img 
+            <Image 
               src="/logo.png" 
-              alt="Logo" 
-              className="h-full w-full object-contain drop-shadow-[0_0_15px_rgba(0,255,102,0.4)] rounded-full"
+              alt="Logo"
+              fill
+              sizes="(max-width: 80px) 100vw, 80px"
+              className="object-contain drop-shadow-[0_0_15px_rgba(0,255,102,0.4)] rounded-full"
             />
           </div>
           
@@ -163,7 +166,7 @@ export default function CompleteProfilePage() {
             />
             {nicknameError && (
               <span className="text-red-400 text-[10px] mt-1 ml-1 block font-bold">
-                Apenas letras, números, '-' ou '_'. Sem espaços.
+                Apenas letras, números, &apos;-&apos; ou &apos;_&apos;. Sem espaços.
               </span>
             )}
           </div>

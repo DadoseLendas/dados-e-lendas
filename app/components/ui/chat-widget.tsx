@@ -2,6 +2,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Send, Dices, MessageSquare, Eye, EyeOff, Clock, ChevronDown, UserSquare2, ChevronUp } from 'lucide-react';
 import { createClient } from '@/utils/supabase/client';
+import { User } from '@supabase/supabase-js'; // Importa o tipo correto do Supabase
 
 interface Message {
   id: string;
@@ -19,7 +20,12 @@ interface Message {
 interface ChatWidgetProps {
   campaignId: string;
   isDiceReady: boolean;
-  onRollDice: (diceType: string) => Promise<number | null>;
+  onRollDice: (diceType: string, isSecret: boolean) => Promise<number | null>;
+}
+
+interface CampaignPlayer {
+  id: string;
+  name: string;
 }
 
 export default function ChatWidget({ campaignId, isDiceReady, onRollDice }: ChatWidgetProps) {
@@ -36,14 +42,13 @@ export default function ChatWidget({ campaignId, isDiceReady, onRollDice }: Chat
   const prevMessagesLength = useRef(0);
 
   // SISTEMA DE "SUSSURROS" E IDENTIDADE
-  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [currentUserName, setCurrentUserName] = useState<string>("Aventureiro");
   const [isDM, setIsDM] = useState(false);
   
-  // Layout Profissional do Dropdown
   const [selectedReceiver, setSelectedReceiver] = useState<string>("dm"); // "dm" = Anotação privada
   const [isReceiverMenuOpen, setIsReceiverMenuOpen] = useState(false);
-  const [campaignPlayers, setCampaignPlayers] = useState<any[]>([]); 
+  const [campaignPlayers, setCampaignPlayers] = useState<CampaignPlayer[]>([]); 
 
   // 1. Inicializa o Usuário, o Nome e os Jogadores
   useEffect(() => {
@@ -72,7 +77,7 @@ export default function ChatWidget({ campaignId, isDiceReady, onRollDice }: Chat
             .eq('campaign_id', campaignId);
             
           if (members) {
-            const formatPlayers = members.map((m: any) => ({
+            const formatPlayers: CampaignPlayer[] = members.map((m: Record<string, any>) => ({
               id: m.user_id,
               name: m.profiles?.name || "Jogador"
             }));
@@ -102,7 +107,7 @@ export default function ChatWidget({ campaignId, isDiceReady, onRollDice }: Chat
     };
     fetchMessages();
 
-    // Isolamento Realtime: Só ouve mensagens desta campanha específica!
+    // Isolamento Realtime: Só ouve mensagens desta campanha específica
     const chatSubscription = supabase
       .channel(`chat_room_${campaignId}`)
       .on(
@@ -126,12 +131,17 @@ export default function ChatWidget({ campaignId, isDiceReady, onRollDice }: Chat
   useEffect(() => {
     if (isOpen) {
       chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-      setUnreadCount(0);
     } else if (messages.length > prevMessagesLength.current) {
       setUnreadCount((prev) => prev + (messages.length - prevMessagesLength.current));
     }
     prevMessagesLength.current = messages.length;
   }, [messages, isOpen, activeTab]);
+
+  // Função para lidar com a abertura do chat de forma limpa
+  const handleOpenChat = () => {
+    setIsOpen(true);
+    setUnreadCount(0); // Reseta as notificações de forma síncrona com o clique do usuário
+  };
 
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -151,7 +161,7 @@ export default function ChatWidget({ campaignId, isDiceReady, onRollDice }: Chat
 
     const { data } = await supabase.from('chat_messages').insert([{
       campaign_id: campaignId !== "00000000-0000-0000-0000-000000000000" ? campaignId : null,
-      user_name: currentUserName, // NOME REAL AQUI
+      user_name: currentUserName,
       text: textToSend,
       is_roll: false,
       is_secret: false,
@@ -165,7 +175,7 @@ export default function ChatWidget({ campaignId, isDiceReady, onRollDice }: Chat
 
   const handleRollClick = async (diceType: string) => {
     if (!currentUser) return;
-    const total = await onRollDice(diceType);
+    const total = await onRollDice(diceType, isSecretRoll); 
     if (!total) return;
 
     let text = `rolou um ${diceType}, resultado: ${total}`;
@@ -180,7 +190,7 @@ export default function ChatWidget({ campaignId, isDiceReady, onRollDice }: Chat
 
     const { data } = await supabase.from('chat_messages').insert([{
       campaign_id: campaignId !== "00000000-0000-0000-0000-000000000000" ? campaignId : null,
-      user_name: currentUserName, // NOME REAL AQUI
+      user_name: currentUserName,
       text: text,
       is_roll: true,
       is_secret: isSecretRoll,
@@ -282,7 +292,7 @@ export default function ChatWidget({ campaignId, isDiceReady, onRollDice }: Chat
         {/* Input e Controles */}
         <div className="border-t border-[#1a2a1a] bg-[#0a120a] p-4 flex flex-col gap-3 relative">
           
-          {/* O NOVO LAYOUT DO DROP DOWN DO MESTRE */}
+          {/*LAYOUT DROP DOWN DO MESTRE */}
           {activeTab === 'mestre' && isDM && (
             <div className="relative">
               <button 
@@ -346,8 +356,9 @@ export default function ChatWidget({ campaignId, isDiceReady, onRollDice }: Chat
         </div>
       </div>
 
+      {/*handleOpenChat */}
       {!isOpen && (
-        <button onClick={() => setIsOpen(true)} className="relative bg-[#050a05] border border-[#1a2a1a] hover:border-[#00ff66] p-4 rounded-full shadow-[0_0_20px_rgba(0,0,0,0.8)] transition-all group">
+        <button onClick={handleOpenChat} className="relative bg-[#050a05] border border-[#1a2a1a] hover:border-[#00ff66] p-4 rounded-full shadow-[0_0_20px_rgba(0,0,0,0.8)] transition-all group">
           <MessageSquare size={24} className="text-[#4a5a4a] group-hover:text-[#00ff66] transition-colors" />
           {unreadCount > 0 && (
             <span className="absolute -top-1 -right-1 bg-[#0a120a] border border-[#00ff66] text-[#00ff66] text-[10px] font-bold h-5 w-5 flex items-center justify-center rounded-full animate-pulse shadow-[0_0_10px_rgba(0,255,102,0.5)]">

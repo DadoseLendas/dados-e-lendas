@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import Navbar from '@/app/components/ui/navbar';
 import Footer from '@/app/components/ui/footer';
 import type { ChangeEvent } from 'react';
@@ -8,10 +8,27 @@ import { FormModal, TextInput, ImageUpload, ModalButtons } from '@/app/component
 import { Plus } from 'lucide-react';
 import { createClient } from '@/utils/supabase/client';
 
+interface Campaign {
+  id: string | number;
+  name: string;
+  code: string;
+  dm_id?: string;
+  image_url?: string;
+  created_at?: string;
+  date?: string;
+  isOwner?: boolean;
+  img?: string;
+}
+
+interface Character {
+  id: string | number;
+  name: string;
+}
+
 export default function CampanhasPage() {
   const supabase = useMemo(() => createClient(), []);
   const [abaAtiva, setAbaAtiva] = useState('campanhas');
-  const [campaigns, setCampaigns] = useState<any[]>([]);
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -24,7 +41,7 @@ export default function CampanhasPage() {
 
   // Criação
   const [campaignName, setCampaignName] = useState('');
-  const [campaignImg, setCampaignImg] = useState(''); // Estado da imagem reativado
+  const [campaignImg, setCampaignImg] = useState('');
   const [editingCampaignId, setEditingCampaignId] = useState<string | number | null>(null);
   const [editCampaignName, setEditCampaignName] = useState('');
   const [editCampaignImg, setEditCampaignImg] = useState('');
@@ -32,8 +49,8 @@ export default function CampanhasPage() {
   // Lógica de entrada (Join)
   const [joinCode, setJoinCode] = useState('');
   const [step, setStep] = useState(1);
-  const [tempCampaign, setTempCampaign] = useState<any>(null);
-  const [userCharacters, setUserCharacters] = useState<any[]>([]);
+  const [tempCampaign, setTempCampaign] = useState<Campaign | null>(null);
+  const [userCharacters, setUserCharacters] = useState<Character[]>([]);
   const [selectedCharacterId, setSelectedCharacterId] = useState('');
 
   const [dropdownOpen, setDropdownOpen] = useState<string | null>(null);
@@ -68,7 +85,7 @@ export default function CampanhasPage() {
     return () => subscription.unsubscribe();
   }, [supabase]);
 
-  const fetchCampaigns = async () => {
+  const fetchCampaigns = useCallback(async () => {
     setLoading(true);
     setFetchError(null);
     try {
@@ -94,7 +111,7 @@ export default function CampanhasPage() {
       }
 
       const membershipCampaignIds = ((membershipRows ?? []) as Array<{ campaign_id: string | number }>).map(row => row.campaign_id);
-      let memberCampaigns: any[] = [];
+      let memberCampaigns: Campaign[] = [];
 
       if (!membershipError && membershipCampaignIds.length > 0) {
         const { data: campaignsFromMembership, error: membershipCampaignsError } = await supabase
@@ -136,12 +153,12 @@ export default function CampanhasPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentUserId, supabase]);
 
   useEffect(() => {
     if (!authReady) return;
     fetchCampaigns();
-  }, [authReady, currentUserId]);
+  }, [authReady, fetchCampaigns]);
 
   // LÓGICA DE TRATAMENTO DE IMAGEM
   const handleImageChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -263,6 +280,7 @@ export default function CampanhasPage() {
       setStep(2);
     } else {
       if (!selectedCharacterId) return alert('Selecione um personagem!');
+      if (!tempCampaign) return alert('Erro interno: Campanha não encontrada no passo 2.');
 
       // Entra na campanha
       const { error: joinError } = await supabase
@@ -349,7 +367,7 @@ export default function CampanhasPage() {
     setDropdownOpen(null);
   };
 
-  const openEditModal = (campaign: any) => {
+  const openEditModal = (campaign: Campaign) => {
     setEditingCampaignId(campaign.id);
     setEditCampaignName(campaign.name ?? '');
     setEditCampaignImg(campaign.img ?? '');
@@ -454,17 +472,17 @@ export default function CampanhasPage() {
               {campaigns.map(campaign => (
                 <Card
                   key={campaign.id}
-                  id={campaign.id}
+                  id={String(campaign.id)} // Garantindo que o ID seja sempre string
                   title={campaign.name}
                   subtitle={`${campaign.isOwner ? 'Mestre' : 'Jogador'}`}
-                  metaRight={{ icon: 'calendar', label: campaign.date }}
+                  metaRight={{ icon: 'calendar', label: campaign.date || '' }}
                   showMetaDivider={false}
-                  image={campaign.img}
+                  image={campaign.img || ''}
                   dropdownOpen={dropdownOpen === String(campaign.id)}
                   onDropdownToggle={() => setDropdownOpen((prev) => prev === String(campaign.id) ? null : String(campaign.id))}
                   dropdownRef={dropdownRef}
                   onCopyCode={() => {
-                    navigator.clipboard.writeText(campaign.code);
+                    navigator.clipboard.writeText(campaign.code || '');
                     alert('Código copiado!');
                   }}
                   onEdit={() => openEditModal(campaign)}

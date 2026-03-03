@@ -1,11 +1,12 @@
 "use client";
 import { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+//import { useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import Navbar from '@/app/components/ui/navbar';
 import Footer from '@/app/components/ui/footer';
 import { User, Camera, Save, Key, Mail, ShieldAlert, Lock, ChevronDown, ChevronUp } from 'lucide-react';
 import Link from 'next/link';
+import Image from 'next/image';
 
 //TELA DE ACESSO NEGADO
 function UnauthorizedState() {
@@ -42,7 +43,7 @@ function LoadingState() {
 }
 
 export default function PerfilView() {
-  const router = useRouter();
+  //const router = useRouter();
   const supabase = createClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -134,8 +135,9 @@ export default function PerfilView() {
         setProfileData(prev => ({ ...prev, avatar_url: publicUrl }));
       }
 
-    } catch (error: any) {
-      setMessage({ type: 'error', text: error.message });
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "Erro desconhecido";
+      setMessage({ type: 'error', text: msg });
     } finally {
       setUploading(false);
     }
@@ -195,8 +197,9 @@ export default function PerfilView() {
 
       setMessage({ type: 'success', text: "Perfil atualizado com sucesso!" });
 
-    } catch (error: any) {
-      setMessage({ type: 'error', text: error.message || "Erro ao salvar." });
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "Erro ao salvar.";
+      setMessage({ type: 'error', text: msg });
     } finally {
       setSaving(false);
     }
@@ -232,9 +235,15 @@ export default function PerfilView() {
                 <div className="bg-[#0a120a] border border-[#1a2a1a] rounded-xl p-8 shadow-[0_0_50px_rgba(0,0,0,0.5)] flex flex-col items-center text-center h-full">
                     
                     <div className="relative mb-6 group">
-                        <div className="w-40 h-40 rounded-full border-4 border-[#1a2a1a] group-hover:border-[#00ff66] transition-all overflow-hidden bg-black flex items-center justify-center shadow-[0_0_30px_rgba(0,0,0,0.5)]">
+                        <div className="w-40 h-40 relative rounded-full border-4 border-[#1a2a1a] group-hover:border-[#00ff66] transition-all overflow-hidden bg-black flex items-center justify-center shadow-[0_0_30px_rgba(0,0,0,0.5)]">
                             {profileData.avatar_url ? (
-                                <img src={profileData.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+                                <Image 
+                                    src={profileData.avatar_url} 
+                                    alt="Avatar" 
+                                    fill
+                                    sizes="(max-width: 160px) 100vw, 160px"
+                                    className="object-cover" 
+                                />
                             ) : (
                                 <User size={64} className="text-[#4a5a4a]" />
                             )}

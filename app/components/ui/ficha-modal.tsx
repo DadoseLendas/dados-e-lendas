@@ -71,7 +71,7 @@ const fmtMod = (mod: number) => (mod >= 0 ? `+${mod}` : `${mod}`);
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 type Character = {
-    id: any;
+    id: string | number;
     name: string;
     class: string;
     level: number;
@@ -104,7 +104,7 @@ interface FichaModalProps {
 // ─── Componente ───────────────────────────────────────────────────────────────
 export default function FichaModal({ isOpen, onClose, characterId, onUpdate }: FichaModalProps) {
     const supabase = createClient();
-    const [character, setCharacter] = useState<Character | null>(null);
+    //const [character, setCharacter] = useState<Character | null>(null);
     const [draft, setDraft] = useState<Character | null>(null);
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
@@ -129,7 +129,7 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate }: F
         setSavingFrame(true);
         await supabase.from('characters').update({ imgOffsetX: tempOffsetX, imgOffsetY: tempOffsetY }).eq('id', draft.id);
         const updated = { ...draft, imgOffsetX: tempOffsetX, imgOffsetY: tempOffsetY };
-        setCharacter(updated);
+        //setCharacter(updated);
         setDraft(updated);
         onUpdate?.(updated);
         setSavingFrame(false);
@@ -137,7 +137,7 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate }: F
     };
 
     // ── Helpers de edição ────────────────────────────────────────────────────
-    const updateDraft = (field: string, value: any) =>
+    const updateDraft = (field: string, value: unknown) =>
         setDraft(prev => prev ? { ...prev, [field]: value } : prev);
 
     const updateStat = (key: string, value: number) =>
@@ -177,9 +177,9 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate }: F
     const saveCharacter = async () => {
         if (!draft) return;
         setSaving(true);
-        const payload: Record<string, any> = { ...draft };
+        const payload: Record<string, unknown> = { ...draft };
         let saved: Character | null = null;
-        let saveError: any = null;
+        let saveError: Error | any = null;
         for (let attempt = 0; attempt < 5; attempt++) {
             const { data, error } = await supabase
                 .from('characters')
@@ -198,7 +198,7 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate }: F
         if (saveError) {
             alert('Erro ao salvar: ' + saveError.message);
         } else if (saved) {
-            setCharacter(saved);
+            //setCharacter(saved);
             setDraft(saved);
             onUpdate?.(saved);
             setSaveSuccess(true);
@@ -212,7 +212,7 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate }: F
         if (!isOpen || !characterId) return;
         const fetchCharacter = async () => {
             setLoading(true);
-            setCharacter(null);
+            //setCharacter(null);
             setDraft(null);
             const { data, error } = await supabase
                 .from('characters')
@@ -220,13 +220,13 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate }: F
                 .eq('id', characterId)
                 .single();
             if (!error && data) {
-                setCharacter(data as Character);
+                //setCharacter(data as Character);
                 setDraft(data as Character);
             }
             setLoading(false);
         };
         fetchCharacter();
-    }, [isOpen, characterId]);
+    }, [isOpen, characterId, supabase]);
 
     // Bloqueia scroll do body enquanto modal está aberto
     useEffect(() => {
@@ -494,7 +494,7 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate }: F
                                                     </div>
                                                 ))}
                                                 {raceInfo?.traits && draft.spells?.length > 0 && <div className="border-t border-[#1a2a1a] my-1" />}
-                                                {draft.spells?.map((spell: any) => (
+                                                {draft.spells?.map((spell: { id: number; name: string }) => (
                                                     <div key={spell.id} className="bg-black/60 p-1.5 rounded border border-[#1a2a1a] flex justify-between items-center">
                                                         <span className="text-[9px] uppercase font-bold text-gray-300">{spell.name}</span>
                                                         <button onClick={() => removeSpell(spell.id)} className="text-red-500/60 hover:text-red-400 transition-colors ml-2 shrink-0"><Trash2 size={10} /></button>
@@ -513,7 +513,7 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate }: F
                                                 <Box size={12} /> Inventário
                                             </h3>
                                             <div className="max-h-[120px] overflow-y-auto space-y-1 pr-1 mb-2">
-                                                {draft.inventory?.length ? draft.inventory.map((item: any) => (
+                                                {draft.inventory?.length ? draft.inventory.map((item: { id: number; name: string }) => (
                                                     <div key={item.id} className="flex justify-between items-center bg-black/40 p-1.5 rounded border border-[#1a2a1a]">
                                                         <span className="text-[9px] uppercase text-gray-400">{item.name}</span>
                                                         <button onClick={() => removeInventoryItem(item.id)} className="text-red-500/60 hover:text-red-400 transition-colors ml-2 shrink-0"><Trash2 size={10} /></button>

@@ -1,13 +1,11 @@
 'use client';
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import type { ChangeEvent } from 'react';
-import { useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import Navbar from '@/app/components/ui/navbar';
 import Footer from '@/app/components/ui/footer';
 import Card from '@/app/components/ui/card';
-import { Sword, Plus, ArrowLeft, ShieldAlert, Heart, Sparkles, Trash2, Save, AlertCircle, BookOpen, Shield, Zap, Package, Box } from 'lucide-react';
-import Link from 'next/link';
+import { Plus, ArrowLeft, ShieldAlert, Sparkles, Trash2, Save, Shield, Zap, Box } from 'lucide-react';
 
 
 // --- DADOS DE RAÇAS (Adicionado) ---
@@ -42,7 +40,7 @@ const CLASS_DATA: Record<string, { hp: number; primaryAttr: string; savingThrows
 
 
 type Character = {
-  id: any;
+  id: string | number;
   name: string;
   class: string;
   level: number;
@@ -69,24 +67,23 @@ type Character = {
 }
 
 export default function PersonagensPage() {
-  const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
 
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  
   const [characters, setCharacters] = useState<Character[]>([]);
   const [activeCharacter, setActiveCharacter] = useState<Character | null>(null);
   const [loadingAction, setLoadingAction] = useState(false);
 
   const [dropdownOpen, setDropdownOpen] = useState<string | null>(null);
-  const [confirmDeleteId, setConfirmDeleteId] = useState<any>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | number | null>(null);
   const [editingCharacterImg, setEditingCharacterImg] = useState(false);
   const [tempCharacterImg, setTempCharacterImg] = useState('');
   const [tempOffsetX, setTempOffsetX] = useState(50);
   const [tempOffsetY, setTempOffsetY] = useState(50);
   const [showFramingSliders, setShowFramingSliders] = useState(false);
-  const [newInventoryItem, setNewInventoryItem] = useState('');
+  
   const [newSpellName, setNewSpellName] = useState('');
   const [newItem, setNewItem] = useState('');
   const [abaAtiva, setAbaAtiva] = useState<string>('personagens');
@@ -103,12 +100,12 @@ export default function PersonagensPage() {
     return baseValue + raceBonus;
   };
 
-  const fetchCharacters = async () => {
+  const fetchCharacters = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
     const { data, error } = await supabase.from('characters').select('*').eq('owner_id', user.id);
     if (!error && data) setCharacters(data);
-  };
+  }, [supabase]);
 
   const extractMissingColumn = (message?: string) => {
     if (!message) return null;
@@ -121,13 +118,12 @@ export default function PersonagensPage() {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
         setIsAuthenticated(true);
-        setCurrentUserId(session.user.id);
         await fetchCharacters();
       }
       setIsLoadingAuth(false);
     };
     checkUser();
-  }, []);
+  }, [fetchCharacters, supabase.auth]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -144,13 +140,13 @@ export default function PersonagensPage() {
     setLoadingAction(true);
     const { data: { user } } = await supabase.auth.getUser();
 
-    let payload: Record<string, any> = {
+    const payload: Record<string, unknown> = {
       ...char,
-      is_linked: (char as any).is_linked ?? false,
+      is_linked: char.is_linked ?? false,
       owner_id: user?.id
     };
 
-    let saveError: any = null;
+    let saveError: Error | any = null;
     for (let attempt = 0; attempt < 5; attempt++) {
       const { error } = await supabase.from('characters').upsert(payload);
       if (!error) { saveError = null; break; }
@@ -183,9 +179,9 @@ export default function PersonagensPage() {
       img: '/placeholder-rpg.png', is_linked: false, owner_id: user.id
     };
 
-    let insertPayload: Record<string, any> = { ...newChar };
-    let data: any = null;
-    let createError: any = null;
+    const insertPayload: Record<string, unknown> = { ...newChar };
+    let data: Character | null = null;
+    let createError: Error | any = null;
 
     for (let attempt = 0; attempt < 5; attempt++) {
       const result = await supabase.from('characters').insert([insertPayload]).select('*').single();
@@ -205,7 +201,7 @@ export default function PersonagensPage() {
     else await fetchCharacters();
   };
 
-  const deleteCharacter = async (id: any) => {
+  const deleteCharacter = async (id: string | number) => {
     await supabase.from('campaign_members').update({ current_character_id: null }).eq('current_character_id', id);
     await supabase.from('campaign_logs').delete().eq('character_id', id);
     const { error } = await supabase.from('characters').delete().eq('id', id);
@@ -215,11 +211,11 @@ export default function PersonagensPage() {
     setConfirmDeleteId(null);
   };
 
-  const updateCharacter = (field: string, value: any) => {
+  const updateCharacter = (field: string, value: unknown) => {
     if (!activeCharacter) return;
-    setActiveCharacter({ ...activeCharacter, [field]: value });
+    setActiveCharacter({ ...activeCharacter, [field]: value } as Character);
   };
-
+/*
   const HealthBar = ({ current, max }: { current: number, max: number }) => {
     const percentage = Math.min(Math.max((current / max) * 100, 0), 100);
     const color = percentage > 50 ? 'bg-[#00ff66]' : percentage > 20 ? 'bg-yellow-500' : 'bg-red-600';
@@ -235,7 +231,7 @@ export default function PersonagensPage() {
       </div>
     );
   };
-
+*/
   const skillsData: Record<string, { name: string; attr: 'str' | 'dex' | 'con' | 'int' | 'wis' | 'cha' }> = {
     atletismo: { name: 'Atletismo', attr: 'str' }, acrobacia: { name: 'Acrobacia', attr: 'dex' }, furtividade: { name: 'Furtividade', attr: 'dex' },
     prestidigitacao: { name: 'Prestidigitação', attr: 'dex' }, arcanismo: { name: 'Arcanismo', attr: 'int' }, historia: { name: 'História', attr: 'int' },
@@ -251,7 +247,7 @@ export default function PersonagensPage() {
     if (!activeCharacter) return null;
     const raceInfo = RACE_DATA[activeCharacter.race];
 
-    const openCharacterImageModal = () => { setTempCharacterImg(activeCharacter.img || '/placeholder-rpg.png'); setTempOffsetX(activeCharacter.imgOffsetX ?? 50); setTempOffsetY(activeCharacter.imgOffsetY ?? 50); setEditingCharacterImg(true); };
+    //const openCharacterImageModal = () => { setTempCharacterImg(activeCharacter.img || '/placeholder-rpg.png'); setTempOffsetX(activeCharacter.imgOffsetX ?? 50); setTempOffsetY(activeCharacter.imgOffsetY ?? 50); setEditingCharacterImg(true); };
     const handleCharacterImageFileChange = (e: ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (!file) return;
@@ -617,7 +613,7 @@ export default function PersonagensPage() {
                   >
                     <span className="text-[10px] uppercase font-bold text-gray-300">{spell.name}</span>
                     <button
-                      onClick={() => updateCharacter('spells', activeCharacter.spells.filter((s: any) => s.id !== spell.id))}
+                      onClick={() => updateCharacter('spells', activeCharacter.spells.filter((s: { id: number }) => s.id !== spell.id))}
                       className="text-red-900 group-hover:text-red-500"
                     >
                       <Trash2 size={12} />
@@ -656,7 +652,7 @@ export default function PersonagensPage() {
                     <span className="text-[9px] uppercase text-gray-400">{item.name}</span>
                     <button
                       onClick={() =>
-                        updateCharacter('inventory', activeCharacter.inventory.filter((i: any) => i.id !== item.id))
+                        updateCharacter('inventory', activeCharacter.inventory.filter((i: { id: number }) => i.id !== item.id))
                       }
                       className="text-red-900 hover:text-red-500"
                     >

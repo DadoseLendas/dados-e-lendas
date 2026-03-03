@@ -72,7 +72,7 @@ export default function PdfReaderModal({ isOpen, onClose, title, pdfUrl }: PdfRe
         {!isGoogleDrive && (
           <div className="bg-yellow-900/20 border-b border-yellow-700/50 p-3 flex items-start gap-2 text-yellow-500 text-xs">
             <AlertCircle size={14} className="mt-0.5 flex-shrink-0" />
-            <p>Este link não é do Google Drive. Se a tela abaixo ficar em branco, o site bloqueia a leitura. Use o botão <strong>"Abrir Externo"</strong>.</p>
+            <p>Este link não é do Google Drive. Se a tela abaixo ficar em branco, o site bloqueia a leitura. Use o botão <strong>&quot;Abrir Externo&quot;</strong>.</p>
           </div>
         )}
 

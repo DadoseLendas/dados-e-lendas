@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Book, X, BookOpen, Plus, Trash2, ExternalLink, Image as ImageIcon } from 'lucide-react';
 import { createClient } from '@/utils/supabase/client';
 import PdfReaderModal from '@/app/components/ui/pdf-reader-modal';
@@ -31,11 +31,7 @@ export default function CampaignBooksWidget({ campaignId }: CampaignBooksWidgetP
   const [activePdfUrl, setActivePdfUrl] = useState("");
   const [activePdfTitle, setActivePdfTitle] = useState("");
 
-  useEffect(() => {
-    fetchCampaignBooks();
-  }, [campaignId]);
-
-  const fetchCampaignBooks = async () => {
+  const fetchCampaignBooks = useCallback(async () => {
     if (!campaignId || campaignId === "00000000-0000-0000-0000-000000000000") return;
     
     const { data } = await supabase
@@ -45,7 +41,11 @@ export default function CampaignBooksWidget({ campaignId }: CampaignBooksWidgetP
       .order('created_at', { ascending: true });
 
     if (data) setBooks(data);
-  };
+  }, [campaignId, supabase]);
+
+  useEffect(() => {
+    fetchCampaignBooks();
+  }, [fetchCampaignBooks]);
 
   const handleDeleteBook = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
@@ -74,7 +74,7 @@ export default function CampaignBooksWidget({ campaignId }: CampaignBooksWidgetP
       if (match) finalCoverUrl = `https://drive.google.com/thumbnail?id=${match[1]}&sz=w800`;
     }
 
-    const { data, error } = await supabase.from('campaign_books').insert([{
+    const { data } = await supabase.from('campaign_books').insert([{
       campaign_id: campaignId,
       user_id: user.id,
       title: newTitle,

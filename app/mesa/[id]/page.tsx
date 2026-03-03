@@ -24,6 +24,7 @@ export default function TelaDeMesa() {
   const campaignId = params.id as string;
   
   //interface e Mapa
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null); // <-- Adicione esta linha
   const [sidebarAberta, setSidebarAberta] = useState(true);
   const [modalAtivo, setModalAtivo] = useState<'Mapa' | 'Token' | 'Biblioteca' | null>(null);
   const [mapaUrl, setMapaUrl] = useState<string | null>(null);
@@ -120,7 +121,7 @@ export default function TelaDeMesa() {
   const [isDM, setIsDM] = useState(false);
   
   // Função de rolagem que virá do componente DiceRoller
-  const [rollDiceFunc, setRollDiceFunc] = useState<((diceType: string) => Promise<number | null>) | null>(null);
+  const [rollDiceFunc, setRollDiceFunc] = useState<((diceType: string, isSecret: boolean) => Promise<number | null>) | null>(null);
 
   // Busca role do usuário e personagem vinculado
   useEffect(() => {
@@ -128,7 +129,8 @@ export default function TelaDeMesa() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user || !campaignId) return;
 
-      // Verifica se é DM
+      setCurrentUserId(user.id); // <-- Captura o ID do usuário aqui
+
       const { data: campaign } = await supabase
         .from('campaigns')
         .select('dm_id')
@@ -137,10 +139,9 @@ export default function TelaDeMesa() {
 
       if (campaign?.dm_id === user.id) {
         setIsDM(true);
-        return; // DM não precisa de personagem vinculado
+        return; 
       }
 
-      // Busca personagem do jogador nesta campanha
       const { data: member } = await supabase
         .from('campaign_members')
         .select('current_character_id')
@@ -267,13 +268,18 @@ export default function TelaDeMesa() {
           <ChatWidget 
             campaignId={campaignId} 
             isDiceReady={!!rollDiceFunc} 
-            onRollDice={rollDiceFunc || (async () => null)} 
+            onRollDice={rollDiceFunc ? (type, secret) => rollDiceFunc(type, secret) : (async () => null)} 
           />
         </div>
       </div>
 
       {/* COMPONENTE EXTRAÍDO DOS DADOS FÍSICOS */}
-      <DiceRoller onReady={(func) => setRollDiceFunc(() => func)} />
+      <DiceRoller 
+        campaignId={campaignId}
+        isDM={isDM}
+        currentUserId={currentUserId}
+        onReady={(func) => setRollDiceFunc(() => func)} 
+      />
       
       {modalAtivo && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 backdrop-blur-sm p-6">

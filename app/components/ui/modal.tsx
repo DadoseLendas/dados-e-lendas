@@ -1,5 +1,6 @@
 import { ReactNode, FormEvent } from 'react';
 import { ChangeEvent } from 'react';
+import Image from 'next/image';
 
 interface ModalProps {
   isOpen: boolean;
@@ -55,7 +56,7 @@ export function TextInput({ label, value, onChange, placeholder, ...props }: {
   value: string;
   onChange: (e: ChangeEvent<HTMLInputElement>) => void;
   placeholder?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }) {
   return (
     <div>
@@ -88,8 +89,16 @@ export function ImageUpload({ label, onChange, currentImage, helperText }: Image
         className="w-full bg-black border border-[#1a2a1a] rounded-lg py-3 px-4 text-white text-sm focus:outline-none focus:border-[#00ff66] transition-colors file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-xs file:font-black file:bg-[#00ff66] file:text-black"
       />
       {currentImage && (
-        <div className="mt-4 text-center">
-          <img src={currentImage} alt="Preview" className="max-w-52 max-h-24 object-cover rounded border border-[#1a2a1a] mx-auto" />
+        <div className="mt-4 text-center flex justify-center">
+          <div className="relative w-52 h-24">
+             <Image 
+               src={currentImage} 
+               alt="Preview" 
+               fill
+               sizes="(max-width: 208px) 100vw, 208px"
+               className="object-cover rounded border border-[#1a2a1a]" 
+             />
+          </div>
         </div>
       )}
       {helperText && (

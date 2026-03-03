@@ -170,7 +170,7 @@ export default function TelaDeLivros() {
           <div>
             <h3 className="text-blue-400 font-bold text-sm uppercase tracking-widest mb-1">Como usar PDFs do Google Drive</h3>
             <p className="text-[#8a9a8a] text-sm leading-relaxed">
-              Para que o leitor integrado funcione corretamente, certifique-se de que o compartilhamento do seu arquivo no Google Drive esteja configurado como <strong className="text-blue-300">"Qualquer pessoa com o link"</strong>. Links restritos serão bloqueados pela segurança do Google.
+              Para que o leitor integrado funcione corretamente, certifique-se de que o compartilhamento do seu arquivo no Google Drive esteja configurado como <strong className="text-blue-300">&quot;Qualquer pessoa com o link&quot;</strong>. Links restritos serão bloqueados pela segurança do Google.
             </p>
           </div>
         </div>
@@ -270,7 +270,7 @@ export default function TelaDeLivros() {
                 <input type="url" value={newPdfUrl} onChange={(e) => setNewPdfUrl(e.target.value)} placeholder="https://drive.google.com/..." className="w-full bg-[#0a120a] border border-[#1a2a1a] rounded-lg p-3 text-white text-sm focus:border-[#00ff66] focus:outline-none" required />
                 {/* AVISO DENTRO DO MODAL */}
                 <p className="text-[10px] text-blue-400 mt-1.5 flex items-center gap-1 font-medium">
-                  <Info size={12} /> Lembre-se: O link deve estar como "Qualquer pessoa com o link"
+                  <Info size={12} /> Lembre-se: O link deve estar como &quot;Qualquer pessoa com o link&quot;
                 </p>
               </div>
 
