@@ -1,6 +1,8 @@
 'use client'
 
-import { useState, Suspense } from 'react'
+export const dynamic = 'force-dynamic'
+
+import { useState } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
@@ -11,7 +13,7 @@ import { ChevronRight } from 'lucide-react'
 const playfair = Playfair_Display({ subsets: ['latin'] })
 const inter = Inter({ subsets: ['latin'] })
 
-function LoginContent() {
+export default function LoginPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const supabase = createClient()
@@ -192,13 +194,5 @@ function LoginContent() {
         </p>
       </div>
     </div>
-  )
-}
-
-export default function LoginPage() {
-  return (
-    <Suspense>
-      <LoginContent />
-    </Suspense>
   )
 }
