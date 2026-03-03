@@ -159,6 +159,14 @@ export default function Card({
                 </div>
               )}
             </div>
+            {onAccess && (
+              <button
+                onClick={(e) => { e.stopPropagation(); onAccess(); }}
+                className="access-btn"
+              >
+                {accessLabel}
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -354,6 +362,27 @@ export default function Card({
 
         .card-meta-item.right {
           justify-content: flex-end;
+        }
+
+        .access-btn {
+          margin-top: 12px;
+          width: 100%;
+          padding: 8px 0;
+          background: transparent;
+          border: 1px solid #00ff66;
+          border-radius: 8px;
+          color: #00ff66;
+          font-size: 10px;
+          font-weight: 900;
+          text-transform: uppercase;
+          letter-spacing: 0.12em;
+          cursor: pointer;
+          transition: background 0.2s, color 0.2s;
+        }
+
+        .access-btn:hover {
+          background: #00ff66;
+          color: #000;
         }
 
         .meta-icon {
