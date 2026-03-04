@@ -1,14 +1,16 @@
 "use client";
 import { useState, useRef, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { UserRound, Users, Home, BookOpen, Map as MapIcon, ShieldCheck, ChevronLeft, ChevronRight, X, Upload } from 'lucide-react';
+import { 
+  UserRound, Users, Home, BookOpen, Map as MapIcon, 
+  ShieldCheck, ChevronLeft, ChevronRight, X, Upload, HelpCircle 
+} from 'lucide-react'; 
 import { createClient } from '@/utils/supabase/client';
 import FichaModal from '@/app/components/ui/ficha-modal';
 import ChatWidget from '@/app/components/ui/chat-widget'; 
 import CampaignBooksWidget from '@/app/components/ui/campaign-books-widget';
 import DiceRoller from '@/app/components/ui/dice-roller';
 import TokenLibraryWidget from '@/app/components/ui/token-library-widget';
-
 interface Token {
   id: string;
   url: string;
@@ -334,6 +336,9 @@ export default function TelaDeMesa() {
   const [showFichaDM, setShowFichaDM] = useState(false);
   const [fichaCharacterIdDM, setFichaCharacterIdDM] = useState<number | string | null>(null);
   const [playerCharacters, setPlayerCharacters] = useState<{ id: number; name: string; img: string | null; imgOffsetX: number; imgOffsetY: number }[]>([]);
+
+  const [modalAjuda, setModalAjuda] = useState(false);
+  const [buscaCondicao, setBuscaCondicao] = useState("");
 
   // Busca e atualiza personagens dos jogadores da campanha (usado pelo Mestre)
   const fetchPlayerCharacters = async () => {
