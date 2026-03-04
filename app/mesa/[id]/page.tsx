@@ -48,6 +48,7 @@ export default function TelaDeMesa() {
   const draggingPosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const lastBroadcastRef = useRef<number>(0);
   const realtimeChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const dragMovedRef = useRef(false); // detecta se foi drag ou click
 
   // Keep tokensRef in sync with state (for use inside event handlers)
   useEffect(() => { tokensRef.current = tokens; }, [tokens]);
@@ -60,6 +61,7 @@ export default function TelaDeMesa() {
     if (tokenId) {
       setTokenSelecionado(tokenId);
       setIsDraggingToken(true);
+      dragMovedRef.current = false;
       const token = tokensRef.current.find(t => t.id === tokenId);
       if (token) draggingPosRef.current = { x: token.x, y: token.y };
       e.stopPropagation();
@@ -73,6 +75,7 @@ export default function TelaDeMesa() {
     if (isDraggingMap) {
       setOffset(prev => ({ x: prev.x + e.movementX, y: prev.y + e.movementY }));
     } else if (isDraggingToken && tokenSelecionado) {
+      dragMovedRef.current = true;
       draggingPosRef.current.x += e.movementX / zoom;
       draggingPosRef.current.y += e.movementY / zoom;
       const { x, y } = draggingPosRef.current;
@@ -227,7 +230,16 @@ export default function TelaDeMesa() {
       )
       .subscribe();
     realtimeChannelRef.current = channel;
-    return () => { supabase.removeChannel(channel); };
+    // Subscription para novos membros (atualiza lista de jogadores do Mestre)
+    const membersChannel = supabase
+      .channel(`mesa-members-${campaignId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'campaign_members', filter: `campaign_id=eq.${campaignId}` },
+        () => { fetchPlayerCharacters(); }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); supabase.removeChannel(membersChannel); };
   }, [campaignId]);
 
   // --- Logic de Dados/Ficha ---
@@ -238,7 +250,24 @@ export default function TelaDeMesa() {
   const [showPlayerList, setShowPlayerList] = useState(false);
   const [showFichaDM, setShowFichaDM] = useState(false);
   const [fichaCharacterIdDM, setFichaCharacterIdDM] = useState<number | string | null>(null);
-  const [playerCharacters, setPlayerCharacters] = useState<{ id: number; name: string; img: string | null }[]>([]);
+  const [playerCharacters, setPlayerCharacters] = useState<{ id: number; name: string; img: string | null; imgOffsetX: number; imgOffsetY: number }[]>([]);
+
+  // Busca e atualiza personagens dos jogadores da campanha (usado pelo Mestre)
+  const fetchPlayerCharacters = async () => {
+    const { data: membersData } = await supabase
+      .from('campaign_members')
+      .select('current_character_id')
+      .eq('campaign_id', campaignId)
+      .not('current_character_id', 'is', null);
+    if (!membersData || membersData.length === 0) { setPlayerCharacters([]); return; }
+    const charIds = membersData.map((m: any) => m.current_character_id).filter(Boolean);
+    if (charIds.length === 0) { setPlayerCharacters([]); return; }
+    const { data: charsData } = await supabase
+      .from('characters')
+      .select('id, name, img, imgOffsetX, imgOffsetY')
+      .in('id', charIds);
+    if (charsData) setPlayerCharacters(charsData.map((c: any) => ({ ...c, imgOffsetX: c.imgOffsetX ?? 50, imgOffsetY: c.imgOffsetY ?? 50 })) as any);
+  };
   
   // Função de rolagem que virá do componente DiceRoller
   const [rollDiceFunc, setRollDiceFunc] = useState<((diceType: string, isSecret: boolean) => Promise<number | null>) | null>(null);
@@ -259,20 +288,7 @@ export default function TelaDeMesa() {
 
       if (campaign?.dm_id === user.id) {
         setIsDM(true);
-        // Busca personagens de todos os jogadores da campanha
-        const { data: membersData } = await supabase
-          .from('campaign_members')
-          .select('current_character_id')
-          .eq('campaign_id', campaignId)
-          .not('current_character_id', 'is', null);
-        if (membersData && membersData.length > 0) {
-          const charIds = membersData.map((m: any) => m.current_character_id);
-          const { data: charsData } = await supabase
-            .from('characters')
-            .select('id, name, img')
-            .in('id', charIds);
-          if (charsData) setPlayerCharacters(charsData as any);
-        }
+        await fetchPlayerCharacters();
       } else {
         const { data: member } = await supabase
           .from('campaign_members')
@@ -467,12 +483,13 @@ export default function TelaDeMesa() {
               <button
                 key={pc.id}
                 onClick={() => { setFichaCharacterIdDM(pc.id); setShowFichaDM(true); setShowPlayerList(false); }}
-                className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-[#00ff66]/10 hover:text-[#00ff66] transition-all text-left text-[11px] text-white/70 font-medium"
+                className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-[#00ff66]/10 hover:text-[#00ff66] transition-all text-left text-[11px] text-white/70 font-medium"
               >
-                {pc.img && (
-                  <div className="w-6 h-6 rounded-full bg-neutral-800 overflow-hidden shrink-0" style={{ backgroundImage: `url(${pc.img})`, backgroundSize: 'cover', backgroundPosition: '50% 50%' }} />
-                )}
-                {pc.name}
+                <div
+                  className="w-7 h-7 rounded-full bg-neutral-800 shrink-0 border border-white/10"
+                  style={pc.img ? { backgroundImage: `url(${pc.img})`, backgroundSize: 'cover', backgroundPosition: `${pc.imgOffsetX}% ${pc.imgOffsetY}%` } : {}}
+                />
+                <span className="truncate">{pc.name}</span>
               </button>
             ))}
           </div>
@@ -516,6 +533,18 @@ export default function TelaDeMesa() {
                 <div
                   key={token.id}
                   onMouseDown={(e) => handleMouseDown(e, token.id)}
+                  onMouseUp={(e) => {
+                    if (!dragMovedRef.current && token.characterId) {
+                      e.stopPropagation();
+                      if (isDM) {
+                        setFichaCharacterIdDM(token.characterId);
+                        setShowFichaDM(true);
+                      } else if (String(token.characterId) === String(fichaCharacterId)) {
+                        setShowFicha(true);
+                      }
+                      // jogador clicando em token alheio → não faz nada
+                    }
+                  }}
                   style={{
                     transform: `translate(${token.x}px, ${token.y}px)`,
                     position: 'absolute',
@@ -542,6 +571,11 @@ export default function TelaDeMesa() {
                         : 'border-white/60 group-hover:border-[#00ff66] group-hover:shadow-[0_0_15px_rgba(0,255,102,0.4)]'
                     }`}
                   />
+                  {token.name && (
+                    <span className="mt-1 text-[8px] font-bold text-white/80 bg-black/60 px-1.5 py-0.5 rounded-full whitespace-nowrap max-w-[80px] truncate text-center leading-tight">
+                      {token.name}
+                    </span>
+                  )}
                 </div>
               ))}
             </div>
