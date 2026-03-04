@@ -97,27 +97,40 @@ export default function TelaDeMesa() {
 
   const handleMouseUp = () => {
     if (isDraggingToken && tokenSelecionado) {
-      const snappedX = Math.round(draggingPosRef.current.x / gridSize) * gridSize;
-      const snappedY = Math.round(draggingPosRef.current.y / gridSize) * gridSize;
-      const capturedId = tokenSelecionado;
-      setTokens(prev => prev.map(t =>
-        t.id === capturedId ? { ...t, x: snappedX, y: snappedY } : t
-      ));
-      // Broadcast final snapped position
-      if (realtimeChannelRef.current) {
-        realtimeChannelRef.current.send({
-          type: 'broadcast',
-          event: 'token-move',
-          payload: { tokenId: capturedId, x: snappedX, y: snappedY },
-        });
+      if (!dragMovedRef.current) {
+        // Foi clique (sem arrastar): abre ficha se token tem personagem
+        const token = tokensRef.current.find(t => t.id === tokenSelecionado);
+        if (token?.characterId) {
+          if (isDM) {
+            setFichaCharacterIdDM(token.characterId);
+            setShowFichaDM(true);
+          } else if (String(token.characterId) === String(fichaCharacterId)) {
+            setShowFicha(true);
+          }
+          // jogador clicando em token alheio → não faz nada
+        }
+      } else {
+        // Foi arrasto: snappa e salva posição
+        const snappedX = Math.round(draggingPosRef.current.x / gridSize) * gridSize;
+        const snappedY = Math.round(draggingPosRef.current.y / gridSize) * gridSize;
+        const capturedId = tokenSelecionado;
+        setTokens(prev => prev.map(t =>
+          t.id === capturedId ? { ...t, x: snappedX, y: snappedY } : t
+        ));
+        if (realtimeChannelRef.current) {
+          realtimeChannelRef.current.send({
+            type: 'broadcast',
+            event: 'token-move',
+            payload: { tokenId: capturedId, x: snappedX, y: snappedY },
+          });
+        }
+        supabase
+          .from('campaign_tokens')
+          .update({ x: snappedX, y: snappedY })
+          .eq('id', capturedId)
+          .eq('campaign_id', campaignId)
+          .then(() => {});
       }
-      // Persist to DB
-      supabase
-        .from('campaign_tokens')
-        .update({ x: snappedX, y: snappedY })
-        .eq('id', capturedId)
-        .eq('campaign_id', campaignId)
-        .then(() => {});
     }
     setIsDraggingMap(false);
     setIsDraggingToken(false);
@@ -533,18 +546,6 @@ export default function TelaDeMesa() {
                 <div
                   key={token.id}
                   onMouseDown={(e) => handleMouseDown(e, token.id)}
-                  onMouseUp={(e) => {
-                    if (!dragMovedRef.current && token.characterId) {
-                      e.stopPropagation();
-                      if (isDM) {
-                        setFichaCharacterIdDM(token.characterId);
-                        setShowFichaDM(true);
-                      } else if (String(token.characterId) === String(fichaCharacterId)) {
-                        setShowFicha(true);
-                      }
-                      // jogador clicando em token alheio → não faz nada
-                    }
-                  }}
                   style={{
                     transform: `translate(${token.x}px, ${token.y}px)`,
                     position: 'absolute',
