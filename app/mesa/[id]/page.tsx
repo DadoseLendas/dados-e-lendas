@@ -13,6 +13,10 @@ interface Token {
   url: string;
   x: number;
   y: number;
+  name?: string;
+  characterId?: number | string;
+  imgOffsetX?: number;
+  imgOffsetY?: number;
 }
 
 export default function TelaDeMesa() {
@@ -130,7 +134,7 @@ export default function TelaDeMesa() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user || !campaignId) return;
 
-      setCurrentUserId(user.id); // <-- Captura o ID do usuário aqui
+      setCurrentUserId(user.id);
 
       const { data: campaign } = await supabase
         .from('campaigns')
@@ -140,18 +144,46 @@ export default function TelaDeMesa() {
 
       if (campaign?.dm_id === user.id) {
         setIsDM(true);
-        return; 
+      } else {
+        const { data: member } = await supabase
+          .from('campaign_members')
+          .select('current_character_id')
+          .eq('campaign_id', campaignId)
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (member?.current_character_id) {
+          setFichaCharacterId(member.current_character_id);
+        }
       }
 
-      const { data: member } = await supabase
+      // Cria tokens de todos os personagens da campanha
+      const { data: members } = await supabase
         .from('campaign_members')
         .select('current_character_id')
         .eq('campaign_id', campaignId)
-        .eq('user_id', user.id)
-        .maybeSingle();
+        .not('current_character_id', 'is', null);
 
-      if (member?.current_character_id) {
-        setFichaCharacterId(member.current_character_id);
+      if (members && members.length > 0) {
+        const charIds = members.map((m: any) => m.current_character_id);
+        const { data: chars } = await supabase
+          .from('characters')
+          .select('id, name, img, imgOffsetX, imgOffsetY')
+          .in('id', charIds);
+
+        if (chars && chars.length > 0) {
+          const initialTokens: Token[] = chars.map((c: any, i: number) => ({
+            id: `char-${c.id}`,
+            url: c.img || '',
+            name: c.name,
+            characterId: c.id,
+            imgOffsetX: c.imgOffsetX ?? 50,
+            imgOffsetY: c.imgOffsetY ?? 50,
+            x: i * gridSize * 2,
+            y: 0,
+          }));
+          setTokens(initialTokens);
+        }
       }
     };
     fetchUserRole();
@@ -279,21 +311,24 @@ export default function TelaDeMesa() {
                     marginTop: mapaUrl ? '0' : `-${gridSize/2}px`,
                     marginLeft: mapaUrl ? '0' : `-${gridSize/2}px`,
                     width: `${gridSize}px`,
-                    height: `${gridSize}px`,
                     zIndex: tokenSelecionado === token.id ? 100 : 10,
                   }}
-                  className="flex items-center justify-center cursor-move group"
+                  className="flex flex-col items-center cursor-move group"
                 >
                   <div 
-                    style={{ width: `${tokenSize}px`, height: `${tokenSize}px` }}
-                    className={`rounded-full border-2 transition-all duration-200 overflow-hidden ${
+                    style={{
+                      width: `${tokenSize}px`,
+                      height: `${tokenSize}px`,
+                      backgroundImage: token.url ? `url(${token.url})` : undefined,
+                      backgroundSize: 'cover',
+                      backgroundPosition: `${token.imgOffsetX ?? 50}% ${token.imgOffsetY ?? 50}%`,
+                    }}
+                    className={`rounded-full border-2 transition-all duration-200 bg-neutral-900 ${
                       tokenSelecionado === token.id || (isDraggingToken && tokenSelecionado === token.id)
                         ? 'border-[#00ff66] shadow-[0_0_20px_#00ff66] scale-110' 
                         : 'border-white/60 group-hover:border-[#00ff66] group-hover:shadow-[0_0_15px_rgba(0,255,102,0.4)]'
                     }`}
-                  >
-                    <img src={token.url} className="w-full h-full object-cover bg-neutral-900" />
-                  </div>
+                  />
                 </div>
               ))}
             </div>
