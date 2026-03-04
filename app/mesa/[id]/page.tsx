@@ -577,8 +577,8 @@ export default function TelaDeMesa() {
                           ? 'border-[#00ff66] shadow-[0_0_20px_#00ff66] scale-110'
                           : 'border-white/60 group-hover:border-[#00ff66] group-hover:shadow-[0_0_15px_rgba(0,255,102,0.4)]'
                         : tokenSelecionado === token.id
-                          ? 'shadow-[0_0_20px_#00ff66] scale-110'
-                          : 'group-hover:shadow-[0_0_15px_rgba(0,255,102,0.4)]'
+                          ? 'scale-110'
+                          : ''
                     }`}
                   >
                     {token.url ? (
