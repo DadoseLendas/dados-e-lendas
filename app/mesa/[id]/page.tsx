@@ -5,8 +5,9 @@ import { UserRound, Users, Home, BookOpen, Map as MapIcon, ShieldCheck, ChevronL
 import { createClient } from '@/utils/supabase/client';
 import FichaModal from '@/app/components/ui/ficha-modal';
 import ChatWidget from '@/app/components/ui/chat-widget'; 
-import CampaignBooksWidget from '@/app/components/ui/campaign-books-widget'; // <-- Injetando nosso Widget de Livros
-import DiceRoller from '@/app/components/ui/dice-roller'; // <-- Injetando o Motor 3D
+import CampaignBooksWidget from '@/app/components/ui/campaign-books-widget';
+import DiceRoller from '@/app/components/ui/dice-roller';
+import TokenLibraryWidget from '@/app/components/ui/token-library-widget';
 
 interface Token {
   id: string;
@@ -31,7 +32,8 @@ export default function TelaDeMesa() {
   //interface e Mapa
   const [currentUserId, setCurrentUserId] = useState<string | null>(null); // <-- Adicione esta linha
   const [sidebarAberta, setSidebarAberta] = useState(true);
-  const [modalAtivo, setModalAtivo] = useState<'Mapa' | 'Token' | 'Biblioteca' | null>(null);
+  const [modalAtivo, setModalAtivo] = useState<'Mapa' | null>(null);
+  const [showTokenLibrary, setShowTokenLibrary] = useState(false);
   const [showBooks, setShowBooks] = useState(false);
   const [mapaUrl, setMapaUrl] = useState<string | null>(null);
   const [zoom, setZoom] = useState(1);
@@ -180,23 +182,23 @@ export default function TelaDeMesa() {
     const url = URL.createObjectURL(file);
     if (tipo === 'Mapa') {
       setMapaUrl(url);
-    } else if (tipo === 'Token') {
-      const newId = crypto.randomUUID();
-      const newToken: Token = { id: newId, url, x: 0, y: 0, isMonster: true };
-      setTokens(prev => [...prev, newToken]);
-      supabase.from('campaign_tokens').insert({
-        id: newId,
-        campaign_id: campaignId,
-        url,
-        x: 0,
-        y: 0,
-        is_monster: true,
-      }).then(() => {});
-      realtimeChannelRef.current?.send({
-        type: 'broadcast', event: 'token-add', payload: { token: newToken },
-      });
     }
     setModalAtivo(null);
+  };
+
+  const addTokenToMap = async (t: { name: string; url: string }) => {
+    const newId = crypto.randomUUID();
+    const newToken: Token = { id: newId, url: t.url, x: 0, y: 0, name: t.name, isMonster: true };
+    setTokens(prev => [...prev, newToken]);
+    supabase.from('campaign_tokens').insert({
+      id: newId, campaign_id: campaignId, url: t.url, x: 0, y: 0, is_monster: true,
+    }).then(() => {});
+    realtimeChannelRef.current?.send({ type: 'broadcast', event: 'token-add', payload: { token: newToken } });
+  };
+
+  const handleTokenUpload = async (file: File) => {
+    const url = URL.createObjectURL(file);
+    await addTokenToMap({ name: file.name.replace(/\.[^.]+$/, ''), url });
   };
 
   // Subscription realtime de tokens
@@ -465,9 +467,9 @@ export default function TelaDeMesa() {
               </button>
 
               <button
-                onClick={() => setModalAtivo('Token')}
+                onClick={() => setShowTokenLibrary(true)}
                 className="p-2 text-white/30 hover:text-[#00ff66] hover:drop-shadow-[0_0_8px_#00ff66] transition-all duration-300"
-                title="Adicionar Token"
+                title="Biblioteca de Tokens"
               >
                 <ShieldCheck size={22} />
               </button>
@@ -484,6 +486,9 @@ export default function TelaDeMesa() {
 
         {/* COMPONENTE AUTÔNOMO DE LIVROS DA CAMPANHA — apenas Mestre */}
         {isDM && <CampaignBooksWidget campaignId={campaignId} isOpen={showBooks} onToggle={() => setShowBooks(v => !v)} />}
+
+        {/* Biblioteca de Tokens — apenas Mestre */}
+        {isDM && <TokenLibraryWidget isOpen={showTokenLibrary} onToggle={() => setShowTokenLibrary(v => !v)} onAddToken={addTokenToMap} onUpload={handleTokenUpload} />}
 
         {/* Painel de fichas dos jogadores — apenas Mestre */}
         {isDM && showPlayerList && (
@@ -600,29 +605,25 @@ export default function TelaDeMesa() {
         onReady={(func) => setRollDiceFunc(() => func)} 
       />
       
+      {/* Modal de mapa */}
       {modalAtivo && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 backdrop-blur-sm p-6">
           <div className="bg-[#0a0a0a] border border-[#00ff66]/20 p-10 rounded-[24px] w-full max-w-md relative shadow-[0_0_50px_rgba(0,255,102,0.1)]">
             <button onClick={() => setModalAtivo(null)} className="absolute top-6 right-6 text-white/40 hover:text-[#00ff66] transition-colors">
               <X size={20}/>
             </button>
-            
             <h2 className="text-white text-2xl font-bold mb-10 uppercase tracking-[0.2em] text-center drop-shadow-[0_0_8px_rgba(255,255,255,0.3)]">
-              {modalAtivo}
+              Alterar Mapa
             </h2>
-            
             <div className="flex flex-col gap-8">
               <label className="flex flex-col items-center justify-center gap-6 p-12 border-2 border-dashed border-white/5 rounded-3xl cursor-pointer hover:bg-[#00ff66]/[0.02] hover:border-[#00ff66]/30 group transition-all duration-500">
                 <div className="w-20 h-20 rounded-full bg-black border border-white/10 flex items-center justify-center group-hover:border-[#00ff66] shadow-[inset_0_0_20px_rgba(0,0,0,0.5)] group-hover:shadow-[0_0_20px_rgba(0,255,102,0.15)] transition-all">
                   <Upload className="text-white/20 group-hover:text-[#00ff66] transition-all" size={32} />
                 </div>
-                <div className="flex flex-col items-center gap-2">
-                  <span className="text-white font-bold text-[11px] uppercase tracking-widest opacity-80">Arraste ou clique</span>
-                </div>
-                <input type="file" className="hidden" accept="image/*" onChange={(e) => handleFileUpload(e, modalAtivo)} />
+                <span className="text-white font-bold text-[11px] uppercase tracking-widest opacity-80">Arraste ou clique</span>
+                <input type="file" className="hidden" accept="image/*" onChange={(e) => handleFileUpload(e, 'Mapa')} />
               </label>
-
-              <button 
+              <button
                 onClick={() => setModalAtivo(null)}
                 className="w-full py-4 bg-[#00ff66] text-black font-black text-[12px] uppercase tracking-[0.15em] rounded-xl hover:brightness-110 hover:shadow-[0_0_30px_rgba(0,255,102,0.4)] transition-all duration-300 active:scale-[0.98]"
               >
