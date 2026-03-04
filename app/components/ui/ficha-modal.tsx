@@ -101,10 +101,11 @@ interface FichaModalProps {
     onUpdate?: (character: Character) => void;
     campaignId: string;
     onRollDice: (diceType: string, isSecret: boolean) => Promise<number | null>;
+    readOnly?: boolean;
 }
 
 // ─── Componente ───────────────────────────────────────────────────────────────
-export default function FichaModal({ isOpen, onClose, characterId, onUpdate, campaignId, onRollDice }: FichaModalProps) {
+export default function FichaModal({ isOpen, onClose, characterId, onUpdate, campaignId, onRollDice, readOnly = false }: FichaModalProps) {
     const supabase = createClient();
     //const [character, setCharacter] = useState<Character | null>(null);
     const [draft, setDraft] = useState<Character | null>(null);
@@ -322,22 +323,28 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
                                     <span className="text-[#f1e5ac] text-xs font-serif tracking-widest uppercase italic opacity-60">
                                         Ficha — {draft.name}
                                     </span>
-                                    <button
-                                        onClick={saveCharacter}
-                                        disabled={saving}
-                                        className={`flex items-center gap-2 text-xs font-black uppercase px-4 py-1.5 rounded-lg transition-all ${
-                                            saveSuccess
-                                                ? 'bg-[#00ff66]/20 text-[#00ff66] border border-[#00ff66]/40'
-                                                : 'bg-[#00ff66] text-black hover:brightness-110'
-                                        } disabled:opacity-50`}
-                                    >
-                                        <Save size={12} />
-                                        {saving ? 'Salvando...' : saveSuccess ? 'Salvo!' : 'Salvar'}
-                                    </button>
+                                    {readOnly ? (
+                                        <span className="text-[10px] font-black uppercase tracking-widest text-[#4a5a4a] border border-[#1a2a1a] px-3 py-1.5 rounded-lg">
+                                            Apenas visualização
+                                        </span>
+                                    ) : (
+                                        <button
+                                            onClick={saveCharacter}
+                                            disabled={saving}
+                                            className={`flex items-center gap-2 text-xs font-black uppercase px-4 py-1.5 rounded-lg transition-all ${
+                                                saveSuccess
+                                                    ? 'bg-[#00ff66]/20 text-[#00ff66] border border-[#00ff66]/40'
+                                                    : 'bg-[#00ff66] text-black hover:brightness-110'
+                                            } disabled:opacity-50`}
+                                        >
+                                            <Save size={12} />
+                                            {saving ? 'Salvando...' : saveSuccess ? 'Salvo!' : 'Salvar'}
+                                        </button>
+                                    )}
                                 </div>
 
                                 {/* Layout: 2 colunas */}
-                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                                <div className={`grid grid-cols-1 lg:grid-cols-2 gap-5 ${readOnly ? 'pointer-events-none select-none' : ''}`}>
 
                                     {/* ── COLUNA 1 ─────────────────────────── */}
                                     <div className="space-y-3">
@@ -576,7 +583,7 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
                                 </div>{/* fim grid 2 colunas */}
 
                                 {/* ── Perícias — linha completa ─────────────────────────── */}
-                                <div className="bg-black border border-[#1a2a1a] p-3 rounded-xl mt-5">
+                                <div className={`bg-black border border-[#1a2a1a] p-3 rounded-xl mt-5 ${readOnly ? 'pointer-events-none select-none' : ''}`}>
                                     <h3 className="text-[#f1e5ac] text-[9px] font-black uppercase mb-3 text-center">Perícias</h3>
                                     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-1">
                                         {Object.entries(skillsData).map(([key, info]) => {

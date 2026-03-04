@@ -296,11 +296,11 @@ export default function CampanhasPage() {
       // Entra na campanha
       const { error: joinError } = await supabase
         .from('campaign_members')
-        .insert({
+        .upsert({
           campaign_id: tempCampaign.id,
           user_id: currentUserId,
           current_character_id: parseInt(selectedCharacterId)
-        });
+        }, { onConflict: 'campaign_id,user_id', ignoreDuplicates: true });
 
       if (joinError) return alert('Erro ao entrar na campanha: ' + joinError.message);
 

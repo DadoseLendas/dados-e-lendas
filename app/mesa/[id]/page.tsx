@@ -1,7 +1,7 @@
 "use client";
 import { useState, useRef, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { UserRound, Home, BookOpen, Map as MapIcon, ShieldCheck, ChevronLeft, ChevronRight, X, Upload } from 'lucide-react';
+import { UserRound, Users, Home, BookOpen, Map as MapIcon, ShieldCheck, ChevronLeft, ChevronRight, X, Upload } from 'lucide-react';
 import { createClient } from '@/utils/supabase/client';
 import FichaModal from '@/app/components/ui/ficha-modal';
 import ChatWidget from '@/app/components/ui/chat-widget'; 
@@ -234,6 +234,11 @@ export default function TelaDeMesa() {
   const [showFicha, setShowFicha] = useState(false);
   const [fichaCharacterId, setFichaCharacterId] = useState<number | string | null>(null);
   const [isDM, setIsDM] = useState(false);
+  // DM visualizando ficha de jogador
+  const [showPlayerList, setShowPlayerList] = useState(false);
+  const [showFichaDM, setShowFichaDM] = useState(false);
+  const [fichaCharacterIdDM, setFichaCharacterIdDM] = useState<number | string | null>(null);
+  const [playerCharacters, setPlayerCharacters] = useState<{ id: number; name: string; img: string | null }[]>([]);
   
   // Função de rolagem que virá do componente DiceRoller
   const [rollDiceFunc, setRollDiceFunc] = useState<((diceType: string, isSecret: boolean) => Promise<number | null>) | null>(null);
@@ -254,6 +259,20 @@ export default function TelaDeMesa() {
 
       if (campaign?.dm_id === user.id) {
         setIsDM(true);
+        // Busca personagens de todos os jogadores da campanha
+        const { data: membersData } = await supabase
+          .from('campaign_members')
+          .select('current_character_id')
+          .eq('campaign_id', campaignId)
+          .not('current_character_id', 'is', null);
+        if (membersData && membersData.length > 0) {
+          const charIds = membersData.map((m: any) => m.current_character_id);
+          const { data: charsData } = await supabase
+            .from('characters')
+            .select('id, name, img')
+            .in('id', charIds);
+          if (charsData) setPlayerCharacters(charsData as any);
+        }
       } else {
         const { data: member } = await supabase
           .from('campaign_members')
@@ -393,6 +412,14 @@ export default function TelaDeMesa() {
           {isDM && (
             <>
               <button
+                onClick={() => setShowPlayerList(v => !v)}
+                className={`p-2 hover:drop-shadow-[0_0_8px_#00ff66] transition-all duration-300 ${showPlayerList ? 'text-[#00ff66] drop-shadow-[0_0_8px_#00ff66]' : 'text-white/30 hover:text-[#00ff66]'}`}
+                title="Fichas dos Jogadores"
+              >
+                <Users size={22} />
+              </button>
+
+              <button
                 onClick={() => setShowBooks(v => !v)}
                 className={`p-2 hover:drop-shadow-[0_0_8px_#00ff66] transition-all duration-300 ${showBooks ? 'text-[#00ff66] drop-shadow-[0_0_8px_#00ff66]' : 'text-white/30 hover:text-[#00ff66]'}`}
                 title="Biblioteca"
@@ -428,6 +455,28 @@ export default function TelaDeMesa() {
 
         {/* COMPONENTE AUTÔNOMO DE LIVROS DA CAMPANHA — apenas Mestre */}
         {isDM && <CampaignBooksWidget campaignId={campaignId} isOpen={showBooks} onToggle={() => setShowBooks(v => !v)} />}
+
+        {/* Painel de fichas dos jogadores — apenas Mestre */}
+        {isDM && showPlayerList && (
+          <div className="absolute left-20 top-1/2 -translate-y-1/2 z-50 bg-[#0a120a]/90 backdrop-blur-xl border border-white/10 rounded-2xl p-4 flex flex-col gap-2 min-w-[180px] shadow-[0_0_30px_rgba(0,0,0,0.6)]">
+            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#4a5a4a] mb-1">Fichas dos Jogadores</span>
+            {playerCharacters.length === 0 && (
+              <span className="text-[10px] text-white/30">Nenhum jogador com personagem.</span>
+            )}
+            {playerCharacters.map(pc => (
+              <button
+                key={pc.id}
+                onClick={() => { setFichaCharacterIdDM(pc.id); setShowFichaDM(true); setShowPlayerList(false); }}
+                className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-[#00ff66]/10 hover:text-[#00ff66] transition-all text-left text-[11px] text-white/70 font-medium"
+              >
+                {pc.img && (
+                  <div className="w-6 h-6 rounded-full bg-neutral-800 overflow-hidden shrink-0" style={{ backgroundImage: `url(${pc.img})`, backgroundSize: 'cover', backgroundPosition: '50% 50%' }} />
+                )}
+                {pc.name}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/*area central*/}
         <main 
@@ -555,6 +604,16 @@ export default function TelaDeMesa() {
         characterId={fichaCharacterId}
         campaignId={campaignId}
         onRollDice={rollDiceFunc ?? (async () => null)}
+      />
+
+      {/* Ficha de jogador — visualização do Mestre */}
+      <FichaModal
+        isOpen={showFichaDM}
+        onClose={() => setShowFichaDM(false)}
+        characterId={fichaCharacterIdDM}
+        campaignId={campaignId}
+        onRollDice={rollDiceFunc ?? (async () => null)}
+        readOnly
       />
     </div>
   );
