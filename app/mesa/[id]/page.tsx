@@ -27,6 +27,7 @@ export default function TelaDeMesa() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null); // <-- Adicione esta linha
   const [sidebarAberta, setSidebarAberta] = useState(true);
   const [modalAtivo, setModalAtivo] = useState<'Mapa' | 'Token' | 'Biblioteca' | null>(null);
+  const [showBooks, setShowBooks] = useState(false);
   const [mapaUrl, setMapaUrl] = useState<string | null>(null);
   const [zoom, setZoom] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
@@ -166,36 +167,71 @@ export default function TelaDeMesa() {
         onContextMenu={(e) => e.preventDefault()}
       >
         {/*sidebar*/}
-        <aside className={`absolute left-4 top-1/2 -translate-y-1/2 bg-[#0a120a]/70 backdrop-blur-lg border border-white/10 rounded-2xl transition-all duration-300 flex flex-col items-center py-5 gap-5 z-40 shadow-2xl ${sidebarAberta ? 'w-12 opacity-100' : 'w-0 opacity-0 -translate-x-10 pointer-events-none'}`}>
-          <button onClick={() => router.push('/campanhas')} className="p-2 text-white/30 hover:text-[#00ff66] transition-colors" title="Voltar"><Home size={20} /></button>
+        <aside
+          className={`absolute left-4 top-1/2 -translate-y-1/2 bg-[#0a120a]/80 backdrop-blur-xl border border-white/10 rounded-2xl transition-all duration-500 flex flex-col items-center py-6 gap-6 z-40 shadow-[0_0_30px_rgba(0,0,0,0.5)]
+          ${sidebarAberta ? 'w-14 opacity-100' : 'w-0 opacity-0 -translate-x-10 pointer-events-none'}`}
+        >
+          <button
+            onClick={() => router.push('/campanhas')}
+            className="p-2 text-white/30 hover:text-[#00ff66] hover:drop-shadow-[0_0_8px_#00ff66] transition-all duration-300"
+            title="Início"
+          >
+            <Home size={22} />
+          </button>
 
-          {/* Jogador: vê ficha do personagem */}
+          {/* Jogador */}
           {!isDM && (
-            <button 
+            <button
               onClick={() => {
                 if (!fichaCharacterId) { alert('Você não vinculou um personagem a esta mesa!'); return; }
                 setShowFicha(true);
-              }} 
-              className={`p-2 transition-colors ${fichaCharacterId ? 'text-white hover:text-[#00ff66]' : 'text-white/20'}`}
-              title="Minha Ficha"
+              }}
+              className={`p-2 hover:drop-shadow-[0_0_8px_#00ff66] transition-all duration-300 ${fichaCharacterId ? 'text-white/30 hover:text-[#00ff66]' : 'text-white/10 cursor-not-allowed'}`}
+              title="Ficha"
             >
-              <UserRound size={20} />
+              <UserRound size={22} />
             </button>
           )}
 
-          <div className="w-6 h-[1px] bg-white/5" />
-
-          {/* Mestre: vê controles de mapa e token */}
+          {/* Mestre */}
           {isDM && (
             <>
-              <button onClick={() => setModalAtivo('Mapa')} className="p-2 text-white/30 hover:text-[#00ff66] transition-colors" title="Carregar Mapa"><MapIcon size={20} /></button>
-              <button onClick={() => setModalAtivo('Token')} className="p-2 text-white/30 hover:text-[#00ff66] transition-colors" title="Adicionar Token"><ShieldCheck size={20} /></button>
+              <button
+                onClick={() => setShowBooks(v => !v)}
+                className={`p-2 hover:drop-shadow-[0_0_8px_#00ff66] transition-all duration-300 ${showBooks ? 'text-[#00ff66] drop-shadow-[0_0_8px_#00ff66]' : 'text-white/30 hover:text-[#00ff66]'}`}
+                title="Biblioteca"
+              >
+                <BookOpen size={22} />
+              </button>
+
+              <button
+                onClick={() => setModalAtivo('Mapa')}
+                className="p-2 text-white/30 hover:text-[#00ff66] hover:drop-shadow-[0_0_8px_#00ff66] transition-all duration-300"
+                title="Alterar Mapa"
+              >
+                <MapIcon size={22} />
+              </button>
+
+              <button
+                onClick={() => setModalAtivo('Token')}
+                className="p-2 text-white/30 hover:text-[#00ff66] hover:drop-shadow-[0_0_8px_#00ff66] transition-all duration-300"
+                title="Adicionar Token"
+              >
+                <ShieldCheck size={22} />
+              </button>
             </>
           )}
         </aside>
 
+        <button
+          onClick={() => setSidebarAberta(!sidebarAberta)}
+          className="absolute left-1 top-1/2 -translate-y-1/2 z-50 text-white/10 hover:text-[#00ff66] p-1 transition-colors"
+        >
+          {sidebarAberta ? <ChevronLeft size={18} /> : <ChevronRight size={18} />}
+        </button>
+
         {/* COMPONENTE AUTÔNOMO DE LIVROS DA CAMPANHA — apenas Mestre */}
-        {isDM && <CampaignBooksWidget campaignId={campaignId} />}
+        {isDM && <CampaignBooksWidget campaignId={campaignId} isOpen={showBooks} onToggle={() => setShowBooks(v => !v)} />}
 
         {/*area central*/}
         <main 

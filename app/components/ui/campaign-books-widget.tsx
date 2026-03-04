@@ -13,12 +13,13 @@ interface CampaignBook {
 
 interface CampaignBooksWidgetProps {
   campaignId: string;
+  isOpen: boolean;
+  onToggle: () => void;
 }
 
-export default function CampaignBooksWidget({ campaignId }: CampaignBooksWidgetProps) {
+export default function CampaignBooksWidget({ campaignId, isOpen, onToggle }: CampaignBooksWidgetProps) {
   const supabase = createClient();
   const [books, setBooks] = useState<CampaignBook[]>([]);
-  const [isOpen, setIsOpen] = useState(false);
   
   // Estados do Modal de Cadastro rápido
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -93,29 +94,19 @@ export default function CampaignBooksWidget({ campaignId }: CampaignBooksWidgetP
     setActivePdfUrl(url);
     setActivePdfTitle(title);
     setIsReaderOpen(true);
-    setIsOpen(false);
+    onToggle(); // fecha o painel
   };
 
   return (
     <>
-      <div className="absolute left-6 top-1/2 translate-y-12 z-50">
-        <button
-          onClick={() => setIsOpen(!isOpen)}
-          className="bg-[#050a05] border border-[#1a2a1a] hover:border-[#00ff66] text-[#4a5a4a] hover:text-[#00ff66] p-4 rounded-xl transition-all shadow-[0_0_20px_rgba(0,0,0,0.6)] relative group"
-        >
-          <Book size={22} />
-          <span className="absolute -top-2 -right-2 bg-[#0a120a] border border-[#00ff66] text-[#00ff66] text-[10px] font-bold h-5 w-5 flex items-center justify-center rounded-full shadow-lg">
-            {books.length}
-          </span>
-        </button>
-
+      <div className="absolute left-16 top-1/2 -translate-y-1/2 z-50">
         {isOpen && (
-          <div className="absolute left-16 top-0 w-72 bg-[#050a05] border border-[#1a2a1a] rounded-xl shadow-[0_0_40px_rgba(0,0,0,0.9)] overflow-hidden animate-in slide-in-from-left-4 duration-200">
+          <div className="w-72 bg-[#050a05] border border-[#1a2a1a] rounded-xl shadow-[0_0_40px_rgba(0,0,0,0.9)] overflow-hidden">
             <div className="bg-[#0a120a] border-b border-[#1a2a1a] px-4 py-3 flex items-center justify-between">
               <h3 className="text-[#00ff66] text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
                 <BookOpen size={14} /> Biblioteca da Mesa
               </h3>
-              <button onClick={() => setIsOpen(false)} className="text-[#4a5a4a] hover:text-white"><X size={16} /></button>
+              <button onClick={onToggle} className="text-[#4a5a4a] hover:text-white"><X size={16} /></button>
             </div>
             
             <div className="p-2 space-y-2 max-h-[60vh] overflow-y-auto custom-scrollbar">

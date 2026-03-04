@@ -423,14 +423,20 @@ export default function CampanhasPage() {
 
   const handleDeleteCampaign = async (campaignId: string | number) => {
     if (!currentUserId) return;
-    const { error } = await supabase
+    const { data: deleted, error } = await supabase
       .from('campaigns')
       .delete()
       .eq('id', campaignId)
-      .eq('dm_id', currentUserId);
+      .eq('dm_id', currentUserId)
+      .select();
 
     if (error) {
       alert(`Erro ao excluir: ${error.message}`);
+      return;
+    }
+
+    if (!deleted || deleted.length === 0) {
+      alert('Não foi possível excluir a campanha. Verifique as permissões (RLS) no Supabase.');
       return;
     }
 
