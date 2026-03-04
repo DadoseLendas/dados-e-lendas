@@ -1,14 +1,16 @@
 "use client";
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { UserRound, Users, Home, BookOpen, Map as MapIcon, ShieldCheck, ChevronLeft, ChevronRight, X, Upload } from 'lucide-react';
+import { 
+  UserRound, Users, Home, BookOpen, Map as MapIcon, 
+  ShieldCheck, ChevronLeft, ChevronRight, X, Upload, HelpCircle 
+} from 'lucide-react'; 
 import { createClient } from '@/utils/supabase/client';
 import FichaModal from '@/app/components/ui/ficha-modal';
 import ChatWidget from '@/app/components/ui/chat-widget'; 
 import CampaignBooksWidget from '@/app/components/ui/campaign-books-widget';
 import DiceRoller from '@/app/components/ui/dice-roller';
 import TokenLibraryWidget from '@/app/components/ui/token-library-widget';
-
 interface Token {
   id: string;
   url: string;
@@ -20,6 +22,53 @@ interface Token {
   imgOffsetY?: number;
   isMonster?: boolean;
 }
+
+const CONDICOES_RPG = [
+  { 
+  nome: "Confuso", 
+  desc: "Role um d10 no início de cada um de seus turnos para determinar seu comportamento.",
+  tabela: [
+    { dado: "1", efeito: "Move-se em direção aleatória (d8). Não realiza ação." },
+    { dado: "2-6", efeito: "Não se move nem realiza ações neste turno." },
+    { dado: "7-8", efeito: "Ataque corpo a corpo contra alvo aleatório ao alcance." },
+    { dado: "9-10", efeito: "Pode agir e se mover normalmente." }
+  ]
+},
+  { 
+    nome: "Exaustão", 
+    desc: "Medida em 6 níveis. Uma criatura sofre o efeito do seu nível atual e de todos os anteriores.",
+    niveis: [
+      "1: Desvantagem em testes de atributo",
+      "2: Deslocamento reduzido pela metade",
+      "3: Desvantagem em jogadas de ataque e salvaguardas",
+      "4: Pontos de vida máximos reduzidos pela metade",
+      "5: Deslocamento reduzido para 0",
+      "6: Morte"
+   ],
+  // Novo campo de notas extras formatado
+  notas: [
+    { titulo: "Acúmulo", texto: "Se um personagem já exausto sofre outro efeito que induz exaustão, o nível atual de exaustão do personagem aumenta conforme especificado pelo novo efeito." },
+    { titulo: "Recuperação", texto: "Efetuar um descanso longo reduz o nível de exaustão em 1, desde que o personagem também se alimente e hidrate adequadamente durante o descanso." },
+    { titulo: "", texto: "Algumas magias e habilidades também podem eliminar ou aliviar os efeitos da exaustão." }
+  ]
+  },
+  { nome: "Agarrado", desc: "Seu deslocamento se torna 0, e você não pode se beneficiar de bônus de deslocamento. A condição encerra caso a criatura que a agarrou fique incapacitada. A condição se encerra se um efeito remover a ciatura agarrada do alcance da criatura que a agarrou ou do efeito que causa a condição" },
+  { nome: "Amedrontado", desc: "Uma criatura amedrontada tem desvantagem em testes de atributo e jogadas de ataque enquanto a fonte de seu medo estiver em sua linha de visão. A criatura não pode se mover por vontade própria para perto da fonte de seu medo." },
+  { nome: "Atordoado", desc: "Você está incapacitado, não pode se mover e somente fala balbuciando. Jogadas de ataque contra você possuem vantagem. Você falha automaticamente em testes de resistência de Força e Destreza." },
+  { nome: "Caído", desc: " Sua única opção de movimento é rastejar, a menos que se levante. Você tem desvantagem em jogadas de ataque. Jogadas de ataque contra você possuem vantagens se o atacante estiver a 1,5 metros de você. De outra maneira, a jogada de ataque possui desvantagem."},
+  { nome: "Cego", desc: "Você não pode enxergar e automaticamente falha em testes de Percepção que dependam da visão. Jogadas de ataque contra você possuem vantagem, e suas jogadas de ataque possuem desvantagem." },
+  { nome: "Enfeitiçado", desc: "Você não pode atacar qurm tr rnfeitiçõu ou tê-lo como alvo de habilidades ou efeitos mágicos nocivos. Quem o enfeitiçou possui vantagem em testes de habilidade feitos para interagir socialmente com a criatura." },
+  { nome: "Envenenado", desc: "Você possui desvantagem em jogadas de ataque e testes de atributos." },
+  { nome: "Impedido", desc: "Seu deslocamento se torna 0, e você não pode se beneficiar de qualquer bônus em seu deslocamento. Jogadas de ataque contra você possuem vantagem. Você sofre desvantagem em jogadas de ataque. Você sofre desvantagem em testes de resistência de Destreza."},
+  { nome: "Incapacitado", desc: "Você não pode realizar ações ou reações." },
+  { nome: "Inconsciente", desc: "Você está incapacitado, não pode se mover ou falar e não tem ciência de seus arredores. Você larga tudo que estiver segurando e fica caído. Você falha automaticamente em testes de resistência de Força ou Destreza. Jogadas de ataque contra você póssuem vantagem. Qualquer ataque que o atinja é um acerto crítico, se o atacante estiver a 1,5 metros de você."},
+  { nome:" Invisível", desc: "Uma criatura invisível é impossível de ser vista sem ajuda de magia ou um sentido especial. Para propósitos de esconder-se, a criatura está Totalmente obscurecida.A localização da criatura pode ser detectada por qualquer som que ela faça ou qualquer rastro que ela deixe. Jogadas de ataque contra a criatura têm desvantagem, e as jogadas de ataque da criatura têm vantagem"},
+  { nome: "Paralisado", desc: "Você está incapacitado e não pode se mover ou falar. Você falha automaticamente em testes de resistência de Força e Destreza. Jogadas de ataque contra você possuem vantagem. Qualquer ataque que atinja você é um acerto crítico, se o atacante estiver a 1,5 metros de você."},
+  { nome: " Petrificado", desc: "Você é transformado, juntamente com todos os objetos não-mágicos que estiver vestindo ou carregando, em uma substância sólida e inanimada (geralmente pedra). Seu peso é multiplicado por dez, e para de envelhecer. você está incapacitado, não pode se mover ou falar e não tem ciência de seus arredores. Jogadas de ataque contra você possuem vantagem. Você falha automaticamente em testes de resistência de Força e Destreza. Você tem resistência a todos os tipos de dano. Você fica imune a veneno e doenças, embora um veneno ou doença previamente presentes em seu sistema seja apenas suspenso, não neutralizado."},
+  { nome: "Surdo", desc: "Você falha automatizamente em qualquer teste de habilidade que requeira o uso da audição"},
+  { nome: "Dominado", desc: "Uma criatura dominada é controlada por outra criatura. Uma criatura dominada só realiza ações que a fonte dominante escolher, e não faz nada que o dominante não permita."},
+  { nome: "Possuído", desc: "Uma criatura possuída fica incapacitada e perde o controle sobre seu corpo para a criatura que a possuiu."}
+];
 
 export default function TelaDeMesa() {
   const supabase = useMemo(() => createClient(), []);
@@ -287,6 +336,9 @@ export default function TelaDeMesa() {
   const [showFichaDM, setShowFichaDM] = useState(false);
   const [fichaCharacterIdDM, setFichaCharacterIdDM] = useState<number | string | null>(null);
   const [playerCharacters, setPlayerCharacters] = useState<{ id: number; name: string; img: string | null; imgOffsetX: number; imgOffsetY: number }[]>([]);
+
+  const [modalAjuda, setModalAjuda] = useState(false);
+  const [buscaCondicao, setBuscaCondicao] = useState("");
 
   // Busca e atualiza personagens dos jogadores da campanha (usado pelo Mestre)
   const fetchPlayerCharacters = async () => {
@@ -689,6 +741,73 @@ export default function TelaDeMesa() {
         onRollDice={rollDiceFunc ?? (async () => null)}
         readOnly
       />
+
+      {/* Botão para abrir */}
+<button 
+  onClick={() => setModalAjuda(true)}
+  className="fixed bottom-6 right-6 z-50 p-3 bg-[#0a0a0a] border border-[#00ff66]/30 rounded-full text-[#00ff66] shadow-lg hover:bg-[#00ff66]/10 transition-all"
+>
+  <HelpCircle size={24} />
+</button>
+
+
+{modalAjuda && (
+  <div className="fixed inset-0 z-[10000]tems-center justify-center bg-black/90 backdrop-blur-sm p-4">
+    <div className="bg-[#0a0a0a] border border-[#00ff66]/20 rounded-3xl w-full max-w-xl max-h-[85vh] flex flex-col shadow-2xl">
+      <div className="p-6 border-b border-white/5 flex justify-between items-center">
+        <h2 className="text-[#00ff66] font-bold uppercase tracking-widest text-lg">Condições</h2>
+        <button onClick={() => setModalAjuda(false)} className="text-white/40 hover:text-white"><X size={24}/></button>
+      </div>
+      
+      <div className="p-4">
+        <input 
+          type="text" 
+          placeholder="Filtrar condição..." 
+          className="w-full bg-white/5 border border-white/10 rounded-xl py-2 px-4 text-white outline-none focus:border-[#00ff66]/40"
+          onChange={(e) => setBuscaCondicao(e.target.value)}
+        />
+      </div>
+
+      <div className="flex-1 overflow-y-auto p-4 pt-0 space-y-4">
+        {CONDICOES_RPG
+          .filter(c => c.nome.toLowerCase().includes(buscaCondicao.toLowerCase()))
+          .map((c, i) => (
+            <div key={i} className="bg-white/[0.02] border border-white/5 p-4 rounded-xl">
+              <h4 className="text-[#00ff66] text-xs font-bold uppercase mb-1">{c.nome}</h4>
+              <p className="text-white/60 text-xs leading-relaxed">{c.desc}</p>
+              
+              {/* Renderização de tabelas de d10 ou níveis de exaustão */}
+              {c.tabela && (
+                <div className="mt-3 grid grid-cols-1 gap-1 border-t border-white/5 pt-2">
+                  {c.tabela.map((t, idx) => (
+                    <div key={idx} className="text-[10px] text-white/40 flex gap-2">
+                      <span className="text-[#00ff66] font-bold">d10:{t.dado}</span> {t.efeito}
+                    </div>
+                  ))}
+                </div>
+              )}
+              {c.niveis && (
+                <div className="mt-3 space-y-1 border-t border-white/5 pt-2">
+                  {c.niveis.map((n, idx) => (
+                    <div key={idx} className="text-[10px] text-white/40">• {n}</div>
+                  ))}
+                </div>
+              )}
+              {c.notas && (
+                <div className="mt-3 pt-2 border-t border-white/5 space-y-1">
+                  {c.notas.map((n, idx) => (
+                    <p key={idx} className="text-[9px] text-white/30 italic">
+                      {n.titulo && <strong>{n.titulo}: </strong>} {n.texto}
+                    </p>
+                  ))}
+                </div>
+              )}
+            </div>
+        ))}
+      </div>
+    </div>
+  </div>
+)}
     </div>
   );
 }
