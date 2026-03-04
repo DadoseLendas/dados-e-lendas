@@ -197,8 +197,14 @@ export default function TelaDeMesa() {
   };
 
   const handleTokenUpload = async (file: File) => {
-    const url = URL.createObjectURL(file);
-    await addTokenToMap({ name: file.name.replace(/\.[^.]+$/, ''), url });
+    const ext = file.name.split('.').pop() ?? 'png';
+    const fileName = `tokens/${campaignId}-${Date.now()}.${ext}`;
+    const { error } = await supabase.storage
+      .from('campaign-assets')
+      .upload(fileName, file, { contentType: file.type, upsert: true });
+    if (error) { console.error('Erro ao fazer upload do token:', error); return; }
+    const { data: { publicUrl } } = supabase.storage.from('campaign-assets').getPublicUrl(fileName);
+    await addTokenToMap({ name: file.name.replace(/\.[^.]+$/, ''), url: publicUrl });
   };
 
   // Subscription realtime de tokens
@@ -565,10 +571,14 @@ export default function TelaDeMesa() {
                 >
                   <div 
                     style={{ width: `${tokenSize}px`, height: `${tokenSize}px` }}
-                    className={`relative overflow-hidden transition-all duration-200 ${
-                      tokenSelecionado === token.id
-                        ? 'shadow-[0_0_20px_#00ff66] scale-110' 
-                        : 'group-hover:shadow-[0_0_15px_rgba(0,255,102,0.4)]'
+                    className={`relative overflow-hidden transition-all duration-200 bg-neutral-900 ${token.characterId ? 'rounded-full border-2' : ''} ${
+                      token.characterId
+                        ? tokenSelecionado === token.id
+                          ? 'border-[#00ff66] shadow-[0_0_20px_#00ff66] scale-110'
+                          : 'border-white/60 group-hover:border-[#00ff66] group-hover:shadow-[0_0_15px_rgba(0,255,102,0.4)]'
+                        : tokenSelecionado === token.id
+                          ? 'shadow-[0_0_20px_#00ff66] scale-110'
+                          : 'group-hover:shadow-[0_0_15px_rgba(0,255,102,0.4)]'
                     }`}
                   >
                     {token.url ? (
@@ -578,6 +588,7 @@ export default function TelaDeMesa() {
                         draggable={false}
                         style={{ objectPosition: `${token.imgOffsetX ?? 50}% ${token.imgOffsetY ?? 50}%` }}
                         className="w-full h-full object-cover select-none pointer-events-none"
+                        onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
                       />
                     ) : (
                       <div className="w-full h-full bg-neutral-800 flex items-center justify-center">
@@ -585,6 +596,11 @@ export default function TelaDeMesa() {
                       </div>
                     )}
                   </div>
+                  {token.characterId && token.name && (
+                    <span className="mt-1 text-[8px] font-bold text-white/80 bg-black/60 px-1.5 py-0.5 rounded-full whitespace-nowrap max-w-[80px] truncate text-center leading-tight">
+                      {token.name}
+                    </span>
+                  )}
                 </div>
               ))}
             </div>
