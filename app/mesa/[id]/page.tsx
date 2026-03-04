@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { UserRound, Users, Home, BookOpen, Map as MapIcon, ShieldCheck, ChevronLeft, ChevronRight, X, Upload } from 'lucide-react';
 import { createClient } from '@/utils/supabase/client';
@@ -22,7 +22,7 @@ interface Token {
 }
 
 export default function TelaDeMesa() {
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
   const router = useRouter();
   
   // A MÁGICA: Pega o ID que estiver na URL (ex: /mesa/123-abc vira '123-abc')
@@ -426,7 +426,7 @@ export default function TelaDeMesa() {
       }
     };
     fetchUserRole();
-  }, [supabase, campaignId]);
+  }, [campaignId]);
 
   return (
     <div className="h-screen w-screen bg-black overflow-hidden flex flex-col relative font-sans select-none text-white">
