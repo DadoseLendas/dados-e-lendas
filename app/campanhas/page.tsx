@@ -269,12 +269,23 @@ export default function CampanhasPage() {
         return alert('Você já é o Mestre desta campanha!');
       }
 
+      // Trava: impedir entrada duplicada na mesma campanha
+      const { data: existing } = await supabase
+        .from('campaign_members')
+        .select('id')
+        .eq('campaign_id', campaign.id)
+        .eq('user_id', currentUserId)
+        .maybeSingle();
+
+      if (existing) return alert('Você já está nesta campanha!');
+
       const { data: chars } = await supabase
         .from('characters')
         .select('id, name')
-        .eq('owner_id', currentUserId);
+        .eq('owner_id', currentUserId)
+        .eq('is_linked', false);
 
-      if (!chars || chars.length === 0) return alert('Crie um personagem primeiro!');
+      if (!chars || chars.length === 0) return alert('Nenhum personagem disponível. Todos os seus personagens já estão vinculados a uma campanha ou você ainda não criou nenhum.');
       setTempCampaign(campaign);
       setUserCharacters(chars);
       setStep(2);
