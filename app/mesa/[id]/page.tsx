@@ -14,9 +14,10 @@ interface Token {
   x: number;
   y: number;
   name?: string;
-  characterId?: number | string;
+  characterId?: number | null;
   imgOffsetX?: number;
   imgOffsetY?: number;
+  isMonster?: boolean;
 }
 
 export default function TelaDeMesa() {
@@ -41,6 +42,15 @@ export default function TelaDeMesa() {
   const [tokens, setTokens] = useState<Token[]>([]);
   const [tokenSelecionado, setTokenSelecionado] = useState<string | null>(null);
   const [isDraggingToken, setIsDraggingToken] = useState(false);
+
+  // Realtime refs
+  const tokensRef = useRef<Token[]>([]);
+  const draggingPosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const lastBroadcastRef = useRef<number>(0);
+  const realtimeChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+
+  // Keep tokensRef in sync with state (for use inside event handlers)
+  useEffect(() => { tokensRef.current = tokens; }, [tokens]);
   
   const gridSize = 50; 
   const tokenSize = 42; 
@@ -50,6 +60,8 @@ export default function TelaDeMesa() {
     if (tokenId) {
       setTokenSelecionado(tokenId);
       setIsDraggingToken(true);
+      const token = tokensRef.current.find(t => t.id === tokenId);
+      if (token) draggingPosRef.current = { x: token.x, y: token.y };
       e.stopPropagation();
     } else if (e.button === 1) { 
       setIsDraggingMap(true);
@@ -61,25 +73,48 @@ export default function TelaDeMesa() {
     if (isDraggingMap) {
       setOffset(prev => ({ x: prev.x + e.movementX, y: prev.y + e.movementY }));
     } else if (isDraggingToken && tokenSelecionado) {
-      setTokens(prev => prev.map(t => 
-        t.id === tokenSelecionado 
-          ? { ...t, x: t.x + e.movementX / zoom, y: t.y + e.movementY / zoom } 
-          : t
+      draggingPosRef.current.x += e.movementX / zoom;
+      draggingPosRef.current.y += e.movementY / zoom;
+      const { x, y } = draggingPosRef.current;
+      setTokens(prev => prev.map(t =>
+        t.id === tokenSelecionado ? { ...t, x, y } : t
       ));
+      // Broadcast ~30fps throttled
+      const now = Date.now();
+      if (now - lastBroadcastRef.current > 33 && realtimeChannelRef.current) {
+        lastBroadcastRef.current = now;
+        realtimeChannelRef.current.send({
+          type: 'broadcast',
+          event: 'token-move',
+          payload: { tokenId: tokenSelecionado, x, y },
+        });
+      }
     }
   };
 
   const handleMouseUp = () => {
     if (isDraggingToken && tokenSelecionado) {
-      setTokens(prev => prev.map(t => 
-        t.id === tokenSelecionado 
-          ? { 
-              ...t, 
-              x: Math.round(t.x / gridSize) * gridSize, 
-              y: Math.round(t.y / gridSize) * gridSize 
-            } 
-          : t
+      const snappedX = Math.round(draggingPosRef.current.x / gridSize) * gridSize;
+      const snappedY = Math.round(draggingPosRef.current.y / gridSize) * gridSize;
+      const capturedId = tokenSelecionado;
+      setTokens(prev => prev.map(t =>
+        t.id === capturedId ? { ...t, x: snappedX, y: snappedY } : t
       ));
+      // Broadcast final snapped position
+      if (realtimeChannelRef.current) {
+        realtimeChannelRef.current.send({
+          type: 'broadcast',
+          event: 'token-move',
+          payload: { tokenId: capturedId, x: snappedX, y: snappedY },
+        });
+      }
+      // Persist to DB
+      supabase
+        .from('campaign_tokens')
+        .update({ x: snappedX, y: snappedY })
+        .eq('id', capturedId)
+        .eq('campaign_id', campaignId)
+        .then(() => {});
     }
     setIsDraggingMap(false);
     setIsDraggingToken(false);
@@ -87,38 +122,113 @@ export default function TelaDeMesa() {
 
   //teclado (WASD + Delete)
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
+    const handleKeyDown = async (e: KeyboardEvent) => {
       if (!tokenSelecionado) return;
       if (e.key === 'Delete' || e.key === 'Backspace') {
-        setTokens(prev => prev.filter(t => t.id !== tokenSelecionado));
+        const id = tokenSelecionado;
+        setTokens(prev => prev.filter(t => t.id !== id));
         setTokenSelecionado(null);
+        supabase.from('campaign_tokens').delete().eq('id', id).then(() => {});
+        realtimeChannelRef.current?.send({
+          type: 'broadcast', event: 'token-delete', payload: { tokenId: id },
+        });
         return;
       }
-      setTokens(prev => prev.map(t => {
-        if (t.id !== tokenSelecionado) return t;
-        switch(e.key.toLowerCase()) {
-          case 'w': return { ...t, y: t.y - gridSize };
-          case 's': return { ...t, y: t.y + gridSize };
-          case 'a': return { ...t, x: t.x - gridSize };
-          case 'd': return { ...t, x: t.x + gridSize };
-          default: return t;
-        }
-      }));
+      let dx = 0, dy = 0;
+      switch(e.key.toLowerCase()) {
+        case 'w': dy = -gridSize; break;
+        case 's': dy = gridSize; break;
+        case 'a': dx = -gridSize; break;
+        case 'd': dx = gridSize; break;
+        default: return;
+      }
+      const id = tokenSelecionado;
+      const token = tokensRef.current.find(t => t.id === id);
+      if (!token) return;
+      const newX = token.x + dx;
+      const newY = token.y + dy;
+      setTokens(prev => prev.map(t => t.id === id ? { ...t, x: newX, y: newY } : t));
+      supabase.from('campaign_tokens').update({ x: newX, y: newY })
+        .eq('id', id).eq('campaign_id', campaignId).then(() => {});
+      realtimeChannelRef.current?.send({
+        type: 'broadcast', event: 'token-move', payload: { tokenId: id, x: newX, y: newY },
+      });
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [tokenSelecionado]);
+  }, [tokenSelecionado, campaignId]);
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, tipo: string) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, tipo: string) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const url = URL.createObjectURL(file);
-    if (tipo === 'Mapa') setMapaUrl(url);
-    else if (tipo === 'Token') {
-      setTokens([...tokens, { id: Math.random().toString(36).substr(2, 9), url, x: 0, y: 0 }]);
+    if (tipo === 'Mapa') {
+      setMapaUrl(url);
+    } else if (tipo === 'Token') {
+      const newId = crypto.randomUUID();
+      const newToken: Token = { id: newId, url, x: 0, y: 0, isMonster: true };
+      setTokens(prev => [...prev, newToken]);
+      supabase.from('campaign_tokens').insert({
+        id: newId,
+        campaign_id: campaignId,
+        url,
+        x: 0,
+        y: 0,
+        is_monster: true,
+      }).then(() => {});
+      realtimeChannelRef.current?.send({
+        type: 'broadcast', event: 'token-add', payload: { token: newToken },
+      });
     }
     setModalAtivo(null);
   };
+
+  // Subscription realtime de tokens
+  useEffect(() => {
+    if (!campaignId) return;
+    const channel = supabase
+      .channel(`mesa-tokens-${campaignId}`)
+      .on('broadcast', { event: 'token-move' }, ({ payload }) => {
+        setTokens(prev => prev.map(t =>
+          t.id === payload.tokenId ? { ...t, x: payload.x, y: payload.y } : t
+        ));
+      })
+      .on('broadcast', { event: 'token-delete' }, ({ payload }) => {
+        setTokens(prev => prev.filter(t => t.id !== payload.tokenId));
+      })
+      .on('broadcast', { event: 'token-add' }, ({ payload }) => {
+        setTokens(prev => {
+          if (prev.find(t => t.id === payload.token.id)) return prev;
+          return [...prev, payload.token];
+        });
+      })
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'campaign_tokens', filter: `campaign_id=eq.${campaignId}` },
+        ({ new: row }) => {
+          const t = row as any;
+          setTokens(prev => {
+            if (prev.find(tk => tk.id === t.id)) return prev;
+            return [...prev, {
+              id: t.id, url: t.url || '', x: t.x, y: t.y,
+              characterId: t.character_id ?? null,
+              isMonster: t.is_monster ?? false,
+              imgOffsetX: 50, imgOffsetY: 50,
+            }];
+          });
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'campaign_tokens', filter: `campaign_id=eq.${campaignId}` },
+        ({ old: row }) => {
+          setTokens(prev => prev.filter(t => t.id !== (row as any).id));
+        }
+      )
+      .subscribe();
+    realtimeChannelRef.current = channel;
+    return () => { supabase.removeChannel(channel); };
+  }, [campaignId]);
 
   // --- Logic de Dados/Ficha ---
   const [showFicha, setShowFicha] = useState(false);
@@ -157,32 +267,86 @@ export default function TelaDeMesa() {
         }
       }
 
-      // Cria tokens de todos os personagens da campanha
-      const { data: members } = await supabase
-        .from('campaign_members')
-        .select('current_character_id')
-        .eq('campaign_id', campaignId)
-        .not('current_character_id', 'is', null);
+      // Carrega tokens do banco de dados
+      const { data: dbTokens } = await supabase
+        .from('campaign_tokens')
+        .select('id, url, x, y, character_id, is_monster')
+        .eq('campaign_id', campaignId);
 
-      if (members && members.length > 0) {
-        const charIds = members.map((m: any) => m.current_character_id);
-        const { data: chars } = await supabase
-          .from('characters')
-          .select('id, name, img, imgOffsetX, imgOffsetY')
-          .in('id', charIds);
+      if (dbTokens && dbTokens.length > 0) {
+        // Para tokens com personagem, busca dados visuais na tabela characters
+        const charIds = dbTokens
+          .filter((t: any) => t.character_id)
+          .map((t: any) => t.character_id);
 
-        if (chars && chars.length > 0) {
-          const initialTokens: Token[] = chars.map((c: any, i: number) => ({
-            id: `char-${c.id}`,
-            url: c.img || '',
-            name: c.name,
-            characterId: c.id,
-            imgOffsetX: c.imgOffsetX ?? 50,
-            imgOffsetY: c.imgOffsetY ?? 50,
-            x: i * gridSize * 2,
-            y: 0,
-          }));
-          setTokens(initialTokens);
+        let charMap: Record<number, { name: string; img: string; imgOffsetX: number; imgOffsetY: number }> = {};
+        if (charIds.length > 0) {
+          const { data: chars } = await supabase
+            .from('characters')
+            .select('id, name, img, imgOffsetX, imgOffsetY')
+            .in('id', charIds);
+          if (chars) {
+            chars.forEach((c: any) => {
+              charMap[c.id] = { name: c.name, img: c.img || '', imgOffsetX: c.imgOffsetX ?? 50, imgOffsetY: c.imgOffsetY ?? 50 };
+            });
+          }
+        }
+
+        setTokens(dbTokens.map((t: any) => {
+          const charData = t.character_id ? charMap[t.character_id] : null;
+          return {
+            id: t.id,
+            url: charData ? charData.img : (t.url || ''),
+            x: t.x,
+            y: t.y,
+            characterId: t.character_id ?? null,
+            name: charData?.name,
+            imgOffsetX: charData?.imgOffsetX ?? 50,
+            imgOffsetY: charData?.imgOffsetY ?? 50,
+            isMonster: t.is_monster ?? false,
+          };
+        }));
+      } else {
+        // Se não há tokens salvos, cria a partir dos membros da campanha
+        const { data: members } = await supabase
+          .from('campaign_members')
+          .select('current_character_id')
+          .eq('campaign_id', campaignId)
+          .not('current_character_id', 'is', null);
+
+        if (members && members.length > 0) {
+          const charIds = members.map((m: any) => m.current_character_id);
+          const { data: chars } = await supabase
+            .from('characters')
+            .select('id, name, img, imgOffsetX, imgOffsetY')
+            .in('id', charIds);
+
+          if (chars && chars.length > 0) {
+            const initialTokens: Token[] = chars.map((c: any, i: number) => ({
+              id: crypto.randomUUID(),
+              url: c.img || '',
+              name: c.name,
+              characterId: c.id,
+              imgOffsetX: c.imgOffsetX ?? 50,
+              imgOffsetY: c.imgOffsetY ?? 50,
+              x: i * gridSize * 2,
+              y: 0,
+              isMonster: false,
+            }));
+            setTokens(initialTokens);
+            // Persiste tokens iniciais no banco (apenas colunas que existem)
+            await supabase.from('campaign_tokens').insert(
+              initialTokens.map(t => ({
+                id: t.id,
+                campaign_id: campaignId,
+                character_id: t.characterId,
+                url: t.url,
+                x: t.x,
+                y: t.y,
+                is_monster: false,
+              }))
+            );
+          }
         }
       }
     };
