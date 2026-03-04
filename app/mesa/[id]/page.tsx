@@ -571,7 +571,7 @@ export default function TelaDeMesa() {
                 >
                   <div 
                     style={{ width: `${tokenSize}px`, height: `${tokenSize}px` }}
-                    className={`relative overflow-hidden transition-all duration-200 bg-neutral-900 ${token.characterId ? 'rounded-full border-2' : ''} ${
+                    className={`relative overflow-hidden transition-all duration-200 ${token.characterId ? 'rounded-full border-2 bg-neutral-900' : ''} ${
                       token.characterId
                         ? tokenSelecionado === token.id
                           ? 'border-[#00ff66] shadow-[0_0_20px_#00ff66] scale-110'
