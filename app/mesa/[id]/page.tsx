@@ -564,24 +564,27 @@ export default function TelaDeMesa() {
                   className="flex flex-col items-center cursor-move group"
                 >
                   <div 
-                    style={{
-                      width: `${tokenSize}px`,
-                      height: `${tokenSize}px`,
-                      backgroundImage: token.url ? `url(${token.url})` : undefined,
-                      backgroundSize: 'cover',
-                      backgroundPosition: `${token.imgOffsetX ?? 50}% ${token.imgOffsetY ?? 50}%`,
-                    }}
-                    className={`rounded-full border-2 transition-all duration-200 bg-neutral-900 ${
-                      tokenSelecionado === token.id || (isDraggingToken && tokenSelecionado === token.id)
-                        ? 'border-[#00ff66] shadow-[0_0_20px_#00ff66] scale-110' 
-                        : 'border-white/60 group-hover:border-[#00ff66] group-hover:shadow-[0_0_15px_rgba(0,255,102,0.4)]'
+                    style={{ width: `${tokenSize}px`, height: `${tokenSize}px` }}
+                    className={`relative overflow-hidden transition-all duration-200 ${
+                      tokenSelecionado === token.id
+                        ? 'shadow-[0_0_20px_#00ff66] scale-110' 
+                        : 'group-hover:shadow-[0_0_15px_rgba(0,255,102,0.4)]'
                     }`}
-                  />
-                  {token.name && (
-                    <span className="mt-1 text-[8px] font-bold text-white/80 bg-black/60 px-1.5 py-0.5 rounded-full whitespace-nowrap max-w-[80px] truncate text-center leading-tight">
-                      {token.name}
-                    </span>
-                  )}
+                  >
+                    {token.url ? (
+                      <img
+                        src={token.url}
+                        alt={token.name ?? ''}
+                        draggable={false}
+                        style={{ objectPosition: `${token.imgOffsetX ?? 50}% ${token.imgOffsetY ?? 50}%` }}
+                        className="w-full h-full object-cover select-none pointer-events-none"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-neutral-800 flex items-center justify-center">
+                        <span className="text-white/20 text-lg">?</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
