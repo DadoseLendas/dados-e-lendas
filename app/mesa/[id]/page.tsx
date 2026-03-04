@@ -179,9 +179,21 @@ export default function TelaDeMesa() {
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, tipo: string) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const url = URL.createObjectURL(file);
     if (tipo === 'Mapa') {
-      setMapaUrl(url);
+      const ext = file.name.split('.').pop() ?? 'png';
+      const fileName = `maps/${campaignId}-map.${ext}`;
+      const { error } = await supabase.storage
+        .from('campaign-assets')
+        .upload(fileName, file, { contentType: file.type, upsert: true });
+      if (error) { console.error('Erro ao fazer upload do mapa:', error); return; }
+      const { data: { publicUrl } } = supabase.storage.from('campaign-assets').getPublicUrl(fileName);
+      setMapaUrl(publicUrl);
+      await supabase.from('campaigns').update({ map_url: publicUrl }).eq('id', campaignId);
+      realtimeChannelRef.current?.send({
+        type: 'broadcast',
+        event: 'map-change',
+        payload: { mapUrl: publicUrl },
+      });
     }
     setModalAtivo(null);
   };
@@ -225,6 +237,9 @@ export default function TelaDeMesa() {
           if (prev.find(t => t.id === payload.token.id)) return prev;
           return [...prev, payload.token];
         });
+      })
+      .on('broadcast', { event: 'map-change' }, ({ payload }) => {
+        setMapaUrl(payload.mapUrl);
       })
       .on(
         'postgres_changes',
@@ -303,9 +318,13 @@ export default function TelaDeMesa() {
 
       const { data: campaign } = await supabase
         .from('campaigns')
-        .select('dm_id')
+        .select('dm_id, map_url')
         .eq('id', campaignId)
         .maybeSingle();
+
+      if (campaign?.map_url) {
+        setMapaUrl(campaign.map_url);
+      }
 
       if (campaign?.dm_id === user.id) {
         setIsDM(true);
