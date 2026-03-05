@@ -84,6 +84,10 @@ export default function ChatWidget({ campaignId, isDiceReady, onRollDice }: Chat
   // Mapa userId → info de exibição; evita colunas extras em chat_messages
   const [playerMap, setPlayerMap] = useState<Record<string, PlayerInfo>>({});
 
+  //bolinha do chat
+  const isOpenRef = useRef(isOpen);
+  useEffect(() => { isOpenRef.current = isOpen; }, [isOpen]);
+
   // ---------------------------------------------------------------------------
   // Inicialização: identidade do usuário, papel na campanha e mapa de jogadores
   // ---------------------------------------------------------------------------
@@ -222,10 +226,14 @@ export default function ChatWidget({ campaignId, isDiceReady, onRollDice }: Chat
         },
         (payload) => {
           const newMsg = payload.new as Message;
+          
           setMessages((prev) => {
             if (prev.find((m) => m.id === newMsg.id)) return prev;
             return [...prev, newMsg];
           });
+          if (!isOpenRef.current) {
+             setUnreadCount((prev) => prev + 1);
+          }
         }
       )
       .subscribe();

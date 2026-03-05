@@ -9,18 +9,32 @@ interface DiceRollerProps {
   currentUserId: string | null;
 }
 
+// Mapeamento das cores para combinar com os botões do seu chat
+const DICE_COLORS: Record<string, string> = {
+  d20: '#ef4444', // Vermelho
+  d12: '#f97316', // Laranja
+  d10: '#eab308', // Amarelo
+  d8:  '#22c55e', // Verde
+  d6:  '#3b82f6', // Azul
+  d4:  '#a855f7', // Roxo
+  d100:'#9ca3af'  // Cinza
+};
+
 export default function DiceRoller({ campaignId, onReady, isDM, currentUserId }: DiceRollerProps) {
   const initializedRef = useRef(false);
   const diceBoxRef     = useRef<any>(null);
   const supabase       = createClient();
 
-  // Cacheado na inicialização para evitar query a cada rolagem
   const dmIdRef = useRef<string | null>(null);
 
-  const triggerVisualRoll = useCallback(async (diceType: string) => {
+  const triggerVisualRoll = useCallback(async (diceType: string, isSecret: boolean) => {
     if (!diceBoxRef.current) return null;
     const sides  = parseInt(diceType.replace('d', ''));
-    const result = await diceBoxRef.current.roll([{ qty: 1, sides }]);
+    
+    // Se for secreto, o dado 3D fica vermelho escuro/vivo. Se não, usa a cor padrão dele.
+    const themeColor = isSecret ? '#ef4444' : (DICE_COLORS[diceType] || '#00ff66');
+
+    const result = await diceBoxRef.current.roll([{ qty: 1, sides, themeColor }]);
     setTimeout(() => diceBoxRef.current?.clear(), 3000);
     return result[0].value as number;
   }, []);
@@ -53,29 +67,22 @@ export default function DiceRoller({ campaignId, onReady, isDM, currentUserId }:
         await box.init();
         diceBoxRef.current = box;
 
-        // Canal por campanha — impede que broadcasts de mesas distintas se cruzem
         const channel = supabase.channel(`dice_rolls_${campaignId}`);
 
         channel
           .on('broadcast', { event: 'roll' }, (payload: any) => {
             const { diceType, isSecret, senderId } = payload.payload;
 
-            if (senderId === currentUserId) return; // eco do próprio usuário
+            if (senderId === currentUserId) return; // Ignora o eco de si mesmo
 
-            const senderIsDM = senderId === dmIdRef.current;
+            // REGRA DEFINITIVA DE VISIBILIDADE:
+            // Se for secreto e eu não for o Mestre, eu não vejo o dado caindo.
+            if (isSecret && !isDM) return;
 
-            // Rolagem secreta do mestre: só ele vê
-            // Rolagem secreta de jogador: só o mestre vê
-            if (isSecret) {
-              if (senderIsDM) return;
-              if (!isDM) return;
-            }
-
-            triggerVisualRoll(diceType);
+            triggerVisualRoll(diceType, isSecret);
           })
           .subscribe();
 
-        // Expõe a função ao componente pai; o retorno é o valor numérico do dado
         onReady(async (diceType: string, isSecret: boolean) => {
           channel.send({
             type: 'broadcast',
@@ -83,7 +90,7 @@ export default function DiceRoller({ campaignId, onReady, isDM, currentUserId }:
             payload: { diceType, isSecret, senderId: currentUserId },
           });
 
-          return await triggerVisualRoll(diceType);
+          return await triggerVisualRoll(diceType, isSecret);
         });
 
         return () => { supabase.removeChannel(channel); };

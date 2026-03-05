@@ -109,6 +109,7 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
     const supabase = createClient();
     //const [character, setCharacter] = useState<Character | null>(null);
     const [draft, setDraft] = useState<Character | null>(null);
+    const [initialChar, setInitialChar] = useState<Character | null>(null); // NOVO
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
     const [saveSuccess, setSaveSuccess] = useState(false);
@@ -209,11 +210,12 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
 
     // ── Salvar no Supabase ───────────────────────────────────────────────────
     const saveCharacter = async () => {
-        if (!draft) return;
+        if (!draft || !initialChar) return;
         setSaving(true);
         const payload: Record<string, unknown> = { ...draft };
         let saved: Character | null = null;
         let saveError: Error | any = null;
+        
         for (let attempt = 0; attempt < 5; attempt++) {
             const { data, error } = await supabase
                 .from('characters')
@@ -232,9 +234,31 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
         if (saveError) {
             alert('Erro ao salvar: ' + saveError.message);
         } else if (saved) {
-            //setCharacter(saved);
             setDraft(saved);
             onUpdate?.(saved);
+            
+            //Verificar as alterações
+            const changes = [];
+            if (initialChar.hp_current !== saved.hp_current) changes.push(`HP (${initialChar.hp_current} ➔ ${saved.hp_current})`);
+            if (initialChar.hp_max !== saved.hp_max) changes.push(`HP Máx (${initialChar.hp_max} ➔ ${saved.hp_max})`);
+            if (initialChar.ac !== saved.ac) changes.push(`CA (${initialChar.ac} ➔ ${saved.ac})`);
+            if (initialChar.level !== saved.level) changes.push(`Nível (${initialChar.level} ➔ ${saved.level})`);
+            
+            if (changes.length > 0 && currentUserId) {
+                await supabase.from('chat_messages').insert([{
+                    campaign_id: campaignId,
+                    user_name: saved.name,
+                    text: `${currentUserName} alterou atributos: ${changes.join(', ')}`,
+                    is_roll: false,
+                    is_secret: true, // Garante que o jogador e o mestre saibam que foi logado
+                    channel: 'fichas',
+                    sender_id: currentUserId,
+                }]);
+            }
+            
+            setInitialChar(saved); // Reseta a foto inicial para os novos valores
+            // ---------------------------------------------
+
             setSaveSuccess(true);
             setTimeout(() => setSaveSuccess(false), 2000);
         }
@@ -254,8 +278,8 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
                 .eq('id', characterId)
                 .single();
             if (!error && data) {
-                //setCharacter(data as Character);
                 setDraft(data as Character);
+                setInitialChar(data as Character);//Salva a foto do estado original
             }
             setLoading(false);
         };

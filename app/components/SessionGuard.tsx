@@ -12,6 +12,8 @@ export default function SessionGuard() {
   const pathname = usePathname();
 
   const handleLogout = useCallback(async (reason: string) => {
+    // 0. Mata todas as conexões em tempo real antes de destruir o token
+    await supabase.removeAllChannels(); 
     // 1. Apaga os cookies de sessão no Supabase
     await supabase.auth.signOut();
     // 2. Limpa o coração
