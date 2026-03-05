@@ -320,13 +320,49 @@ export default function TelaDeMesa() {
       )
       .subscribe();
     realtimeChannelRef.current = channel;
-    // Subscription para novos membros (atualiza lista de jogadores do Mestre)
+    // Subscription para novos membros (atualiza lista de jogadores do Mestre e cria token)
     const membersChannel = supabase
       .channel(`mesa-members-${campaignId}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'campaign_members', filter: `campaign_id=eq.${campaignId}` },
-        () => { fetchPlayerCharacters(); }
+        async ({ new: row }) => {
+          await fetchPlayerCharacters();
+          // Se o membro tem personagem vinculado, cria token caso não exista
+          const charId = (row as any)?.current_character_id;
+          if (!charId) return;
+          const alreadyExists = tokensRef.current.some(t => String(t.characterId) === String(charId));
+          if (alreadyExists) return;
+          const { data: char } = await supabase
+            .from('characters')
+            .select('id, name, img, imgOffsetX, imgOffsetY')
+            .eq('id', charId)
+            .maybeSingle();
+          if (!char) return;
+          const newId = crypto.randomUUID();
+          const newToken: Token = {
+            id: newId,
+            url: (char as any).img || '',
+            x: 0, y: 0,
+            name: (char as any).name,
+            characterId: (char as any).id,
+            imgOffsetX: (char as any).imgOffsetX ?? 50,
+            imgOffsetY: (char as any).imgOffsetY ?? 50,
+            isMonster: false,
+          };
+          setTokens(prev => [...prev, newToken]);
+          await supabase.from('campaign_tokens').insert({
+            id: newId,
+            campaign_id: campaignId,
+            character_id: newToken.characterId,
+            url: newToken.url,
+            x: 0, y: 0,
+            is_monster: false,
+          });
+          realtimeChannelRef.current?.send({
+            type: 'broadcast', event: 'token-add', payload: { token: newToken },
+          });
+        }
       )
       .subscribe();
     return () => { supabase.removeChannel(channel); supabase.removeChannel(membersChannel); };
