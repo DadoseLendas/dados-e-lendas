@@ -384,7 +384,7 @@ export default function TelaDeMesa() {
       console.log('[DM] user.id:', user.id, '| campaignId:', campaignId);
       console.log('[DM] campaign:', campaign, '| error:', campaignError?.message);
 
-      // Verifica se o usuário é o mestre
+      // Verifica se o usuário é o mestre, 
       let userIsDM = campaign?.dm_id === user.id;
 
       if (!userIsDM) {
