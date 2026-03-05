@@ -853,11 +853,10 @@ export default function TelaDeMesa() {
       />
 
       {/* Botão para abrir */}
-
       <button 
         onClick={() => setModalAjuda(!modalAjuda)}
         className="fixed bottom-6 left-6 z-[9999] w-12 h-12 bg-[#0a0a0a] border-2 border-[#00ff66] rounded-full flex items-center justify-center text-[#00ff66] shadow-[0_0_15px_rgba(0,255,102,0.3)] hover:scale-110 transition-all"
-        title="Condições"
+        title="Manual de Condições"
       >
         <HelpCircle size={24} />
       </button>
@@ -869,7 +868,7 @@ export default function TelaDeMesa() {
         >
           {/* Header */}
           <div className="p-4 border-b border-white/5 flex justify-between items-center bg-[#00ff66]/5">
-            <span className="text-[#00ff66] font-bold text-xs uppercase tracking-tighter">Condições</span>
+            <span className="text-[#00ff66] font-bold text-xs uppercase tracking-tighter">Manual de Condições</span>
             <button onClick={() => setModalAjuda(false)} className="text-white/20 hover:text-white"><X size={18}/></button>
           </div>
 
