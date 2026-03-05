@@ -853,14 +853,6 @@ export default function TelaDeMesa() {
       />
 
       {/* Botão para abrir */}
-<button 
-  onClick={() => setModalAjuda(true)}
-  className="fixed bottom-6 right-6 z-50 p-3 bg-[#0a0a0a] border border-[#00ff66]/30 rounded-full text-[#00ff66] shadow-lg hover:bg-[#00ff66]/10 transition-all"
->
-  <HelpCircle size={24} />
-</button>
-
-
 
       <button 
         onClick={() => setModalAjuda(!modalAjuda)}
