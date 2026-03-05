@@ -368,6 +368,7 @@ export default function TelaDeMesa() {
       if (!user || !campaignId) return;
 
       setCurrentUserId(user.id);
+      console.log('[DEL] user.id =', user.id, '| campaignId =', campaignId);
 
       const { data: campaign, error: campaignError } = await supabase
         .from('campaigns')
@@ -375,9 +376,7 @@ export default function TelaDeMesa() {
         .eq('id', campaignId)
         .maybeSingle();
 
-      if (campaignError) {
-        console.error('[fetchUserRole] Erro ao buscar campanha:', campaignError.message);
-      }
+      console.log('[DEL] campaign =', campaign, '| error =', campaignError?.message);
 
       if (campaign?.map_url) {
         setMapaUrl(campaign.map_url);
@@ -385,14 +384,17 @@ export default function TelaDeMesa() {
 
       // Verifica se o usuário é o mestre — primeiro pelo dado retornado, depois por query direta (fallback para políticas RLS restritivas)
       let userIsDM = campaign?.dm_id === user.id;
+      console.log('[DEL] userIsDM (1ª verificação) =', userIsDM, '| campaign.dm_id =', campaign?.dm_id);
 
       if (!userIsDM) {
-        const { data: ownedCampaign } = await supabase
+        const { data: ownedCampaign, error: ownedError } = await supabase
           .from('campaigns')
           .select('id, map_url')
           .eq('id', campaignId)
           .eq('dm_id', user.id)
           .maybeSingle();
+
+        console.log('[DEL] ownedCampaign =', ownedCampaign, '| error =', ownedError?.message);
 
         if (ownedCampaign) {
           userIsDM = true;
@@ -401,6 +403,8 @@ export default function TelaDeMesa() {
           }
         }
       }
+
+      console.log('[DEL] isDM final =', userIsDM);
 
       if (userIsDM) {
         setIsDM(true);
