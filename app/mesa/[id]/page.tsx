@@ -70,8 +70,6 @@ const CONDICOES_RPG = [
   { nome: "Possuído", desc: "Uma criatura possuída fica incapacitada e perde o controle sobre seu corpo para a criatura que a possuiu."}
 ];
 
-const [itemExpandido, setItemExpandido] = useState<string | null>(null);
-
 export default function TelaDeMesa() {
   const supabase = useMemo(() => createClient(), []);
   const router = useRouter();
@@ -341,6 +339,7 @@ export default function TelaDeMesa() {
 
   const [modalAjuda, setModalAjuda] = useState(false);
   const [buscaCondicao, setBuscaCondicao] = useState("");
+  const [itemExpandido, setItemExpandido] = useState<string | null>(null);
 
   // Busca e atualiza personagens dos jogadores da campanha (usado pelo Mestre)
   const fetchPlayerCharacters = async () => {
