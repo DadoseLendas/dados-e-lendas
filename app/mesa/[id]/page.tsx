@@ -369,10 +369,10 @@ export default function TelaDeMesa() {
 
       setCurrentUserId(user.id);
 
-      // Busca dm_id da campanha (query separada de map_url para não quebrar se a coluna não existir)
+      // Busca dm_id e map_url da campanha
       const { data: campaign, error: campaignError } = await supabase
         .from('campaigns')
-        .select('dm_id')
+        .select('dm_id, map_url')
         .eq('id', campaignId)
         .maybeSingle();
 
@@ -380,15 +380,7 @@ export default function TelaDeMesa() {
         console.error('[fetchUserRole] Erro ao buscar campanha:', campaignError.message);
       }
 
-      // Tenta carregar map_url separadamente (coluna pode não existir ainda)
-      try {
-        const { data: mapData } = await supabase
-          .from('campaigns')
-          .select('map_url')
-          .eq('id', campaignId)
-          .maybeSingle();
-        if ((mapData as any)?.map_url) setMapaUrl((mapData as any).map_url);
-      } catch (_) { /* coluna map_url ainda não existe no banco */ }
+      if (campaign?.map_url) setMapaUrl(campaign.map_url);
 
       // Verifica se o usuário é o mestre
       let userIsDM = campaign?.dm_id === user.id;
@@ -397,12 +389,17 @@ export default function TelaDeMesa() {
         // Fallback: query filtrada por dm_id (funciona mesmo com RLS restritivo)
         const { data: ownedCampaign } = await supabase
           .from('campaigns')
-          .select('id')
+          .select('id, map_url')
           .eq('id', campaignId)
           .eq('dm_id', user.id)
           .maybeSingle();
 
-        if (ownedCampaign) userIsDM = true;
+        if (ownedCampaign) {
+          userIsDM = true;
+          if (!campaign?.map_url && (ownedCampaign as any).map_url) {
+            setMapaUrl((ownedCampaign as any).map_url);
+          }
+        }
       }
 
       if (userIsDM) {
