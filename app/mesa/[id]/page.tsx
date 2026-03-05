@@ -243,8 +243,6 @@ export default function TelaDeMesa() {
       const { data: { publicUrl } } = supabase.storage.from('campaign-assets').getPublicUrl(fileName);
       console.log('[MAPA] publicUrl:', publicUrl);
       setMapaUrl(publicUrl);
-      const { error: updateError } = await supabase.from('campaigns').update({ map_url: publicUrl }).eq('id', campaignId);
-      if (updateError) console.error('[MAPA] Erro ao salvar map_url:', updateError.message);
       realtimeChannelRef.current?.send({
         type: 'broadcast',
         event: 'map-change',
@@ -376,38 +374,33 @@ export default function TelaDeMesa() {
 
       setCurrentUserId(user.id);
 
-      // Busca dm_id e map_url da campanha
+      // Busca dm_id da campanha
       const { data: campaign, error: campaignError } = await supabase
         .from('campaigns')
-        .select('dm_id, map_url')
+        .select('dm_id')
         .eq('id', campaignId)
         .maybeSingle();
 
-      if (campaignError) {
-        console.error('[fetchUserRole] Erro ao buscar campanha:', campaignError.message);
-      }
-
-      if (campaign?.map_url) setMapaUrl(campaign.map_url);
+      console.log('[DM] user.id:', user.id, '| campaignId:', campaignId);
+      console.log('[DM] campaign:', campaign, '| error:', campaignError?.message);
 
       // Verifica se o usuário é o mestre
       let userIsDM = campaign?.dm_id === user.id;
 
       if (!userIsDM) {
         // Fallback: query filtrada por dm_id (funciona mesmo com RLS restritivo)
-        const { data: ownedCampaign } = await supabase
+        const { data: ownedCampaign, error: ownedError } = await supabase
           .from('campaigns')
-          .select('id, map_url')
+          .select('id')
           .eq('id', campaignId)
           .eq('dm_id', user.id)
           .maybeSingle();
 
-        if (ownedCampaign) {
-          userIsDM = true;
-          if (!campaign?.map_url && (ownedCampaign as any).map_url) {
-            setMapaUrl((ownedCampaign as any).map_url);
-          }
-        }
+        console.log('[DM] fallback ownedCampaign:', ownedCampaign, '| error:', ownedError?.message);
+        if (ownedCampaign) userIsDM = true;
       }
+
+      console.log('[DM] isDM final:', userIsDM);
 
       if (userIsDM) {
         setIsDM(true);

@@ -30,7 +30,7 @@ const CLASS_DATA: Record<string, { hp: number; primaryAttr: string; savingThrows
   "Clérigo": { hp: 8, primaryAttr: "Sabedoria", savingThrows: ["wis", "cha"] },
   "Druida": { hp: 8, primaryAttr: "Sabedoria", savingThrows: ["int", "wis"] },
   "Feiticeiro": { hp: 6, primaryAttr: "Carisma", savingThrows: ["con", "cha"] },
-  "Guardião": { hp: 10, primaryAttr: "Destreza & Sabedoria", savingThrows: ["str", "dex"] },
+  "Patrulheiro": { hp: 10, primaryAttr: "Destreza & Sabedoria", savingThrows: ["str", "dex"] },
   "Guerreiro": { hp: 10, primaryAttr: "Força ou Destreza", savingThrows: ["str", "con"] },
   "Ladino": { hp: 8, primaryAttr: "Destreza", savingThrows: ["dex", "int"] },
   "Mago": { hp: 6, primaryAttr: "Inteligência", savingThrows: ["int", "wis"] },
@@ -472,8 +472,10 @@ export default function PersonagensPage() {
                 <label className="text-[8px] text-[#4a5a4a] font-black uppercase">Nível</label>
                 <input
                   type="number"
+                  min={1}
+                  max={20}
                   value={activeCharacter.level ?? 1}
-                  onChange={(e) => updateCharacter('level', Number(e.target.value) || 0)}
+                  onChange={(e) => updateCharacter('level', Math.min(20, Math.max(1, Number(e.target.value) || 1)))}
                   className="w-full bg-black/40 border border-[#1a2a1a] p-1.5 text-xs rounded text-[#00ff66] font-bold text-center"
                 />
               </div>
