@@ -18,24 +18,38 @@ export default function Home() {
       
       <div className="flex-grow">
         {/* INICIAL (HERO) */}
-        <section className="h-[70vh] flex flex-col items-center justify-center text-center px-5 border-b border-[#1a2a1a]/30 animate-in fade-in zoom-in duration-500">
-          <h1 className="text-5xl md:text-7xl font-serif italic mb-6 tracking-tighter drop-shadow-[0_0_15px_rgba(0,255,102,0.1)]">
-            BEM VINDO AVENTUREIRO!
-          </h1>
-          <p className="text-[#8a9a8a] max-w-2xl mb-10 leading-relaxed text-lg">
-            A plataforma brasileira completa para mestres e jogadores de D&D 5e. Fichas, mapas, dados e histórias em um só lugar.
-          </p>
-          <button 
-            onClick={async () => {
-              const supabase = createClient();
-              const { data: { session } } = await supabase.auth.getSession();
-              router.push(session ? '/campanhas' : '/cadastro');
-            }}
-            className="group border border-[#00ff66] text-[#00ff66] px-10 py-4 hover:bg-[#00ff66] hover:text-black transition-all shadow-[0_0_20px_rgba(0,255,102,0.1)] hover:shadow-[0_0_30px_rgba(0,255,102,0.4)] uppercase tracking-[0.3em] font-bold text-sm flex items-center gap-2"
-          >
-            Comece sua aventura <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform" />
-          </button>
-        </section>
+ {/* INICIAL (HERO) COM IMAGEM DE FUNDO */}
+<section className="relative min-h-[85vh] flex flex-col items-center justify-center text-center px-5 border-b border-[#1a2a1a]/30 overflow-hidden">
+  
+  {/* Imagem de Fundo com Overlay para Leitura */}
+  <div className="absolute inset-0 z-0">
+    <img 
+      src="/sua-imagem.jpg" 
+      alt="Background" 
+      className="w-full h-full object-cover object-center opacity-40" 
+    />
+    {/* Gradiente para suavizar a transição com o fundo preto da página */}
+    <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-[#050a05]"></div>
+  </div>
+
+  {/* Conteúdo (Z-10 para ficar acima da imagem) */}
+  <div className="relative z-10 animate-in fade-in zoom-in duration-500 flex flex-col items-center">
+    <h1 className="text-5xl md:text-7xl font-serif italic mb-6 tracking-tighter drop-shadow-[0_0_20px_rgba(0,0,0,0.8)]">
+      BEM VINDO AVENTUREIRO!
+    </h1>
+    
+    <p className="text-white/90 max-w-2xl mb-10 leading-relaxed text-lg drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] font-medium">
+      A plataforma brasileira completa para mestres e jogadores de D&D 5e. Fichas, mapas, dados e histórias em um só lugar.
+    </p>
+
+    <button 
+      onClick={() => router.push('/cadastro')}
+      className="group border border-[#00ff66] text-[#00ff66] bg-black/40 backdrop-blur-sm px-10 py-4 hover:bg-[#00ff66] hover:text-black transition-all shadow-[0_0_20px_rgba(0,255,102,0.2)] hover:shadow-[0_0_40px_rgba(0,255,102,0.5)] uppercase tracking-[0.3em] font-bold text-sm flex items-center gap-2"
+    >
+      Comece sua aventura <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform" />
+    </button>
+  </div>
+</section>
 
         {/* RECURSOS */}
         <section id="recursos" className="py-24 px-6 max-w-[1200px] mx-auto border-b border-[#1a2a1a]/30">
