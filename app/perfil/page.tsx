@@ -125,15 +125,11 @@ export default function PerfilView() {
         .upload(filePath, file);
 
       if (uploadError) {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            setProfileData(prev => ({ ...prev, avatar_url: e.target?.result as string }));
-        };
-        reader.readAsDataURL(file);
-      } else {
-        const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(filePath);
-        setProfileData(prev => ({ ...prev, avatar_url: publicUrl }));
+        throw new Error('Erro ao enviar imagem: ' + uploadError.message);
       }
+
+      const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(filePath);
+      setProfileData(prev => ({ ...prev, avatar_url: publicUrl }));
 
     } catch (error) {
       const msg = error instanceof Error ? error.message : "Erro desconhecido";
