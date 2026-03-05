@@ -11,13 +11,15 @@ interface DiceRollerProps {
 
 export default function DiceRoller({ campaignId, onReady, isDM, currentUserId }: DiceRollerProps) {
   const initializedRef = useRef(false);
-  const diceBoxRef = useRef<any>(null);
-  const supabase = createClient();
+  const diceBoxRef     = useRef<any>(null);
+  const supabase       = createClient();
 
-  // Executa apenas a animação visual local (sem lógica de negócio)
+  // Cacheado na inicialização para evitar query a cada rolagem
+  const dmIdRef = useRef<string | null>(null);
+
   const triggerVisualRoll = useCallback(async (diceType: string) => {
     if (!diceBoxRef.current) return null;
-    const sides = parseInt(diceType.replace('d', ''));
+    const sides  = parseInt(diceType.replace('d', ''));
     const result = await diceBoxRef.current.roll([{ qty: 1, sides }]);
     setTimeout(() => diceBoxRef.current?.clear(), 3000);
     return result[0].value as number;
@@ -29,90 +31,64 @@ export default function DiceRoller({ campaignId, onReady, isDM, currentUserId }:
 
     const initDice = async () => {
       try {
-        const { default: DiceBox } = await import('@3d-dice/dice-box');
-
-        const box = new DiceBox({
-          container: "#dice-box",
-          assetPath: "/dice-box-assets/assets/",
-          theme: "default",
-          scale: 5,
-          gravity: 2.5,
-          spinForce: 6,
-          throwForce: 5,
-        });
-
-        await box.init();
-        diceBoxRef.current = box;
-
-        /**
-         * Canal Realtime isolado por campanha.
-         * Padrão: `dice_rolls_{campaignId}` garante que animações de uma mesa
-         * não vazem para outra campanha aberta em outra aba/janela.
-         */
-        const channel = supabase.channel(`dice_rolls_${campaignId}`);
-
-        channel
-          .on('broadcast', { event: 'roll' }, (payload: any) => {
-            const { diceType, isSecret, senderId, dmId } = payload.payload;
-
-            /**
-             * REGRAS DE VISIBILIDADE DA ANIMAÇÃO:
-             * 1. Rolagem pública  → todos veem a animação (exceto o próprio dono, que já rolou localmente)
-             * 2. Rolagem secreta por JOGADOR → apenas o próprio jogador (já rolou local) e o MESTRE veem
-             * 3. Rolagem secreta pelo MESTRE → apenas o próprio mestre vê (já rolou local, ninguém mais recebe)
-             *
-             * OBS: O remetente nunca precisa receber o broadcast de volta — ele já animou localmente.
-             */
-            if (senderId === currentUserId) return; // Ignora eco do próprio usuário
-
-            const senderIsDM = senderId === dmId;
-
-            if (isSecret) {
-              // Mestre rolando em segredo → ninguém mais vê
-              if (senderIsDM) return;
-              // Jogador rolando em segredo → apenas o mestre vê
-              if (!isDM) return;
-            }
-
-            // Passamos na checagem: anima para este usuário
-            triggerVisualRoll(diceType);
-          })
-          .subscribe();
-
-        /**
-         * Função exposta ao componente pai (Mesa/Table).
-         * Ao chamar onRollDice(diceType, isSecret):
-         *  - Envia broadcast para os outros (com dmId para distinguir quem é o mestre)
-         *  - Anima localmente
-         *  - Retorna o valor numérico do dado
-         */
-        onReady(async (diceType: string, isSecret: boolean) => {
-          // Busca o dm_id da campanha para incluir no payload (lógica de visibilidade no receiver)
+        if (campaignId && campaignId !== '00000000-0000-0000-0000-000000000000') {
           const { data: campaign } = await supabase
             .from('campaigns')
             .select('dm_id')
             .eq('id', campaignId)
             .single();
+          dmIdRef.current = campaign?.dm_id ?? null;
+        }
 
+        const { default: DiceBox } = await import('@3d-dice/dice-box');
+        const box = new DiceBox({
+          container: '#dice-box',
+          assetPath: '/dice-box-assets/assets/',
+          theme: 'default',
+          scale: 5,
+          gravity: 2.5,
+          spinForce: 6,
+          throwForce: 5,
+        });
+        await box.init();
+        diceBoxRef.current = box;
+
+        // Canal por campanha — impede que broadcasts de mesas distintas se cruzem
+        const channel = supabase.channel(`dice_rolls_${campaignId}`);
+
+        channel
+          .on('broadcast', { event: 'roll' }, (payload: any) => {
+            const { diceType, isSecret, senderId } = payload.payload;
+
+            if (senderId === currentUserId) return; // eco do próprio usuário
+
+            const senderIsDM = senderId === dmIdRef.current;
+
+            // Rolagem secreta do mestre: só ele vê
+            // Rolagem secreta de jogador: só o mestre vê
+            if (isSecret) {
+              if (senderIsDM) return;
+              if (!isDM) return;
+            }
+
+            triggerVisualRoll(diceType);
+          })
+          .subscribe();
+
+        // Expõe a função ao componente pai; o retorno é o valor numérico do dado
+        onReady(async (diceType: string, isSecret: boolean) => {
           channel.send({
             type: 'broadcast',
             event: 'roll',
-            payload: {
-              diceType,
-              isSecret,
-              senderId: currentUserId,
-              dmId: campaign?.dm_id ?? null,
-            },
+            payload: { diceType, isSecret, senderId: currentUserId },
           });
 
           return await triggerVisualRoll(diceType);
         });
 
-        return () => {
-          supabase.removeChannel(channel);
-        };
+        return () => { supabase.removeChannel(channel); };
       } catch (e) {
-        console.error('[DiceRoller] Erro ao inicializar:', e);
+        console.error('[DiceRoller] Falha na inicialização:', e);
       }
     };
 
@@ -133,8 +109,6 @@ export default function DiceRoller({ campaignId, onReady, isDM, currentUserId }:
           pointer-events: none !important;
         }
       `}</style>
-      {/* ID único não é necessário aqui pois cada instância monta num portal separado,
-          mas o container fixo garante que fica sobre o conteúdo da mesa correta */}
       <div id="dice-box" className="fixed inset-0 pointer-events-none z-[9999]" />
     </>
   );
