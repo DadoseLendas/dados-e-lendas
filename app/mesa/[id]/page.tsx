@@ -369,17 +369,40 @@ export default function TelaDeMesa() {
 
       setCurrentUserId(user.id);
 
-      const { data: campaign } = await supabase
+      const { data: campaign, error: campaignError } = await supabase
         .from('campaigns')
         .select('dm_id, map_url')
         .eq('id', campaignId)
         .maybeSingle();
 
+      if (campaignError) {
+        console.error('[fetchUserRole] Erro ao buscar campanha:', campaignError.message);
+      }
+
       if (campaign?.map_url) {
         setMapaUrl(campaign.map_url);
       }
 
-      if (campaign?.dm_id === user.id) {
+      // Verifica se o usuário é o mestre — primeiro pelo dado retornado, depois por query direta (fallback para políticas RLS restritivas)
+      let userIsDM = campaign?.dm_id === user.id;
+
+      if (!userIsDM) {
+        const { data: ownedCampaign } = await supabase
+          .from('campaigns')
+          .select('id, map_url')
+          .eq('id', campaignId)
+          .eq('dm_id', user.id)
+          .maybeSingle();
+
+        if (ownedCampaign) {
+          userIsDM = true;
+          if (!campaign?.map_url && ownedCampaign.map_url) {
+            setMapaUrl(ownedCampaign.map_url);
+          }
+        }
+      }
+
+      if (userIsDM) {
         setIsDM(true);
         await fetchPlayerCharacters();
       } else {
