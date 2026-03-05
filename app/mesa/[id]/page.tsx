@@ -368,43 +368,42 @@ export default function TelaDeMesa() {
       if (!user || !campaignId) return;
 
       setCurrentUserId(user.id);
-      console.log('[DEL] user.id =', user.id, '| campaignId =', campaignId);
 
+      // Busca dm_id da campanha (query separada de map_url para não quebrar se a coluna não existir)
       const { data: campaign, error: campaignError } = await supabase
         .from('campaigns')
-        .select('dm_id, map_url')
+        .select('dm_id')
         .eq('id', campaignId)
         .maybeSingle();
 
-      console.log('[DEL] campaign =', campaign, '| error =', campaignError?.message);
-
-      if (campaign?.map_url) {
-        setMapaUrl(campaign.map_url);
+      if (campaignError) {
+        console.error('[fetchUserRole] Erro ao buscar campanha:', campaignError.message);
       }
 
-      // Verifica se o usuário é o mestre — primeiro pelo dado retornado, depois por query direta (fallback para políticas RLS restritivas)
+      // Tenta carregar map_url separadamente (coluna pode não existir ainda)
+      try {
+        const { data: mapData } = await supabase
+          .from('campaigns')
+          .select('map_url')
+          .eq('id', campaignId)
+          .maybeSingle();
+        if ((mapData as any)?.map_url) setMapaUrl((mapData as any).map_url);
+      } catch (_) { /* coluna map_url ainda não existe no banco */ }
+
+      // Verifica se o usuário é o mestre
       let userIsDM = campaign?.dm_id === user.id;
-      console.log('[DEL] userIsDM (1ª verificação) =', userIsDM, '| campaign.dm_id =', campaign?.dm_id);
 
       if (!userIsDM) {
-        const { data: ownedCampaign, error: ownedError } = await supabase
+        // Fallback: query filtrada por dm_id (funciona mesmo com RLS restritivo)
+        const { data: ownedCampaign } = await supabase
           .from('campaigns')
-          .select('id, map_url')
+          .select('id')
           .eq('id', campaignId)
           .eq('dm_id', user.id)
           .maybeSingle();
 
-        console.log('[DEL] ownedCampaign =', ownedCampaign, '| error =', ownedError?.message);
-
-        if (ownedCampaign) {
-          userIsDM = true;
-          if (!campaign?.map_url && ownedCampaign.map_url) {
-            setMapaUrl(ownedCampaign.map_url);
-          }
-        }
+        if (ownedCampaign) userIsDM = true;
       }
-
-      console.log('[DEL] isDM final =', userIsDM);
 
       if (userIsDM) {
         setIsDM(true);
