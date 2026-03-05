@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import Navbar from '@/app/components/ui/navbar';
 import Footer from '@/app/components/ui/footer';
 import { FileText, Dices, Map, ChevronRight } from 'lucide-react';
+import { createClient } from '@/utils/supabase/client';
 
 export default function Home() {
   const router = useRouter();
@@ -25,7 +26,11 @@ export default function Home() {
             A plataforma brasileira completa para mestres e jogadores de D&D 5e. Fichas, mapas, dados e histórias em um só lugar.
           </p>
           <button 
-            onClick={() => router.push('/cadastro')}
+            onClick={async () => {
+              const supabase = createClient();
+              const { data: { session } } = await supabase.auth.getSession();
+              router.push(session ? '/campanhas' : '/cadastro');
+            }}
             className="group border border-[#00ff66] text-[#00ff66] px-10 py-4 hover:bg-[#00ff66] hover:text-black transition-all shadow-[0_0_20px_rgba(0,255,102,0.1)] hover:shadow-[0_0_30px_rgba(0,255,102,0.4)] uppercase tracking-[0.3em] font-bold text-sm flex items-center gap-2"
           >
             Comece sua aventura <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform" />
