@@ -243,6 +243,7 @@ export default function TelaDeMesa() {
       const { data: { publicUrl } } = supabase.storage.from('campaign-assets').getPublicUrl(fileName);
       console.log('[MAPA] publicUrl:', publicUrl);
       setMapaUrl(publicUrl);
+      await supabase.from('campaigns').update({ map_url: publicUrl }).eq('id', campaignId);
       realtimeChannelRef.current?.send({
         type: 'broadcast',
         event: 'map-change',
@@ -410,12 +411,14 @@ export default function TelaDeMesa() {
 
       setCurrentUserId(user.id);
 
-      // Busca dm_id da campanha
+      // Busca dm_id e map_url da campanha
       const { data: campaign, error: campaignError } = await supabase
         .from('campaigns')
-        .select('dm_id')
+        .select('dm_id, map_url')
         .eq('id', campaignId)
         .maybeSingle();
+
+      if ((campaign as any)?.map_url) setMapaUrl((campaign as any).map_url);
 
       console.log('[DM] user.id:', user.id, '| campaignId:', campaignId);
       console.log('[DM] campaign:', campaign, '| error:', campaignError?.message);
