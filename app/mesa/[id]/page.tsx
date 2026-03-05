@@ -493,6 +493,53 @@ export default function TelaDeMesa() {
             isMonster: t.is_monster ?? false,
           };
         }));
+
+        // Verifica se algum membro com personagem não tem token e cria
+        const { data: members } = await supabase
+          .from('campaign_members')
+          .select('current_character_id')
+          .eq('campaign_id', campaignId)
+          .not('current_character_id', 'is', null);
+
+        if (members && members.length > 0) {
+          const existingCharIds = new Set(dbTokens.filter((t: any) => t.character_id).map((t: any) => String(t.character_id)));
+          const missingCharIds = members
+            .map((m: any) => m.current_character_id)
+            .filter((id: any) => id && !existingCharIds.has(String(id)));
+
+          if (missingCharIds.length > 0) {
+            const { data: missingChars } = await supabase
+              .from('characters')
+              .select('id, name, img, imgOffsetX, imgOffsetY')
+              .in('id', missingCharIds);
+
+            if (missingChars && missingChars.length > 0) {
+              const newTokens: Token[] = missingChars.map((c: any, i: number) => ({
+                id: crypto.randomUUID(),
+                url: c.img || '',
+                name: c.name,
+                characterId: c.id,
+                imgOffsetX: c.imgOffsetX ?? 50,
+                imgOffsetY: c.imgOffsetY ?? 50,
+                x: i * gridSize * 2,
+                y: 0,
+                isMonster: false,
+              }));
+              setTokens(prev => [...prev, ...newTokens]);
+              await supabase.from('campaign_tokens').insert(
+                newTokens.map(t => ({
+                  id: t.id,
+                  campaign_id: campaignId,
+                  character_id: t.characterId,
+                  url: t.url,
+                  x: t.x,
+                  y: t.y,
+                  is_monster: false,
+                }))
+              );
+            }
+          }
+        }
       } else {
         // Se não há tokens salvos, cria a partir dos membros da campanha
         const { data: members } = await supabase
