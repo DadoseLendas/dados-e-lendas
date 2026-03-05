@@ -9,33 +9,40 @@ interface DiceRollerProps {
   currentUserId: string | null;
 }
 
-// Mapeamento das cores para combinar com os botões do seu chat
 const DICE_COLORS: Record<string, string> = {
-  d20: '#ef4444', // Vermelho
-  d12: '#f97316', // Laranja
-  d10: '#eab308', // Amarelo
-  d8:  '#22c55e', // Verde
-  d6:  '#3b82f6', // Azul
-  d4:  '#a855f7', // Roxo
-  d100:'#9ca3af'  // Cinza
+  d20: '#ef4444', d12: '#f97316', d10: '#eab308',
+  d8:  '#22c55e', d6:  '#3b82f6', d4:  '#a855f7', d100:'#9ca3af'
 };
 
 export default function DiceRoller({ campaignId, onReady, isDM, currentUserId }: DiceRollerProps) {
   const initializedRef = useRef(false);
   const diceBoxRef     = useRef<any>(null);
+  const clearTimerRef  = useRef<NodeJS.Timeout | null>(null);
   const supabase       = createClient();
 
-  const dmIdRef = useRef<string | null>(null);
+  // MANTÉM AS REGRAS DE VISIBILIDADE SEMPRE ATUALIZADAS PARA O WEBSOCKET
+  const isDMRef = useRef(isDM);
+  const currentUserIdRef = useRef(currentUserId);
+  useEffect(() => { isDMRef.current = isDM; }, [isDM]);
+  useEffect(() => { currentUserIdRef.current = currentUserId; }, [currentUserId]);
 
   const triggerVisualRoll = useCallback(async (diceType: string, isSecret: boolean) => {
     if (!diceBoxRef.current) return null;
+
+    // Se havia um dado para ser apagado, cancela a ordem e apaga IMEDIATAMENTE antes de rolar o novo
+    if (clearTimerRef.current) clearTimeout(clearTimerRef.current);
+    diceBoxRef.current.clear();
+
     const sides  = parseInt(diceType.replace('d', ''));
-    
-    // Se for secreto, o dado 3D fica vermelho escuro/vivo. Se não, usa a cor padrão dele.
     const themeColor = isSecret ? '#ef4444' : (DICE_COLORS[diceType] || '#00ff66');
 
     const result = await diceBoxRef.current.roll([{ qty: 1, sides, themeColor }]);
-    setTimeout(() => diceBoxRef.current?.clear(), 3000);
+
+    // Programa para limpar a tela apenas 4 segundos DEPOIS que a rolagem terminar
+    clearTimerRef.current = setTimeout(() => {
+      diceBoxRef.current?.clear();
+    }, 4000);
+
     return result[0].value as number;
   }, []);
 
@@ -45,15 +52,6 @@ export default function DiceRoller({ campaignId, onReady, isDM, currentUserId }:
 
     const initDice = async () => {
       try {
-        if (campaignId && campaignId !== '00000000-0000-0000-0000-000000000000') {
-          const { data: campaign } = await supabase
-            .from('campaigns')
-            .select('dm_id')
-            .eq('id', campaignId)
-            .single();
-          dmIdRef.current = campaign?.dm_id ?? null;
-        }
-
         const { default: DiceBox } = await import('@3d-dice/dice-box');
         const box = new DiceBox({
           container: '#dice-box',
@@ -73,23 +71,26 @@ export default function DiceRoller({ campaignId, onReady, isDM, currentUserId }:
           .on('broadcast', { event: 'roll' }, (payload: any) => {
             const { diceType, isSecret, senderId } = payload.payload;
 
-            if (senderId === currentUserId) return; // Ignora o eco de si mesmo
+            // Fui eu que joguei? Ignoro, pois eu já disparei minha própria animação
+            if (senderId === currentUserIdRef.current) return;
 
-            // REGRA DEFINITIVA DE VISIBILIDADE:
-            // Se for secreto e eu não for o Mestre, eu não vejo o dado caindo.
-            if (isSecret && !isDM) return;
+            // Se for secreto e eu NÃO for o mestre, ignoro (não vejo a animação)
+            if (isSecret && !isDMRef.current) return;
 
+            // Caiu aqui? Então eu devo ver o dado rolando!
             triggerVisualRoll(diceType, isSecret);
           })
           .subscribe();
 
         onReady(async (diceType: string, isSecret: boolean) => {
+          // Avisa todos os outros jogadores na mesa
           channel.send({
             type: 'broadcast',
             event: 'roll',
-            payload: { diceType, isSecret, senderId: currentUserId },
+            payload: { diceType, isSecret, senderId: currentUserIdRef.current },
           });
 
+          // Roda na minha própria tela
           return await triggerVisualRoll(diceType, isSecret);
         });
 
@@ -100,7 +101,7 @@ export default function DiceRoller({ campaignId, onReady, isDM, currentUserId }:
     };
 
     initDice();
-  }, [campaignId, onReady, triggerVisualRoll, isDM, currentUserId, supabase]);
+  }, [campaignId, onReady, triggerVisualRoll, supabase]);
 
   return (
     <>

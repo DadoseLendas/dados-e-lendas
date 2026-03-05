@@ -246,7 +246,10 @@ export default function ChatWidget({ campaignId, isDiceReady, onRollDice }: Chat
   // ---------------------------------------------------------------------------
   useEffect(() => {
     if (isOpen) {
-      chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      // O setTimeout garante que o React desenhou a nova mensagem antes de scrollar
+      setTimeout(() => {
+        chatEndRef.current?.scrollIntoView({ behavior: 'auto', block: 'end' });
+      }, 50);
     } else if (messages.length > prevMessagesLength.current) {
       setUnreadCount((prev) => prev + (messages.length - prevMessagesLength.current));
     }
@@ -269,16 +272,25 @@ export default function ChatWidget({ campaignId, isDiceReady, onRollDice }: Chat
     const textToSend = inputText;
     setInputText('');
 
-    await supabase.from('chat_messages').insert([{
+    // Adicionado .select().single() para pegar o retorno do banco
+    const { data } = await supabase.from('chat_messages').insert([{
       campaign_id: campaignId,
       user_name:   displayName,
       text:        textToSend,
       is_roll:     false,
-      is_secret:   false,
+      is_secret:   isSecretRoll, // Agora o texto também fica secreto se o botão estiver ativo
       channel:     'campanha',
       sender_id:   currentUser.id,
       receiver_id: null,
-    }]);
+    }]).select().single();
+
+    // Atualização otimista imediata na tela
+    if (data) {
+      setMessages((prev) => {
+        if (prev.find((m) => m.id === data.id)) return prev;
+        return [...prev, data as Message];
+      });
+    }
   };
 
   // ---------------------------------------------------------------------------
