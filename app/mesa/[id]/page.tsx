@@ -231,13 +231,20 @@ export default function TelaDeMesa() {
     if (tipo === 'Mapa') {
       const ext = file.name.split('.').pop() ?? 'png';
       const fileName = `maps/${campaignId}-map.${ext}`;
+      console.log('[MAPA] Iniciando upload:', fileName, 'tipo:', file.type, 'tamanho:', file.size);
       const { error } = await supabase.storage
         .from('campaign-assets')
         .upload(fileName, file, { contentType: file.type, upsert: true });
-      if (error) { console.error('Erro ao fazer upload do mapa:', error); return; }
+      if (error) {
+        console.error('[MAPA] Erro no upload:', error.message, error);
+        alert('Erro ao fazer upload do mapa: ' + error.message);
+        return;
+      }
       const { data: { publicUrl } } = supabase.storage.from('campaign-assets').getPublicUrl(fileName);
+      console.log('[MAPA] publicUrl:', publicUrl);
       setMapaUrl(publicUrl);
-      await supabase.from('campaigns').update({ map_url: publicUrl }).eq('id', campaignId);
+      const { error: updateError } = await supabase.from('campaigns').update({ map_url: publicUrl }).eq('id', campaignId);
+      if (updateError) console.error('[MAPA] Erro ao salvar map_url:', updateError.message);
       realtimeChannelRef.current?.send({
         type: 'broadcast',
         event: 'map-change',

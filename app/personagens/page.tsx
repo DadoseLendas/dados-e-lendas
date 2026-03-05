@@ -537,8 +537,10 @@ export default function PersonagensPage() {
                     <span className="text-[9px] text-[#4a5a4a] font-black uppercase">{statLabels[s]}</span>
                     <input
                       type="number"
+                      min={0}
+                      max={20}
                       value={activeCharacter.stats[s]}
-                      onChange={(e) => updateCharacter('stats', { ...activeCharacter.stats, [s]: Number(e.target.value) || 0 })}
+                      onChange={(e) => updateCharacter('stats', { ...activeCharacter.stats, [s]: Math.min(20, Math.max(0, Number(e.target.value) || 0)) })}
                       className="w-full bg-transparent text-center text-xl font-black outline-none text-white"
                     />
                     <div className="text-[#00ff66] text-xs font-black mt-1">
