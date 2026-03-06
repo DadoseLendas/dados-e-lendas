@@ -14,13 +14,13 @@ import { User } from '@supabase/supabase-js';
 interface Message {
   id: string;
   campaign_id?: string;
-  user_name: string; // fallback quando sender_id não está no playerMap
+  user_name: string;
   sender_id?: string;
   receiver_id?: string | null;
   text: string;
   is_roll: boolean;
   is_secret: boolean;
-  channel: string; // 'campanha' | 'geral' | 'ooc' | 'mestre' | 'fichas'
+  channel: string;
   created_at: string;
   dice_type?: string | null;
 }
@@ -31,7 +31,6 @@ interface ChatWidgetProps {
   onRollDice: (diceType: string, isSecret: boolean) => Promise<number | null>;
 }
 
-// Dados de exibição de cada participante, resolvidos localmente
 interface PlayerInfo {
   userId: string;
   displayName: string;
@@ -81,12 +80,13 @@ export default function ChatWidget({ campaignId, isDiceReady, onRollDice }: Chat
   const [isDM,          setIsDM]          = useState(false);
   const [dmId,          setDmId]          = useState<string | null>(null);
 
-  // Mapa userId → info de exibição; evita colunas extras em chat_messages
   const [playerMap, setPlayerMap] = useState<Record<string, PlayerInfo>>({});
 
   //bolinha do chat
   const isOpenRef = useRef(isOpen);
   useEffect(() => { isOpenRef.current = isOpen; }, [isOpen]);
+
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
   // ---------------------------------------------------------------------------
   // Inicialização: identidade do usuário, papel na campanha e mapa de jogadores
@@ -99,7 +99,6 @@ export default function ChatWidget({ campaignId, isDiceReady, onRollDice }: Chat
       if (!user) return;
       setCurrentUser(user);
 
-      // display_name vem de profiles; metadados de auth guardam dados de cadastro
       const { data: profile } = await supabase
         .from('profiles')
         .select('display_name')
@@ -123,7 +122,6 @@ export default function ChatWidget({ campaignId, isDiceReady, onRollDice }: Chat
       setIsDM(userIsDM);
       setDmId(campaign?.dm_id ?? null);
 
-      // Personagem ativo: campaign_members.current_character_id → characters.name
       const { data: memberData } = await supabase
         .from('campaign_members')
         .select('current_character_id')
@@ -140,7 +138,6 @@ export default function ChatWidget({ campaignId, isDiceReady, onRollDice }: Chat
         setCharacterName(charData?.name ?? null);
       }
 
-      // Duas queries separadas: não há FK direta entre campaign_members e profiles
       const { data: members } = await supabase
         .from('campaign_members')
         .select('user_id, current_character_id')
@@ -170,7 +167,7 @@ export default function ChatWidget({ campaignId, isDiceReady, onRollDice }: Chat
           };
         });
 
-        // O mestre pode não estar em campaign_members como jogador
+        // O mestre pode não estar como jogador
         if (campaign?.dm_id) {
           const { data: dmProfile } = await supabase
             .from('profiles')
@@ -212,30 +209,27 @@ export default function ChatWidget({ campaignId, isDiceReady, onRollDice }: Chat
     };
     fetchMessages();
 
-    // O filtro server-side garante que apenas INSERTs desta campanha
-    // chegam ao subscriber — sem descarte desnecessário no cliente
-    const chatSub = supabase
-      .channel(`chat_room_${campaignId}`)
-      .on(
-        'postgres_changes',
-        {
-          event:  'INSERT',
-          schema: 'public',
-          table:  'chat_messages',
-          filter: `campaign_id=eq.${campaignId}`,
-        },
-        (payload) => {
-          const newMsg = payload.new as Message;
-          
-          setMessages((prev) => {
-            if (prev.find((m) => m.id === newMsg.id)) return prev;
-            return [...prev, newMsg];
-          });
-          if (!isOpenRef.current) {
-             setUnreadCount((prev) => prev + 1);
-          }
-        }
-      )
+    const chatSub = supabase.channel(`chat_room_${campaignId}`);
+    channelRef.current = chatSub;
+
+    chatSub
+      .on('broadcast', { event: 'new_message' }, (payload) => {
+        const newMsg = payload.payload as Message;
+        setMessages((prev) => {
+          if (prev.find((m) => m.id === newMsg.id)) return prev;
+          return [...prev, newMsg];
+        });
+        if (!isOpenRef.current) setUnreadCount((prev) => prev + 1);
+      })
+      //PostgresChanges continua caso a via expressa falhe
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `campaign_id=eq.${campaignId}` }, (payload) => {
+        const newMsg = payload.new as Message;
+        setMessages((prev) => {
+          if (prev.find((m) => m.id === newMsg.id)) return prev;
+          return [...prev, newMsg];
+        });
+        if (!isOpenRef.current) setUnreadCount((prev) => prev + 1);
+      })
       .subscribe();
 
     return () => { supabase.removeChannel(chatSub); };
@@ -272,20 +266,19 @@ export default function ChatWidget({ campaignId, isDiceReady, onRollDice }: Chat
     const textToSend = inputText;
     setInputText('');
 
-    // Adicionado .select().single() para pegar o retorno do banco
     const { data } = await supabase.from('chat_messages').insert([{
       campaign_id: campaignId,
       user_name:   displayName,
       text:        textToSend,
       is_roll:     false,
-      is_secret:   isSecretRoll, // Agora o texto também fica secreto se o botão estiver ativo
+      is_secret:   isSecretRoll,
       channel:     'campanha',
       sender_id:   currentUser.id,
       receiver_id: null,
     }]).select().single();
 
-    // Atualização otimista imediata na tela
     if (data) {
+      channelRef.current?.send({ type: 'broadcast', event: 'new_message', payload: data });
       setMessages((prev) => {
         if (prev.find((m) => m.id === data.id)) return prev;
         return [...prev, data as Message];
@@ -303,8 +296,6 @@ export default function ChatWidget({ campaignId, isDiceReady, onRollDice }: Chat
 
     const textPublico = `rolou ${diceType} → ${total}`;
     const textSecreto = `(SECRETO) rolou ${diceType} → ${total}`;
-
-    // Valor real persiste no banco; o prefixo "(SECRETO)" é aplicado só localmente
     const { data } = await supabase.from('chat_messages').insert([{
       campaign_id: campaignId,
       user_name:   displayName,
@@ -322,6 +313,9 @@ export default function ChatWidget({ campaignId, isDiceReady, onRollDice }: Chat
         ...data,
         text: isSecretRoll ? textSecreto : textPublico,
       };
+
+      channelRef.current?.send({ type: 'broadcast', event: 'new_message', payload: localMsg });
+
       setMessages((prev) => {
         if (prev.find((m) => m.id === localMsg.id)) return prev;
         return [...prev, localMsg];

@@ -26,19 +26,22 @@ export default function DiceRoller({ campaignId, onReady, isDM, currentUserId }:
   useEffect(() => { isDMRef.current = isDM; }, [isDM]);
   useEffect(() => { currentUserIdRef.current = currentUserId; }, [currentUserId]);
 
-  const triggerVisualRoll = useCallback(async (diceType: string, isSecret: boolean) => {
+  const triggerVisualRoll = useCallback(async (diceType: string, isSecret: boolean, forcedValue?: number) => {
     if (!diceBoxRef.current) return null;
 
-    // Se havia um dado para ser apagado, cancela a ordem e apaga IMEDIATAMENTE antes de rolar o novo
+    // Cancela o timer anterior se você rolar 2 dados muito rápido (impede de sumir no ar)
     if (clearTimerRef.current) clearTimeout(clearTimerRef.current);
     diceBoxRef.current.clear();
 
     const sides  = parseInt(diceType.replace('d', ''));
     const themeColor = isSecret ? '#ef4444' : (DICE_COLORS[diceType] || '#00ff66');
 
-    const result = await diceBoxRef.current.roll([{ qty: 1, sides, themeColor }]);
+    //Se o número não foi forçado, gera um aleatório (Garante fallback)
+    const rollValue = forcedValue || Math.floor(Math.random() * sides) + 1;
 
-    // Programa para limpar a tela apenas 4 segundos DEPOIS que a rolagem terminar
+    // Passa o 'value' para o motor físico: o dado VAI CAIR nesse número
+    const result = await diceBoxRef.current.roll([{ qty: 1, sides, themeColor, value: rollValue }]);
+
     clearTimerRef.current = setTimeout(() => {
       diceBoxRef.current?.clear();
     }, 4000);
@@ -69,29 +72,28 @@ export default function DiceRoller({ campaignId, onReady, isDM, currentUserId }:
 
         channel
           .on('broadcast', { event: 'roll' }, (payload: any) => {
-            const { diceType, isSecret, senderId } = payload.payload;
+            const { diceType, isSecret, senderId, value } = payload.payload;
 
-            // Fui eu que joguei? Ignoro, pois eu já disparei minha própria animação
             if (senderId === currentUserIdRef.current) return;
-
-            // Se for secreto e eu NÃO for o mestre, ignoro (não vejo a animação)
             if (isSecret && !isDMRef.current) return;
 
-            // Caiu aqui? Então eu devo ver o dado rolando!
-            triggerVisualRoll(diceType, isSecret);
+            //O mestre/outro jogador recebe o aviso e força o MESMO resultado
+            triggerVisualRoll(diceType, isSecret, value);
           })
           .subscribe();
 
         onReady(async (diceType: string, isSecret: boolean) => {
-          // Avisa todos os outros jogadores na mesa
+          // O jogador que clicou define o destino do dado ANTES de rolar
+          const sides = parseInt(diceType.replace('d', ''));
+          const rollValue = Math.floor(Math.random() * sides) + 1;
+
           channel.send({
             type: 'broadcast',
             event: 'roll',
-            payload: { diceType, isSecret, senderId: currentUserIdRef.current },
+            payload: { diceType, isSecret, senderId: currentUserIdRef.current, value: rollValue },
           });
 
-          // Roda na minha própria tela
-          return await triggerVisualRoll(diceType, isSecret);
+          return await triggerVisualRoll(diceType, isSecret, rollValue);
         });
 
         return () => { supabase.removeChannel(channel); };
