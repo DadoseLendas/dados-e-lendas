@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from 'react'; // Agora os dois estão juntos em uma linha só
+import { useState, useEffect } from 'react'; 
 import { useRouter } from 'next/navigation';
 import Navbar from '@/app/components/ui/navbar';
 import Footer from '@/app/components/ui/footer';
@@ -100,8 +100,7 @@ export default function Home() {
             ))}
           </div>
         </section>
-
-        {/* NOVIDADES */}
+{/* NOVIDADES */}
         <section id="novidades" className="py-24 px-6 max-w-[1200px] mx-auto">
           <div className="mb-16">
             <h2 className="text-[#f1e5ac] text-4xl font-serif mb-2 tracking-widest uppercase italic">Novidades</h2>
@@ -110,10 +109,28 @@ export default function Home() {
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {[
-              { tag: 'Atualização', data: '10 de Jan 2026', titulo: 'O Beta Aberto chegou!!', desc: 'Teste agora as novas fichas de D&D 5e.', cor: 'bg-[#00ff66]' },
-              { tag: 'Comunidade', data: '08 de Jan 2026', titulo: 'Dicas para Mestres', desc: 'Confira nosso guia completo para começar a mestrar suas primeiras sessões.', cor: 'bg-[#f1c40f]' }
+              { 
+                tag: 'Atualização', 
+                data: '10 de Jan 2026', 
+                titulo: 'O Beta Aberto chegou!!', 
+                desc: 'Teste agora as novas fichas de D&D 5e.', 
+                cor: 'bg-[#00ff66]',
+                link: '/novidades/beta' 
+              },
+              { 
+                tag: 'Comunidade', 
+                data: '08 de Jan 2026', 
+                titulo: 'Dicas para Mestres', 
+                desc: 'Confira nosso guia completo para começar a mestrar suas primeiras sessões.', 
+                cor: 'bg-[#f1c40f]',
+                link: '/novidades/dicas' 
+              }
             ].map((news, i) => (
-              <div key={i} className="bg-[#0a120a]/60 border border-[#1a2a1a] p-10 rounded-xl transition-all duration-300 hover:border-[#00ff66] hover:shadow-[0_0_35px_rgba(0,255,102,0.15)] group cursor-pointer flex flex-col justify-between">
+              <div 
+                key={i} 
+                onClick={() => router.push(news.link)}
+                className="bg-[#0a120a]/60 border border-[#1a2a1a] p-10 rounded-xl transition-all duration-300 hover:border-[#00ff66] hover:shadow-[0_0_35px_rgba(0,255,102,0.15)] group cursor-pointer flex flex-col justify-between"
+              >
                 <div>
                   <div className="flex items-center gap-4 mb-6">
                     <span className={`${news.cor} text-black text-[10px] font-black px-3 py-1 rounded-sm uppercase tracking-tighter`}>{news.tag}</span>
@@ -129,9 +146,8 @@ export default function Home() {
             ))}
           </div>
         </section>
-      </div>
-
+      </div> {/* Fechamento da div flex-grow */}
       <Footer />
     </main>
   );
-}
+} 
