@@ -9,17 +9,6 @@ interface DiceRollerProps {
   currentUserId: string | null;
 }
 
-const DICE_COLORS: Record<string, string> = {
-  d20: '#ef4444', d12: '#f97316', d10: '#eab308',
-  d8:  '#22c55e', d6:  '#3b82f6', d4:  '#a855f7', d100:'#9ca3af'
-};
-
-interface RollPhysics {
-  value: number;
-  spinForce: number;
-  throwForce: number;
-}
-
 export default function DiceRoller({ campaignId, onReady, isDM, currentUserId }: DiceRollerProps) {
   const initializedRef = useRef(false);
   const diceBoxRef     = useRef<any>(null);
@@ -32,34 +21,24 @@ export default function DiceRoller({ campaignId, onReady, isDM, currentUserId }:
   useEffect(() => { isDMRef.current = isDM; }, [isDM]);
   useEffect(() => { currentUserIdRef.current = currentUserId; }, [currentUserId]);
 
-  const triggerVisualRoll = useCallback(async (
-  diceType: string,
-  isSecret: boolean,
-  physics: RollPhysics,
-) => {
-  if (!diceBoxRef.current) return null;
+  const triggerVisualRoll = useCallback(async (diceType: string, isSecret: boolean, forcedValue: number) => {
+    if (!diceBoxRef.current) return null;
 
-  if (clearTimerRef.current) clearTimeout(clearTimerRef.current);
-  await diceBoxRef.current.clear();
+    if (clearTimerRef.current) clearTimeout(clearTimerRef.current);
+    if (diceBoxRef.current.clear) diceBoxRef.current.clear(); 
 
-  const themeColor = isSecret ? '#ef4444' : (DICE_COLORS[diceType] ?? '#00ff66');
-  const sides      = parseInt(diceType.replace('d', ''));
+    // A MÁGICA DO PREDETERMINISMO: A notação "@" força a física a cair no valor exato!
+    // Exemplo de saída: "1d20@15" (Rola um d20 e obriga a cair no 15)
+    const notation = `1${diceType}@${forcedValue}`;
 
-  // Sincroniza a física antes de rolar — garante animação idêntica em todos os clientes
-  diceBoxRef.current.spinForce  = physics.spinForce;
-  diceBoxRef.current.throwForce = physics.throwForce;
+    await diceBoxRef.current.roll(notation);
 
-  const result = await diceBoxRef.current.roll([{
-    qty: 1,
-    sides,
-    themeColor,
-    value: physics.value,
-  }]);
+    clearTimerRef.current = setTimeout(() => {
+      if (diceBoxRef.current?.clear) diceBoxRef.current.clear();
+    }, 4000);
 
-  clearTimerRef.current = setTimeout(() => diceBoxRef.current?.clear(), 4000);
-
-  return result[0].value as number;
-}, []);
+    return forcedValue;
+  }, []);
 
   useEffect(() => {
     if (initializedRef.current) return;
@@ -67,16 +46,24 @@ export default function DiceRoller({ campaignId, onReady, isDM, currentUserId }:
 
     const initDice = async () => {
       try {
-        const { default: DiceBox } = await import('@3d-dice/dice-box');
-        const box = new DiceBox({
-          container: '#dice-box',
-          assetPath: '/dice-box-assets/assets/',
-          theme: 'default',
-          scale: 5,
-          gravity: 2.5,
-          spinForce: 6,
-          throwForce: 5,
+        // Importação dinâmica para evitar erro de SSR com o ThreeJS no Next.js
+        const { default: DiceBox } = await import('@3d-dice/dice-box-threejs');
+        
+        // Inicializa a mesa 3D com as configurações do README
+        const box = new DiceBox("#dice-box", {
+          assetPath: '/', // Procura as pastas 'textures' e 'sound' na sua raiz public/
+          framerate: (1/60),
+          sounds: true,
+          volume: 50,
+          color_spotlight: 0xffffff,
+          shadows: true,
+          theme_surface: "none", // Remove o fundo verde feio padrão
+          theme_material: "glass",
+          gravity_multiplier: 600,
+          baseScale: 80,
+          strength: 2
         });
+        
         await box.init();
         diceBoxRef.current = box;
 
@@ -84,33 +71,34 @@ export default function DiceRoller({ campaignId, onReady, isDM, currentUserId }:
 
         channel
           .on('broadcast', { event: 'roll' }, (payload: any) => {
-            const { diceType, isSecret, senderId, physics } = payload.payload;
+            const { diceType, isSecret, senderId, value } = payload.payload;
 
+            // Se fui eu que lancei, ignoro (pois já vi a minha própria animação)
             if (senderId === currentUserIdRef.current) return;
+            
+            // REGRA DE VISIBILIDADE DE RPG: 
+            // Se a jogada é secreta e eu NÃO sou o mestre, eu não vejo absolutamente nada.
             if (isSecret && !isDMRef.current) return;
 
-            triggerVisualRoll(diceType, isSecret, physics);
+            // Caiu aqui? A animação roda IDÊNTICA caindo no mesmo valor para quem está assistindo!
+            triggerVisualRoll(diceType, isSecret, value);
           })
           .subscribe();
 
         onReady(async (diceType: string, isSecret: boolean) => {
           const sides = parseInt(diceType.replace('d', ''));
-
-          // Parâmetros gerados localmente — aleatórios para quem rola,
-          // replicados nos outros para garantir a mesma animação
-          const physics: RollPhysics = {
-            value:      Math.floor(Math.random() * sides) + 1,
-            spinForce:  3 + Math.random() * 6,
-            throwForce: 3 + Math.random() * 5,
-          };
+          
+          // O jogador que clicou "vê o futuro": define o destino do dado ANTES de rolar
+          const rollValue = Math.floor(Math.random() * sides) + 1;
 
           channel.send({
             type: 'broadcast',
             event: 'roll',
-            payload: { diceType, isSecret, senderId: currentUserIdRef.current, physics },
+            payload: { diceType, isSecret, senderId: currentUserIdRef.current, value: rollValue },
           });
 
-          return await triggerVisualRoll(diceType, isSecret, physics);
+          // Dispara a rolagem na tela de quem clicou
+          return await triggerVisualRoll(diceType, isSecret, rollValue);
         });
 
         return () => { supabase.removeChannel(channel); };
@@ -125,18 +113,21 @@ export default function DiceRoller({ campaignId, onReady, isDM, currentUserId }:
   return (
     <>
       <style jsx global>{`
-        .dice-box-canvas {
+        #dice-box {
           position: absolute !important;
-          top: 50% !important;
-          left: 50% !important;
-          transform: translate(-50%, -50%) !important;
-          width: 100vw !important;
+          top: 0 !important; 
+          left: 0 !important;
+          width: 100vw !important; 
           height: 100vh !important;
-          object-fit: contain !important;
-          pointer-events: none !important;
+          pointer-events: none !important; 
+          z-index: 9999;
+        }
+        /* Remove a UI padrão embutida no dice-box-threejs para não atrapalhar seu Chat */
+        #dice-box canvas {
+          outline: none;
         }
       `}</style>
-      <div id="dice-box" className="fixed inset-0 pointer-events-none z-[9999]" />
+      <div id="dice-box" className="fixed inset-0 pointer-events-none" />
     </>
   );
 }
