@@ -10,13 +10,13 @@ interface DiceRollerProps {
 }
 
 const COLORSETS: Record<string, string> = {
-  d20: 'red',
-  d12: 'orange',
-  d10: 'yellow',
-  d8:  'green',
-  d6:  'blue',
-  d4:  'purple',
-  d100:'grey'
+  d20: '#ef4444', // Vermelho
+  d12: '#f97316', // Laranja
+  d10: '#eab308', // Amarelo
+  d8:  '#22c55e', // Verde
+  d6:  '#3b82f6', // Azul
+  d4:  '#a855f7', // Roxo
+  d100:'#9ca3af'  // Cinza
 };
 
 export default function DiceRoller({ campaignId, onReady, isDM, currentUserId }: DiceRollerProps) {
@@ -44,12 +44,18 @@ export default function DiceRoller({ campaignId, onReady, isDM, currentUserId }:
     if (diceBoxRef.current.clearDice) diceBoxRef.current.clearDice();
     else if (diceBoxRef.current.clear) diceBoxRef.current.clear();
 
-    // 3. Troca a cor do motor 3D de acordo com o dado ou se é secreto
-    const colorName = isSecret ? 'red' : (COLORSETS[diceType] || 'white');
+    // 3. Troca a cor do motor 3D usando injeção de Hexadecimal
+    const hexColor = isSecret ? '#ef4444' : (COLORSETS[diceType] || '#ffffff');
+    
     if (diceBoxRef.current.updateConfig) {
-      diceBoxRef.current.updateConfig({ theme_colorset: colorName });
-    } else if (diceBoxRef.current.config) {
-      diceBoxRef.current.config.theme_colorset = colorName;
+      diceBoxRef.current.updateConfig({ 
+        theme_colorset: "white", // Mantemos um nome seguro aqui para a biblioteca não bugar
+        theme_customColorset: {
+          background: hexColor, // A cor exata do seu botão
+          foreground: '#ffffff', // A cor dos números do dado
+          texture: 'none'
+        }
+      });
     }
 
     const notation = `1${diceType}@${forcedValue}`;
