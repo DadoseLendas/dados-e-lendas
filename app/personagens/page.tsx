@@ -215,7 +215,6 @@ export default function PersonagensPage() {
     if (!activeCharacter) return;
     setActiveCharacter({ ...activeCharacter, [field]: value } as Character);
   };
-/*
   const HealthBar = ({ current, max }: { current: number, max: number }) => {
     const percentage = Math.min(Math.max((current / max) * 100, 0), 100);
     const color = percentage > 50 ? 'bg-[#00ff66]' : percentage > 20 ? 'bg-yellow-500' : 'bg-red-600';
@@ -231,7 +230,6 @@ export default function PersonagensPage() {
       </div>
     );
   };
-*/
   const skillsData: Record<string, { name: string; attr: 'str' | 'dex' | 'con' | 'int' | 'wis' | 'cha' }> = {
     atletismo: { name: 'Atletismo', attr: 'str' }, acrobacia: { name: 'Acrobacia', attr: 'dex' }, furtividade: { name: 'Furtividade', attr: 'dex' },
     prestidigitacao: { name: 'Prestidigitação', attr: 'dex' }, arcanismo: { name: 'Arcanismo', attr: 'int' }, historia: { name: 'História', attr: 'int' },
@@ -522,6 +520,31 @@ export default function PersonagensPage() {
                 <Zap className="mx-auto text-[#f1e5ac] mb-1" size={18} />
                 <div className="text-2xl font-black">{getModifier(getTotalStat('dex', activeCharacter.stats.dex))}</div>
                 <span className="text-[8px] text-[#4a5a4a] font-black uppercase">Iniciativa</span>
+              </div>
+            </div>
+
+            {/* HP */}
+            <div className="bg-[#0a150a] border border-[#1a2a1a] rounded-xl p-4 space-y-3">
+              <HealthBar current={activeCharacter.hp_current ?? 0} max={activeCharacter.hp_max ?? 1} />
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[8px] text-[#4a5a4a] font-black uppercase">HP Atual</label>
+                  <input
+                    type="number"
+                    value={activeCharacter.hp_current ?? 0}
+                    onChange={(e) => updateCharacter('hp_current', Number(e.target.value) || 0)}
+                    className="w-full bg-black/40 border border-[#1a2a1a] p-1.5 text-xs rounded text-[#00ff66] font-bold text-center outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="text-[8px] text-[#4a5a4a] font-black uppercase">HP Máximo</label>
+                  <input
+                    type="number"
+                    value={activeCharacter.hp_max ?? 0}
+                    onChange={(e) => updateCharacter('hp_max', Number(e.target.value) || 0)}
+                    className="w-full bg-black/40 border border-[#1a2a1a] p-1.5 text-xs rounded text-white text-center outline-none"
+                  />
+                </div>
               </div>
             </div>
           </div>
