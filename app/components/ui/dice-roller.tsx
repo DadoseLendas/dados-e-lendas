@@ -48,14 +48,19 @@ export default function DiceRoller({ campaignId, onReady, isDM, currentUserId }:
     const hexColor = isSecret ? '#ef4444' : (COLORSETS[diceType] || '#ffffff');
     
     if (diceBoxRef.current.updateConfig) {
-      diceBoxRef.current.updateConfig({ 
-        theme_colorset: "white", // Mantemos um nome seguro aqui para a biblioteca não bugar
+      // O 'await' obriga o código a esperar a textura nova carregar
+      await diceBoxRef.current.updateConfig({ 
+        theme_colorset: "custom", // Mudamos para "custom" para ele não tentar carregar o branco
         theme_customColorset: {
-          background: hexColor, // A cor exata do seu botão
-          foreground: '#ffffff', // A cor dos números do dado
+          background: hexColor,
+          foreground: '#ffffff',
           texture: 'none'
         }
       });
+      // Micro-delay de 50ms para garantir que a placa de vídeo do jogador processe a cor
+      await new Promise(resolve => setTimeout(resolve, 50));
+    } else if (diceBoxRef.current.config) {
+      diceBoxRef.current.config.theme_customColorset = { background: hexColor, foreground: '#ffffff', texture: 'none' };
     }
 
     const notation = `1${diceType}@${forcedValue}`;
