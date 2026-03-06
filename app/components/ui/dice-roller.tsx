@@ -9,10 +9,21 @@ interface DiceRollerProps {
   currentUserId: string | null;
 }
 
+const COLORSETS: Record<string, string> = {
+  d20: 'red',
+  d12: 'orange',
+  d10: 'yellow',
+  d8:  'green',
+  d6:  'blue',
+  d4:  'purple',
+  d100:'grey'
+};
+
 export default function DiceRoller({ campaignId, onReady, isDM, currentUserId }: DiceRollerProps) {
   const initializedRef = useRef(false);
   const diceBoxRef     = useRef<any>(null);
   const clearTimerRef  = useRef<NodeJS.Timeout | null>(null);
+  const rollCounterRef = useRef(0);
   const supabase       = createClient();
 
   // MANTÉM AS REGRAS DE VISIBILIDADE SEMPRE ATUALIZADAS PARA O WEBSOCKET
@@ -24,19 +35,33 @@ export default function DiceRoller({ campaignId, onReady, isDM, currentUserId }:
   const triggerVisualRoll = useCallback(async (diceType: string, isSecret: boolean, forcedValue: number) => {
     if (!diceBoxRef.current) return null;
 
-    // A MÁGICA DO PREDETERMINISMO: A notação "@" obriga a física a cair no valor exato!
-    const notation = `1${diceType}@${forcedValue}`;
+    // 1. Identifica qual é o número desta rolagem específica
+    const currentRollId = ++rollCounterRef.current;
 
+    // 2. Cancela a limpeza da rolagem anterior para não apagar o novo dado
+    if (clearTimerRef.current) clearTimeout(clearTimerRef.current);
+    
+    if (diceBoxRef.current.clearDice) diceBoxRef.current.clearDice();
+    else if (diceBoxRef.current.clear) diceBoxRef.current.clear();
+
+    // 3. Troca a cor do motor 3D de acordo com o dado ou se é secreto
+    const colorName = isSecret ? 'red' : (COLORSETS[diceType] || 'white');
+    if (diceBoxRef.current.updateConfig) {
+      diceBoxRef.current.updateConfig({ theme_colorset: colorName });
+    } else if (diceBoxRef.current.config) {
+      diceBoxRef.current.config.theme_colorset = colorName;
+    }
+
+    const notation = `1${diceType}@${forcedValue}`;
     await diceBoxRef.current.roll(notation);
 
-    // Ocultar os dados após 4 segundos (tenta os dois nomes de função que a biblioteca usa)
-    setTimeout(() => {
-      if (diceBoxRef.current?.clearDice) {
-        diceBoxRef.current.clearDice();
-      } else if (diceBoxRef.current?.clear) {
-        diceBoxRef.current.clear();
-      }
-    }, 4000);
+    // 4. Só limpa a tela se nenhuma outra rolagem aconteceu depois desta
+    if (currentRollId === rollCounterRef.current) {
+      clearTimerRef.current = setTimeout(() => {
+        if (diceBoxRef.current?.clearDice) diceBoxRef.current.clearDice();
+        else if (diceBoxRef.current?.clear) diceBoxRef.current.clear();
+      }, 4000); 
+    }
 
     return forcedValue;
   }, []);
@@ -57,6 +82,7 @@ export default function DiceRoller({ campaignId, onReady, isDM, currentUserId }:
           color_spotlight: 0xefdfd5,
           shadows: true,
           theme_material: "glass",
+          theme_colorset: "white",
           gravity_multiplier: 600,
           baseScale: 80,
           strength: 2
