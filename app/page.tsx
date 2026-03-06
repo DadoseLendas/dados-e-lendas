@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import Navbar from '@/app/components/ui/navbar';
 import Footer from '@/app/components/ui/footer';
 import { FileText, Dices, Map, ChevronRight } from 'lucide-react';
+import { createClient } from '@/utils/supabase/client';
 
 export default function Home() {
   const router = useRouter();
