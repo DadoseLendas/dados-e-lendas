@@ -14,6 +14,12 @@ const DICE_COLORS: Record<string, string> = {
   d8:  '#22c55e', d6:  '#3b82f6', d4:  '#a855f7', d100:'#9ca3af'
 };
 
+interface RollPhysics {
+  value: number;
+  spinForce: number;
+  throwForce: number;
+}
+
 export default function DiceRoller({ campaignId, onReady, isDM, currentUserId }: DiceRollerProps) {
   const initializedRef = useRef(false);
   const diceBoxRef     = useRef<any>(null);
@@ -26,28 +32,34 @@ export default function DiceRoller({ campaignId, onReady, isDM, currentUserId }:
   useEffect(() => { isDMRef.current = isDM; }, [isDM]);
   useEffect(() => { currentUserIdRef.current = currentUserId; }, [currentUserId]);
 
-  const triggerVisualRoll = useCallback(async (diceType: string, isSecret: boolean, forcedValue?: number) => {
-    if (!diceBoxRef.current) return null;
+  const triggerVisualRoll = useCallback(async (
+  diceType: string,
+  isSecret: boolean,
+  physics: RollPhysics,
+) => {
+  if (!diceBoxRef.current) return null;
 
-    // Cancela o timer anterior se você rolar 2 dados muito rápido (impede de sumir no ar)
-    if (clearTimerRef.current) clearTimeout(clearTimerRef.current);
-    diceBoxRef.current.clear();
+  if (clearTimerRef.current) clearTimeout(clearTimerRef.current);
+  await diceBoxRef.current.clear();
 
-    const sides  = parseInt(diceType.replace('d', ''));
-    const themeColor = isSecret ? '#ef4444' : (DICE_COLORS[diceType] || '#00ff66');
+  const themeColor = isSecret ? '#ef4444' : (DICE_COLORS[diceType] ?? '#00ff66');
+  const sides      = parseInt(diceType.replace('d', ''));
 
-    //Se o número não foi forçado, gera um aleatório (Garante fallback)
-    const rollValue = forcedValue || Math.floor(Math.random() * sides) + 1;
+  // Sincroniza a física antes de rolar — garante animação idêntica em todos os clientes
+  diceBoxRef.current.spinForce  = physics.spinForce;
+  diceBoxRef.current.throwForce = physics.throwForce;
 
-    // Passa o 'value' para o motor físico: o dado VAI CAIR nesse número
-    const result = await diceBoxRef.current.roll([{ qty: 1, sides, themeColor, value: rollValue }]);
+  const result = await diceBoxRef.current.roll([{
+    qty: 1,
+    sides,
+    themeColor,
+    value: physics.value,
+  }]);
 
-    clearTimerRef.current = setTimeout(() => {
-      diceBoxRef.current?.clear();
-    }, 4000);
+  clearTimerRef.current = setTimeout(() => diceBoxRef.current?.clear(), 4000);
 
-    return result[0].value as number;
-  }, []);
+  return result[0].value as number;
+}, []);
 
   useEffect(() => {
     if (initializedRef.current) return;
@@ -72,28 +84,33 @@ export default function DiceRoller({ campaignId, onReady, isDM, currentUserId }:
 
         channel
           .on('broadcast', { event: 'roll' }, (payload: any) => {
-            const { diceType, isSecret, senderId, value } = payload.payload;
+            const { diceType, isSecret, senderId, physics } = payload.payload;
 
             if (senderId === currentUserIdRef.current) return;
             if (isSecret && !isDMRef.current) return;
 
-            //O mestre/outro jogador recebe o aviso e força o MESMO resultado
-            triggerVisualRoll(diceType, isSecret, value);
+            triggerVisualRoll(diceType, isSecret, physics);
           })
           .subscribe();
 
         onReady(async (diceType: string, isSecret: boolean) => {
-          // O jogador que clicou define o destino do dado ANTES de rolar
           const sides = parseInt(diceType.replace('d', ''));
-          const rollValue = Math.floor(Math.random() * sides) + 1;
+
+          // Parâmetros gerados localmente — aleatórios para quem rola,
+          // replicados nos outros para garantir a mesma animação
+          const physics: RollPhysics = {
+            value:      Math.floor(Math.random() * sides) + 1,
+            spinForce:  3 + Math.random() * 6,
+            throwForce: 3 + Math.random() * 5,
+          };
 
           channel.send({
             type: 'broadcast',
             event: 'roll',
-            payload: { diceType, isSecret, senderId: currentUserIdRef.current, value: rollValue },
+            payload: { diceType, isSecret, senderId: currentUserIdRef.current, physics },
           });
 
-          return await triggerVisualRoll(diceType, isSecret, rollValue);
+          return await triggerVisualRoll(diceType, isSecret, physics);
         });
 
         return () => { supabase.removeChannel(channel); };
