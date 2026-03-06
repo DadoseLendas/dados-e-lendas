@@ -6,11 +6,11 @@ import { createClient } from '@/utils/supabase/client';
 import Image from 'next/image';
 
 interface NavbarProps {
-  abaAtiva: string;
-  setAbaAtiva: (aba: string) => void;
+  abaAtiva?: string;
+  setAbaAtiva?: (aba: string) => void;
 }
 
-export default function Navbar({ abaAtiva, setAbaAtiva }: NavbarProps) {
+export default function Navbar({ abaAtiva = '', setAbaAtiva = () => {} }: NavbarProps) {
   const router = useRouter();
   const supabase = createClient();
   
