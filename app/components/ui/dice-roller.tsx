@@ -24,17 +24,18 @@ export default function DiceRoller({ campaignId, onReady, isDM, currentUserId }:
   const triggerVisualRoll = useCallback(async (diceType: string, isSecret: boolean, forcedValue: number) => {
     if (!diceBoxRef.current) return null;
 
-    if (clearTimerRef.current) clearTimeout(clearTimerRef.current);
-    if (diceBoxRef.current.clear) diceBoxRef.current.clear(); 
-
-    // A MÁGICA DO PREDETERMINISMO: A notação "@" força a física a cair no valor exato!
-    // Exemplo de saída: "1d20@15" (Rola um d20 e obriga a cair no 15)
+    // A MÁGICA DO PREDETERMINISMO: A notação "@" obriga a física a cair no valor exato!
     const notation = `1${diceType}@${forcedValue}`;
 
     await diceBoxRef.current.roll(notation);
 
-    clearTimerRef.current = setTimeout(() => {
-      if (diceBoxRef.current?.clear) diceBoxRef.current.clear();
+    // Ocultar os dados após 4 segundos (tenta os dois nomes de função que a biblioteca usa)
+    setTimeout(() => {
+      if (diceBoxRef.current?.clearDice) {
+        diceBoxRef.current.clearDice();
+      } else if (diceBoxRef.current?.clear) {
+        diceBoxRef.current.clear();
+      }
     }, 4000);
 
     return forcedValue;
@@ -46,21 +47,22 @@ export default function DiceRoller({ campaignId, onReady, isDM, currentUserId }:
 
     const initDice = async () => {
       try {
-        // Importação dinâmica para evitar erro de SSR com o ThreeJS no Next.js
         const { default: DiceBox } = await import('@3d-dice/dice-box-threejs');
         
-        // Inicializa a mesa 3D com as configurações do README
         const box = new DiceBox("#dice-box", {
           framerate: (1/60),
           sounds: true,
           volume: 50,
-          color_spotlight: 0xefdfd5, // Cor de luz original da doc
+          color_spotlight: 0xefdfd5,
           shadows: true,
-          theme_material: "glass", // "none" | "metal" | "wood" | "glass" | "plastic"
+          theme_material: "glass",
           gravity_multiplier: 600,
           baseScale: 80,
           strength: 2
         });
+        
+        // A PEÇA QUE FALTAVA: Ligar o motor 3D!
+        await box.initialize();
         
         diceBoxRef.current = box;
 
@@ -70,22 +72,15 @@ export default function DiceRoller({ campaignId, onReady, isDM, currentUserId }:
           .on('broadcast', { event: 'roll' }, (payload: any) => {
             const { diceType, isSecret, senderId, value } = payload.payload;
 
-            // Se fui eu que lancei, ignoro (pois já vi a minha própria animação)
             if (senderId === currentUserIdRef.current) return;
-            
-            // REGRA DE VISIBILIDADE DE RPG: 
-            // Se a jogada é secreta e eu NÃO sou o mestre, eu não vejo absolutamente nada.
             if (isSecret && !isDMRef.current) return;
 
-            // Caiu aqui? A animação roda IDÊNTICA caindo no mesmo valor para quem está assistindo!
             triggerVisualRoll(diceType, isSecret, value);
           })
           .subscribe();
 
         onReady(async (diceType: string, isSecret: boolean) => {
           const sides = parseInt(diceType.replace('d', ''));
-          
-          // O jogador que clicou "vê o futuro": define o destino do dado ANTES de rolar
           const rollValue = Math.floor(Math.random() * sides) + 1;
 
           channel.send({
@@ -94,7 +89,6 @@ export default function DiceRoller({ campaignId, onReady, isDM, currentUserId }:
             payload: { diceType, isSecret, senderId: currentUserIdRef.current, value: rollValue },
           });
 
-          // Dispara a rolagem na tela de quem clicou
           return await triggerVisualRoll(diceType, isSecret, rollValue);
         });
 
