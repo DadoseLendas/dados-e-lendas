@@ -72,12 +72,11 @@ export default function DiceRoller({ campaignId, onReady, isDM, currentUserId }:
       // Extrai a unidade (A face '0' física do d10 equivale ao número 10 no motor)
       const ones = forcedValue % 10 === 0 ? 10 : (forcedValue % 10);
       
-      // A CORREÇÃO: Invoca DOIS dados diferentes na mesma rolagem usando "+"
-      notation = `1d100@${tens} + 1d10@${ones}`;
+      await diceBoxRef.current.roll([`1d100@${tens}`, `1d10@${ones}`]);
+    } else {
+      // Para d20, d12, d8, etc., jogamos a string simples
+      await diceBoxRef.current.roll(`1${diceType}@${forcedValue}`);
     }
-
-    // Arremessa os dados na mesa com a cor já aplicada e a notação correta
-    await diceBoxRef.current.roll(notation);
 
     // 4. Só limpa a tela se nenhuma outra rolagem aconteceu depois desta
     if (currentRollId === rollCounterRef.current) {
