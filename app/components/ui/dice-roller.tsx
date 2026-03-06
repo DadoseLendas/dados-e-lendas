@@ -14,7 +14,7 @@ interface ActiveRoll {
   diceType: string;
   value: number;
   isSecret: boolean;
-  phase: 'rolling' | 'result'; // fase da animação
+  phase: 'rolling' | 'result';
 }
 
 const DICE_COLORS: Record<string, string> = {
@@ -23,110 +23,135 @@ const DICE_COLORS: Record<string, string> = {
 };
 
 export default function DiceRoller({ campaignId, onReady, isDM, currentUserId }: DiceRollerProps) {
-  const supabase         = createClient();
-  const initializedRef   = useRef(false);
+  const supabase       = createClient();
+  const initializedRef = useRef(false);
+  const diceBoxRef     = useRef<any>(null);
+  const clearTimerRef  = useRef<NodeJS.Timeout | null>(null);
+
   const [activeRolls, setActiveRolls] = useState<ActiveRoll[]>([]);
 
-  // Refs para manter valores corretos dentro dos handlers do canal
+  // Refs para manter os valores corretos dentro dos handlers do canal Realtime
   const isDMRef          = useRef(isDM);
   const currentUserIdRef = useRef(currentUserId);
-  useEffect(() => { isDMRef.current = isDM; },           [isDM]);
+  useEffect(() => { isDMRef.current = isDM; },                [isDM]);
   useEffect(() => { currentUserIdRef.current = currentUserId; }, [currentUserId]);
 
-  /**
-   * Exibe a animação para o usuário atual.
-   * Chamado tanto para o próprio rolador quanto para os receptores —
-   * o canal é a única fonte de verdade, sem física local.
-   */
-  const showAnimation = useCallback((diceType: string, value: number, isSecret: boolean) => {
+  // Animação CSS para receptores — exibe o emoji girando e depois revela o número
+  const showRemoteAnimation = useCallback((diceType: string, value: number, isSecret: boolean) => {
     const id = `${Date.now()}-${Math.random()}`;
 
     setActiveRolls(prev => [...prev, { id, diceType, value, isSecret, phase: 'rolling' }]);
 
-    // Após 1.2s exibe o resultado final
     setTimeout(() => {
-      setActiveRolls(prev =>
-        prev.map(r => r.id === id ? { ...r, phase: 'result' } : r)
-      );
+      setActiveRolls(prev => prev.map(r => r.id === id ? { ...r, phase: 'result' } : r));
     }, 1200);
 
-    // Remove após 3.5s
     setTimeout(() => {
       setActiveRolls(prev => prev.filter(r => r.id !== id));
     }, 3500);
+  }, []);
+
+  // Animação 3D via dice-box — usada apenas por quem rolou
+  const triggerLocalRoll = useCallback(async (diceType: string, isSecret: boolean) => {
+    if (!diceBoxRef.current) return null;
+
+    if (clearTimerRef.current) clearTimeout(clearTimerRef.current);
+    await diceBoxRef.current.clear();
+
+    const themeColor = isSecret ? '#ef4444' : (DICE_COLORS[diceType] ?? '#00ff66');
+    const sides      = parseInt(diceType.replace('d', ''));
+
+    const result = await diceBoxRef.current.roll([{ qty: 1, sides, themeColor }]);
+
+    clearTimerRef.current = setTimeout(() => diceBoxRef.current?.clear(), 4000);
+
+    return result[0].value as number;
   }, []);
 
   useEffect(() => {
     if (initializedRef.current) return;
     initializedRef.current = true;
 
-    const channel = supabase.channel(`dice_rolls_${campaignId}`);
+    const init = async () => {
+      try {
+        // Inicializa o motor 3D de dados
+        const { default: DiceBox } = await import('@3d-dice/dice-box');
+        const box = new DiceBox({
+          container: '#dice-box',
+          assetPath: '/dice-box-assets/assets/',
+          theme: 'default',
+          scale: 5,
+          gravity: 2.5,
+          spinForce: 6,
+          throwForce: 5,
+        });
+        await box.init();
+        diceBoxRef.current = box;
 
-    channel
-      .on('broadcast', { event: 'roll' }, (payload: any) => {
-        const { diceType, isSecret, senderId, value } = payload.payload;
+        // Canal por campanha — broadcasts de outras mesas nunca chegam aqui
+        const channel = supabase.channel(`dice_rolls_${campaignId}`);
 
-        /**
-         * Regras de visibilidade:
-         * - Pública:              todos veem (inclusive o rolador via eco do canal)
-         * - Secreta de jogador:   apenas o próprio jogador e o mestre veem
-         * - Secreta do mestre:    apenas o mestre vê (não é enviado ao canal, tratado localmente)
-         */
-        const isOwnRoll = senderId === currentUserIdRef.current;
-        const userIsDM  = isDMRef.current;
+        channel
+          .on('broadcast', { event: 'roll' }, (payload: any) => {
+            const { diceType, isSecret, senderId, value } = payload.payload;
 
-        if (isSecret) {
-          // Rolagem secreta de jogador: só o próprio jogador e o mestre veem
-          if (!isOwnRoll && !userIsDM) return;
-        }
+            // Ignora o próprio eco — quem rolou já viu o dado 3D localmente
+            if (senderId === currentUserIdRef.current) return;
 
-        showAnimation(diceType, value, isSecret);
-      })
-      .subscribe();
+            // Rolagem secreta de jogador: só o mestre recebe
+            if (isSecret && !isDMRef.current) return;
 
-    /**
-     * Função exposta ao componente pai.
-     * O valor é gerado aqui e transmitido — o canal dispara a animação
-     * em todos os clientes elegíveis, incluindo o próprio rolador.
-     */
-    onReady(async (diceType: string, isSecret: boolean) => {
-      const sides = parseInt(diceType.replace('d', ''));
-      const value = Math.floor(Math.random() * sides) + 1;
+            showRemoteAnimation(diceType, value, isSecret);
+          })
+          .subscribe();
 
-      if (isSecret && isDMRef.current) {
-        // Rolagem secreta do mestre: não envia ao canal, anima só localmente
-        showAnimation(diceType, value, true);
-        return value;
+        onReady(async (diceType: string, isSecret: boolean) => {
+          // Quem rola vê o dado 3D — resultado vem da física local
+          const value = await triggerLocalRoll(diceType, isSecret);
+          if (value === null) return null;
+
+          // Rolagem secreta do mestre: não envia ao canal, só ele vê
+          if (isSecret && isDMRef.current) return value;
+
+          // Envia o resultado para os receptores elegíveis
+          channel.send({
+            type: 'broadcast',
+            event: 'roll',
+            payload: { diceType, isSecret, senderId: currentUserIdRef.current, value },
+          });
+
+          return value;
+        });
+
+        return () => { supabase.removeChannel(channel); };
+      } catch (e) {
+        console.error('[DiceRoller] Falha na inicialização:', e);
       }
+    };
 
-      // Envia ao canal — o broadcast vai acionar showAnimation para todos
-      // incluindo o próprio rolador (via listener acima)
-      channel.send({
-        type: 'broadcast',
-        event: 'roll',
-        payload: {
-          diceType,
-          isSecret,
-          senderId: currentUserIdRef.current,
-          value,
-        },
-      });
-
-      return value;
-    });
-
-    return () => { supabase.removeChannel(channel); };
-  }, [campaignId, onReady, showAnimation, supabase]);
+    init();
+  }, [campaignId, onReady, triggerLocalRoll, showRemoteAnimation, supabase]);
 
   return (
     <>
       <style jsx global>{`
+        .dice-box-canvas {
+          position: absolute !important;
+          top: 50% !important;
+          left: 50% !important;
+          transform: translate(-50%, -50%) !important;
+          width: 100vw !important;
+          height: 100vh !important;
+          object-fit: contain !important;
+          pointer-events: none !important;
+        }
+
         @keyframes diceRoll {
           0%   { transform: translate(-50%, -50%) scale(0.3) rotate(-30deg); opacity: 0; }
           20%  { transform: translate(-50%, -50%) scale(1.2) rotate(15deg);  opacity: 1; }
           50%  { transform: translate(-50%, -50%) scale(0.9) rotate(-8deg);  opacity: 1; }
           70%  { transform: translate(-50%, -50%) scale(1.05) rotate(3deg);  opacity: 1; }
-          100% { transform: translate(-50%, -50%) scale(1) rotate(0deg);     opacity: 1; }
+          100% { transform: translate(-50%, -50%) scale(1)   rotate(0deg);   opacity: 1; }
         }
 
         @keyframes resultPop {
@@ -206,14 +231,14 @@ export default function DiceRoller({ campaignId, onReady, isDM, currentUserId }:
         }
       `}</style>
 
+      {/* Canvas do dice-box — usado apenas por quem rola */}
+      <div id="dice-box" className="fixed inset-0 pointer-events-none z-[9999]" />
+
+      {/* Animação CSS para receptores */}
       {activeRolls.map(roll => {
         const color = roll.isSecret ? '#ef4444' : (DICE_COLORS[roll.diceType] ?? '#00ff66');
         return (
-          <div
-            key={roll.id}
-            className={`dice-anim-wrap ${roll.phase}`}
-            style={{ color }}
-          >
+          <div key={roll.id} className={`dice-anim-wrap ${roll.phase}`} style={{ color }}>
             {roll.phase === 'rolling' ? (
               <>
                 <div className="dice-anim-icon">🎲</div>
@@ -224,9 +249,7 @@ export default function DiceRoller({ campaignId, onReady, isDM, currentUserId }:
               <>
                 <div className="dice-anim-value">{roll.value}</div>
                 <div className="dice-anim-label">{roll.diceType}</div>
-                {roll.isSecret && (
-                  <div className="dice-anim-secret-badge">secreto</div>
-                )}
+                {roll.isSecret && <div className="dice-anim-secret-badge">secreto</div>}
               </>
             )}
           </div>
