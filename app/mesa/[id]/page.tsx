@@ -790,7 +790,7 @@ export default function TelaDeMesa() {
           </div>
         </main>
 
-        <div className="w-[360px] h-full bg-[#080808] border-l border-white/5 z-40 relative">
+        <div className="z-40 relative">
           <ChatWidget 
             campaignId={campaignId} 
             isDiceReady={!!rollDiceFunc} 
