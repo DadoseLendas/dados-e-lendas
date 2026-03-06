@@ -63,20 +63,17 @@ export default function DiceRoller({ campaignId, onReady, isDM, currentUserId }:
       diceBoxRef.current.config.theme_customColorset = { background: hexColor, foreground: '#ffffff', texture: 'none' };
     }
 
-    // --------------------------------------------------------
-    // 🎲 MÁGICA DO D100: Separar em dois dados (Dezena e Unidade)
-    // --------------------------------------------------------
     let notation = `1${diceType}@${forcedValue}`;
     
     if (diceType === 'd100') {
-      // Extrai a dezena redonda (Ex: 74 vira 70. 100 vira 00)
+      // Extrai a dezena redonda (Ex: 66 vira 60. 100 vira 0)
       const tens = Math.floor((forcedValue % 100) / 10) * 10;
       
-      // Extrai a unidade (No motor 3D, a face '0' do d10 é mapeada como 10)
+      // Extrai a unidade (A face '0' física do d10 equivale ao número 10 no motor)
       const ones = forcedValue % 10 === 0 ? 10 : (forcedValue % 10);
       
-      // Passamos as DUAS faces separadas por vírgula
-      notation = `1d100@${tens},${ones}`;
+      // A CORREÇÃO: Invoca DOIS dados diferentes na mesma rolagem usando "+"
+      notation = `1d100@${tens} + 1d10@${ones}`;
     }
 
     // Arremessa os dados na mesa com a cor já aplicada e a notação correta
