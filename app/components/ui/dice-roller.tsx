@@ -62,7 +62,6 @@ export default function DiceRoller({ campaignId, onReady, isDM, currentUserId }:
           strength: 2
         });
         
-        await box.init();
         diceBoxRef.current = box;
 
         const channel = supabase.channel(`dice_rolls_${campaignId}`);
