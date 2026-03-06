@@ -241,15 +241,17 @@ export default function TelaDeMesa() {
         return;
       }
       const { data: { publicUrl } } = supabase.storage.from('campaign-assets').getPublicUrl(fileName);
-      console.log('[MAPA] publicUrl:', publicUrl);
-      setMapaUrl(publicUrl);
-      await supabase.from('campaigns').update({ map_url: publicUrl }).eq('id', campaignId);
+      const cacheBustedUrl = `${publicUrl}?t=${Date.now()}`;
+      console.log('[MAPA] publicUrl:', cacheBustedUrl);
+      setMapaUrl(cacheBustedUrl);
+      await supabase.from('campaigns').update({ map_url: cacheBustedUrl }).eq('id', campaignId);
       realtimeChannelRef.current?.send({
         type: 'broadcast',
         event: 'map-change',
-        payload: { mapUrl: publicUrl },
+        payload: { mapUrl: cacheBustedUrl },
       });
     }
+    e.target.value = '';
     setModalAtivo(null);
   };
 
