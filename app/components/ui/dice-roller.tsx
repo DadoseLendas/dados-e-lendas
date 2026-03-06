@@ -57,13 +57,29 @@ export default function DiceRoller({ campaignId, onReady, isDM, currentUserId }:
           texture: 'none'
         }
       });
-      // Micro-delay de 50ms para garantir que a placa de vídeo do jogador processe a cor
+      // Micro-delay de 50ms ANTES DE ROLAR para garantir que a placa de vídeo processe a cor
       await new Promise(resolve => setTimeout(resolve, 50));
     } else if (diceBoxRef.current.config) {
       diceBoxRef.current.config.theme_customColorset = { background: hexColor, foreground: '#ffffff', texture: 'none' };
     }
 
-    const notation = `1${diceType}@${forcedValue}`;
+    // --------------------------------------------------------
+    // 🎲 MÁGICA DO D100: Separar em dois dados (Dezena e Unidade)
+    // --------------------------------------------------------
+    let notation = `1${diceType}@${forcedValue}`;
+    
+    if (diceType === 'd100') {
+      // Extrai a dezena redonda (Ex: 74 vira 70. 100 vira 00)
+      const tens = Math.floor((forcedValue % 100) / 10) * 10;
+      
+      // Extrai a unidade (No motor 3D, a face '0' do d10 é mapeada como 10)
+      const ones = forcedValue % 10 === 0 ? 10 : (forcedValue % 10);
+      
+      // Passamos as DUAS faces separadas por vírgula
+      notation = `1d100@${tens},${ones}`;
+    }
+
+    // Arremessa os dados na mesa com a cor já aplicada e a notação correta
     await diceBoxRef.current.roll(notation);
 
     // 4. Só limpa a tela se nenhuma outra rolagem aconteceu depois desta
