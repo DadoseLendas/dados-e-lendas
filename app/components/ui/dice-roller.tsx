@@ -50,6 +50,7 @@ export default function DiceRoller({ campaignId, onReady, isDM, currentUserId }:
         const { default: DiceBox } = await import('@3d-dice/dice-box-threejs');
         
         const box = new DiceBox("#dice-box", {
+          assetPath: '/',
           framerate: (1/60),
           sounds: true,
           volume: 50,
