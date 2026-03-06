@@ -51,14 +51,12 @@ export default function DiceRoller({ campaignId, onReady, isDM, currentUserId }:
         
         // Inicializa a mesa 3D com as configurações do README
         const box = new DiceBox("#dice-box", {
-          assetPath: '/', // Procura as pastas 'textures' e 'sound' na sua raiz public/
           framerate: (1/60),
           sounds: true,
           volume: 50,
-          color_spotlight: 0xffffff,
+          color_spotlight: 0xefdfd5, // Cor de luz original da doc
           shadows: true,
-          theme_surface: "none", // Remove o fundo verde feio padrão
-          theme_material: "glass",
+          theme_material: "glass", // "none" | "metal" | "wood" | "glass" | "plastic"
           gravity_multiplier: 600,
           baseScale: 80,
           strength: 2
