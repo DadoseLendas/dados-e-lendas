@@ -1,5 +1,5 @@
 "use client";
-import { useState } from 'react';
+import { useState, useEffect } from 'react'; // Agora os dois estão juntos em uma linha só
 import { useRouter } from 'next/navigation';
 import Navbar from '@/app/components/ui/navbar';
 import Footer from '@/app/components/ui/footer';
@@ -9,6 +9,15 @@ export default function Home() {
   const router = useRouter();
   const [abaAtiva, setAbaAtiva] = useState('home');
 
+ const [fotoAtual, setFotoAtual] = useState(0);
+ const fotos = ['/capa.jpg', '/capa2.jpg', '/capa3.jpg'];
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setFotoAtual((prev) => (prev + 1) % fotos.length);
+    }, 5000); // Troca a cada 5 segundos
+    return () => clearInterval(timer);
+  }, [fotos.length]);
   return (
     <main className="bg-[#050a05] text-white min-h-screen flex flex-col font-sans overflow-x-hidden">
       
@@ -17,38 +26,54 @@ export default function Home() {
       
       <div className="flex-grow">
         {/* INICIAL (HERO) */}
- {/* INICIAL (HERO) COM IMAGEM DE FUNDO */}
-<section className="relative min-h-[85vh] flex flex-col items-center justify-center text-center px-5 border-b border-[#1a2a1a]/30 overflow-hidden">
-  
-  {/* Imagem de Fundo com Overlay para Leitura */}
-  <div className="absolute inset-0 z-0">
-    <img 
-      src="/sua-imagem.jpg" 
-      alt="Background" 
-      className="w-full h-full object-cover object-center opacity-40" 
-    />
-    {/* Gradiente para suavizar a transição com o fundo preto da página */}
-    <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-[#050a05]"></div>
-  </div>
 
-  {/* Conteúdo (Z-10 para ficar acima da imagem) */}
-  <div className="relative z-10 animate-in fade-in zoom-in duration-500 flex flex-col items-center">
-    <h1 className="text-5xl md:text-7xl font-serif italic mb-6 tracking-tighter drop-shadow-[0_0_20px_rgba(0,0,0,0.8)]">
-      BEM VINDO AVENTUREIRO!
-    </h1>
-    
-    <p className="text-white/90 max-w-2xl mb-10 leading-relaxed text-lg drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] font-medium">
-      A plataforma brasileira completa para mestres e jogadores de D&D 5e. Fichas, mapas, dados e histórias em um só lugar.
-    </p>
+        <section className="relative h-[85vh] flex flex-col items-center justify-center text-center px-5 border-b border-[#1a2a1a]/30 overflow-hidden">
+          
+          {/* Camada das Imagens do Carrossel */}
+          <div className="absolute inset-0 z-0">
+            {fotos.map((foto, index) => (
+              <img 
+                key={index}
+                src={foto} 
+                alt={`Slide ${index}`}
+                className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ease-in-out ${
+                  index === fotoAtual ? 'opacity-40' : 'opacity-0'
+                }`}
+              />
+            ))}
+            {/* Gradiente para garantir que o texto apareça bem sobre as fotos */}
+            <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-[#050a05]"></div>
+          </div>
 
-    <button 
-      onClick={() => router.push('/cadastro')}
-      className="group border border-[#00ff66] text-[#00ff66] bg-black/40 backdrop-blur-sm px-10 py-4 hover:bg-[#00ff66] hover:text-black transition-all shadow-[0_0_20px_rgba(0,255,102,0.2)] hover:shadow-[0_0_40px_rgba(0,255,102,0.5)] uppercase tracking-[0.3em] font-bold text-sm flex items-center gap-2"
-    >
-      Comece sua aventura <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform" />
-    </button>
-  </div>
-</section>
+          {/* Conteúdo (Z-10 para ficar na frente) */}
+          <div className="relative z-10 flex flex-col items-center animate-in fade-in zoom-in duration-700">
+            <h1 className="text-5xl md:text-7xl font-serif italic mb-6 tracking-tighter drop-shadow-[0_5px_15px_rgba(0,0,0,1)]">
+              BEM VINDO AVENTUREIRO!
+            </h1>
+            <p className="text-white/80 max-w-2xl mb-10 leading-relaxed text-lg drop-shadow-[0_2px_5px_rgba(0,0,0,1)]">
+              A plataforma brasileira completa para mestres e jogadores de D&D 5e. Fichas, mapas, dados e histórias em um só lugar.
+            </p>
+            
+            <div className="flex flex-col items-center gap-6">
+              <button 
+                onClick={() => router.push('/cadastro')}
+                className="group border border-[#00ff66] text-[#00ff66] bg-black/40 backdrop-blur-sm px-10 py-4 hover:bg-[#00ff66] hover:text-black transition-all shadow-[0_0_20px_rgba(0,255,102,0.2)] hover:shadow-[0_0_35px_rgba(0,255,102,0.5)] uppercase tracking-[0.3em] font-bold text-sm flex items-center gap-2"
+              >
+                Comece sua aventura <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform" />
+              </button>
+
+              {/* Indicadores (Pontinhos) */}
+              <div className="flex gap-2">
+                {fotos.map((_, i) => (
+                  <div 
+                    key={i} 
+                    className={`w-2 h-2 rounded-full transition-all duration-500 ${i === fotoAtual ? 'bg-[#00ff66] w-6' : 'bg-white/20'}`}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
 
         {/* RECURSOS */}
         <section id="recursos" className="py-24 px-6 max-w-[1200px] mx-auto border-b border-[#1a2a1a]/30">
