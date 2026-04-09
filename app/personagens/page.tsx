@@ -57,7 +57,7 @@ type Character = {
   stats: { str: number; dex: number; con: number; int: number; wis: number; cha: number; };
   savingThrows: Record<string, boolean>;
   skills: Record<string, boolean>;
-  inventory: { id: number; name: string }[];
+  inventory: InventoryItem[];
   spells: { id: number; name: string; level: string }[];
   img: string;
   imgOffsetX?: number;
@@ -66,12 +66,30 @@ type Character = {
   owner_id?: string;
 }
 
+type InventoryItem = {
+  id: number;
+  name?: string;
+  nome?: string;
+  tipo?: string;
+  ataque?: string;
+  dano?: string;
+  desc?: string;
+};
+
+type NewInventoryItem = {
+  nome: string;
+  tipo: string;
+  ataque: string;
+  dano: string;
+  desc: string;
+};
+
 export default function PersonagensPage() {
   const supabase = useMemo(() => createClient(), []);
 
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
-  
+
   const [characters, setCharacters] = useState<Character[]>([]);
   const [activeCharacter, setActiveCharacter] = useState<Character | null>(null);
   const [loadingAction, setLoadingAction] = useState(false);
@@ -83,9 +101,10 @@ export default function PersonagensPage() {
   const [tempOffsetX, setTempOffsetX] = useState(50);
   const [tempOffsetY, setTempOffsetY] = useState(50);
   const [showFramingSliders, setShowFramingSliders] = useState(false);
-  
+
   const [newSpellName, setNewSpellName] = useState('');
-  const [newItem, setNewItem] = useState('');
+  const [newItem, setNewItem] = useState<NewInventoryItem>({ nome: '', tipo: '', ataque: '', dano: '', desc: '' });
+  const [itemExpandido, setItemExpandido] = useState<number | null>(null);
   const [abaAtiva, setAbaAtiva] = useState<string>('personagens');
 
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -111,6 +130,33 @@ export default function PersonagensPage() {
     if (!message) return null;
     const match = message.match(/Could not find the '([^']+)' column/);
     return match?.[1] ?? null;
+  };
+
+  const rollInventoryFormula = (formula?: string) => {
+    if (!formula) return;
+    const sanitized = formula.replace(/\s+/g, '');
+    const match = sanitized.match(/^(\d+)d(\d+)([+-]\d+)?$/i);
+    if (!match) {
+      alert('Fórmula inválida. Use o formato 1d20+5.');
+      return;
+    }
+
+    const count = Number(match[1]);
+    const sides = Number(match[2]);
+    const bonus = Number(match[3] ?? 0);
+
+    if (count <= 0 || sides <= 0 || count > 20 || sides > 1000) {
+      alert('Fórmula fora do limite permitido.');
+      return;
+    }
+
+    let total = 0;
+    for (let i = 0; i < count; i++) {
+      total += Math.floor(Math.random() * sides) + 1;
+    }
+    total += bonus;
+
+    alert(`${sanitized} = ${total}`);
   };
 
   useEffect(() => {
@@ -255,7 +301,7 @@ export default function PersonagensPage() {
     };
 
     return (
-      <>
+      <div className="space-y-0">
         {/* Modal de regras de raça */}
         {raceModalOpen && (() => {
           const race = activeCharacter.race;
@@ -668,227 +714,345 @@ export default function PersonagensPage() {
               </div>
             </div>
 
-            {/* Inventário */}
-            <div className="bg-[#050a05] border border-[#1a2a1a] p-4 rounded-xl">
-              <h3 className="text-[#00ff66] text-[14px] font-black uppercase mb-2 flex items-center gap-2">
-                <Box size={14} /> Inventário
+            {/* Seção de Inventário e Armas */}
+            <div className="bg-[#050a05] border border-[#1a2a1a] p-4 rounded-xl shadow-2xl">
+              <h3 className="text-[#00ff66] text-[10px] font-black uppercase mb-4 flex items-center gap-2 tracking-[0.2em]">
+                <Box size={14} className="text-[#00ff66]" /> Inventário & Equipamento
               </h3>
-              <div className="max-h-[150px] overflow-y-auto space-y-1 mb-2 pr-1">
-                {activeCharacter.inventory?.map((item: any) => (
-                  <div key={item.id} className="flex justify-between items-center bg-black/40 p-1.5 rounded border border-[#1a2a1a]">
-                    <span className="text-[13px] uppercase text-gray-400">{item.name}</span>
-                    <button
-                      onClick={() =>
-                        updateCharacter('inventory', activeCharacter.inventory.filter((i: { id: number }) => i.id !== item.id))
-                      }
-                      className="text-red-900 hover:text-red-500"
+
+              {/* Lista de Itens/Armas */}
+              <div className="max-h-[300px] overflow-y-auto space-y-2 mb-4 pr-1 scrollbar-thin scrollbar-thumb-[#1a2a1a] scrollbar-track-transparent">
+                {activeCharacter.inventory?.map((item: InventoryItem) => (
+                  <div
+                    key={item.id}
+                    className="bg-black/60 border border-[#1a2a1a] rounded-lg overflow-hidden transition-all duration-200 hover:border-[#00ff66]/40 group"
+                  >
+                    {/* Header do Card (Sempre Visível) */}
+                    <div
+                      onClick={() => setItemExpandido(itemExpandido === item.id ? null : item.id)}
+                      className="p-3 cursor-pointer flex justify-between items-center bg-gradient-to-r from-transparent to-white/[0.02]"
                     >
-                      <Trash2 size={10} />
-                    </button>
+                      <div className="flex flex-col">
+                        <span className="text-[11px] font-bold text-white uppercase tracking-tight group-hover:text-[#00ff66] transition-colors">
+                          {item.nome || item.name || 'Item sem nome'}
+                        </span>
+                        <span className="text-[7px] text-gray-500 uppercase font-black">{item.tipo || 'Utilitário'}</span>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        {/* Botão de Ataque */}
+                        {item.ataque && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              rollInventoryFormula(item.ataque);
+                            }}
+                            className="bg-[#0a1a0a] text-[#00ff66] text-[9px] font-bold px-2.5 py-1 rounded border border-[#00ff66]/20 hover:bg-[#00ff66] hover:text-black transition-all active:scale-90"
+                          >
+                            ATK
+                          </button>
+                        )}
+
+                        {/* Botão de Dano */}
+                        {item.dano && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              rollInventoryFormula(item.dano);
+                            }}
+                            className="bg-[#1a0a0a] text-red-500 text-[9px] font-bold px-2.5 py-1 rounded border border-red-900/20 hover:bg-red-600 hover:text-white transition-all active:scale-90"
+                          >
+                            DANO
+                          </button>
+                        )}
+
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            updateCharacter('inventory', activeCharacter.inventory.filter((i: InventoryItem) => i.id !== item.id))
+                          }}
+                          className="text-gray-700 hover:text-red-500 p-1 transition-colors"
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Detalhes Expansíveis (Bio/Descrição) */}
+                    {itemExpandido === item.id && (
+                      <div className="px-3 pb-3 pt-1 border-t border-[#1a2a1a] bg-black/40 animate-in slide-in-from-top-1 duration-200">
+                        <div className="grid grid-cols-2 gap-2 mb-3">
+                          <div className="bg-[#050a05] p-2 rounded border border-[#1a2a1a]">
+                            <p className="text-[7px] text-gray-600 uppercase font-bold">Fórmula ATK</p>
+                            <p className="text-[10px] text-[#00ff66] font-mono">{item.ataque || '---'}</p>
+                          </div>
+                          <div className="bg-[#050a05] p-2 rounded border border-[#1a2a1a]">
+                            <p className="text-[7px] text-gray-600 uppercase font-bold">Fórmula Dano</p>
+                            <p className="text-[10px] text-red-500 font-mono">{item.dano || '---'}</p>
+                          </div>
+                        </div>
+                        <p className="text-[10px] text-gray-400 leading-relaxed font-light italic border-l-2 border-[#1a2a1a] pl-2">
+                          {item.desc || "Nenhuma descrição detalhada."}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
-              <div className="flex gap-1">
-                <input
-                  value={newItem}
-                  onChange={(e) => setNewItem(e.target.value)}
-                  placeholder="Novo item..."
-                  className="flex-1 bg-black border border-[#1a2a1a] rounded p-1 text-[14px]"
-                />
+
+              {/* Formulário de Criação (Novo Item) */}
+              <div className="mt-4 p-3 bg-black/40 border border-[#1a2a1a] rounded-xl space-y-3">
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <label className="text-[7px] text-gray-500 uppercase font-bold ml-1">Nome do Item</label>
+                    <input
+                      placeholder="Ex: Machado de Guerra"
+                      className="w-full bg-black border border-[#1a2a1a] rounded p-2 text-[10px] text-white focus:border-[#00ff66]/50 outline-none transition-all"
+                      value={newItem.nome}
+                      onChange={e => setNewItem({ ...newItem, nome: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[7px] text-gray-500 uppercase font-bold ml-1">Tipo</label>
+                    <input
+                      placeholder="Ex: Arma Marcial"
+                      className="w-full bg-black border border-[#1a2a1a] rounded p-2 text-[10px] text-white focus:border-[#00ff66]/50 outline-none transition-all"
+                      value={newItem.tipo}
+                      onChange={e => setNewItem({ ...newItem, tipo: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[7px] text-[#00ff66] uppercase font-bold ml-1 text-center block">Fórmula ATK</label>
+                    <input
+                      placeholder="1d20+5"
+                      className="w-full bg-black border border-[#1a2a1a] rounded p-2 text-[10px] text-[#00ff66] font-mono text-center outline-none"
+                      value={newItem.ataque}
+                      onChange={e => setNewItem({ ...newItem, ataque: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[7px] text-red-500 uppercase font-bold ml-1 text-center block">Fórmula Dano</label>
+                    <input
+                      placeholder="2d6+3"
+                      className="w-full bg-black border border-[#1a2a1a] rounded p-2 text-[10px] text-red-500 font-mono text-center outline-none"
+                      value={newItem.dano}
+                      onChange={e => setNewItem({ ...newItem, dano: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[7px] text-gray-500 uppercase font-bold ml-1">Descrição</label>
+                  <textarea
+                    placeholder="Propriedades mágicas, peso, história..."
+                    className="w-full bg-black border border-[#1a2a1a] rounded p-2 text-[10px] text-gray-400 outline-none h-16 resize-none block"
+                    value={newItem.desc}
+                    onChange={e => setNewItem({ ...newItem, desc: e.target.value })}
+                  />
+                </div>
+
                 <button
                   onClick={() => {
-                    if (!newItem) return;
-                    updateCharacter('inventory', [...activeCharacter.inventory, { id: Date.now(), name: newItem }]);
-                    setNewItem('');
+                    const nome = newItem.nome.trim();
+                    if (!nome) return;
+                    const itemFinal: InventoryItem = {
+                      ...newItem,
+                      id: Date.now(),
+                      nome,
+                      name: nome,
+                    };
+                    updateCharacter('inventory', [...(activeCharacter.inventory || []), itemFinal]);
+                    setNewItem({ nome: '', tipo: '', ataque: '', dano: '', desc: '' });
+                    setItemExpandido(itemFinal.id);
                   }}
-                  className="bg-[#1a2a1a] px-2 rounded text-[#00ff66] text-base"
+                  className="w-full py-2 bg-[#0a1a0a] hover:bg-[#00ff66] border border-[#00ff66]/30 text-[#00ff66] hover:text-black text-[9px] font-black uppercase tracking-widest rounded-lg transition-all duration-300 active:scale-[0.98]"
                 >
-                  +
+                  Adicionar ao Inventário
                 </button>
               </div>
             </div>
           </div>
 
-          {/* COLUNA 3 - col-span-3 — PERÍCIAS */}
-          <div className="lg:col-span-3">
-            <div className="bg-black border border-[#1a2a1a] p-4 rounded-xl h-full">
-              <h3 className="text-[#f1e5ac] text-[14px] font-black uppercase mb-4 text-center">Perícias</h3>
-              <div className="space-y-1 overflow-y-auto pr-2">
-                {Object.entries(skillsData).map(([key, info]) => {
-                  const mod = getModifier(getTotalStat(info.attr, activeCharacter.stats[info.attr]));
-                  const total = mod + (activeCharacter.skills[key] ? activeCharacter.proficiencyBonus : 0);
-                  return (
-                    <div
-                      key={key}
-                      className="flex items-center justify-between bg-black/40 p-2 rounded border border-[#1a2a1a] hover:border-[#00ff66]/50 transition-colors"
-                    >
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          checked={activeCharacter.skills[key]}
-                          onChange={(e) =>
-                            updateCharacter('skills', {
-                              ...activeCharacter.skills,
-                              [key]: e.target.checked,
-                            })
-                          }
-                          className="accent-[#00ff66] w-3 h-3"
-                        />
-                        <span className="text-[13px] uppercase text-gray-300">{info.name} <span className="text-gray-500">({info.attr})</span></span>
+            {/* COLUNA 3 - col-span-3 — PERÍCIAS */}
+            <div className="lg:col-span-3">
+              <div className="bg-black border border-[#1a2a1a] p-4 rounded-xl h-full">
+                <h3 className="text-[#f1e5ac] text-[14px] font-black uppercase mb-4 text-center">Perícias</h3>
+                <div className="space-y-1 overflow-y-auto pr-2">
+                  {Object.entries(skillsData).map(([key, info]) => {
+                    const mod = getModifier(getTotalStat(info.attr, activeCharacter.stats[info.attr]));
+                    const total = mod + (activeCharacter.skills[key] ? activeCharacter.proficiencyBonus : 0);
+                    return (
+                      <div
+                        key={key}
+                        className="flex items-center justify-between bg-black/40 p-2 rounded border border-[#1a2a1a] hover:border-[#00ff66]/50 transition-colors"
+                      >
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={activeCharacter.skills[key]}
+                            onChange={(e) =>
+                              updateCharacter('skills', {
+                                ...activeCharacter.skills,
+                                [key]: e.target.checked,
+                              })
+                            }
+                            className="accent-[#00ff66] w-3 h-3"
+                          />
+                          <span className="text-[13px] uppercase text-gray-300">{info.name} <span className="text-gray-500">({info.attr})</span></span>
+                        </div>
+                        <span className="text-[14px] font-black text-[#00ff66]">{total >= 0 ? '+' : ''}{total}</span>
                       </div>
-                      <span className="text-[14px] font-black text-[#00ff66]">{total >= 0 ? '+' : ''}{total}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Popup unificado: trocar imagem + enquadramento */}
-        {editingCharacterImg && (
-          <div
-            className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80"
-            onClick={(e) => e.target === e.currentTarget && setEditingCharacterImg(false)}
-          >
-            <div className="bg-[#0a120a] border border-[#1a2a1a] rounded-2xl p-6 w-96 space-y-4 shadow-[0_0_40px_rgba(0,0,0,0.8)]">
-              <h3 className="text-[#f1e5ac] text-base font-black uppercase text-center tracking-widest">Imagem do Personagem</h3>
-
-              {/* Preview */}
-              {(tempCharacterImg || activeCharacter.img) && (
-                <div
-                  className="w-full h-44 rounded-xl border border-[#1a2a1a] bg-cover"
-                  style={{
-                    backgroundImage: `url(${tempCharacterImg || activeCharacter.img})`,
-                    backgroundPosition: `${tempOffsetX}% ${tempOffsetY}%`
-                  }}
-                />
-              )}
-
-              {/* Upload */}
-              <div>
-                <label className="block text-[#4a5a4a] text-[14px] font-black uppercase tracking-widest mb-1">Ou faça upload</label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleCharacterImageFileChange}
-                  className="w-full bg-black border border-[#1a2a1a] rounded-lg py-2 px-3 text-white text-base focus:outline-none focus:border-[#00ff66] file:mr-3 file:py-1 file:px-3 file:rounded file:border-0 file:text-base file:font-black file:bg-[#00ff66] file:text-black cursor-pointer"
-                />
-              </div>
-
-              {/* Botão enquadramento */}
-              <button
-                type="button"
-                onClick={() => setShowFramingSliders((v) => !v)}
-                className="w-full border border-[#1a2a1a] text-[#4a5a4a] hover:text-[#00ff66] hover:border-[#00ff66]/40 text-[14px] font-black uppercase py-2 rounded-lg transition-all flex items-center justify-center gap-2"
-              >
-                {showFramingSliders ? '▲ Ocultar enquadramento' : '▼ Ajustar enquadramento'}
-              </button>
-
-              {/* Sliders (condicional) */}
-              {showFramingSliders && (
-                <div className="space-y-3 border border-[#1a2a1a] rounded-xl p-3">
-                  <div>
-                    <label className="block text-[#4a5a4a] text-[14px] font-black uppercase tracking-widest mb-1">Horizontal ({tempOffsetX}%)</label>
-                    <input type="range" min={0} max={100} value={tempOffsetX} onChange={(e) => setTempOffsetX(Number(e.target.value))} className="w-full accent-[#00ff66] cursor-pointer" />
-                  </div>
-                  <div>
-                    <label className="block text-[#4a5a4a] text-[14px] font-black uppercase tracking-widest mb-1">Vertical ({tempOffsetY}%)</label>
-                    <input type="range" min={0} max={100} value={tempOffsetY} onChange={(e) => setTempOffsetY(Number(e.target.value))} className="w-full accent-[#00ff66] cursor-pointer" />
-                  </div>
+                    );
+                  })}
                 </div>
-              )}
-
-              {/* Ações. */}
-              <div className="flex gap-2 pt-1">
-                <button
-                  onClick={() => setEditingCharacterImg(false)}
-                  className="flex-1 border border-[#1a2a1a] text-[#4a5a4a] text-[14px] font-black uppercase py-2 rounded-lg hover:border-[#00ff66]/40 transition-all"
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={async () => {
-                    const updated = { ...activeCharacter, img: tempCharacterImg || activeCharacter.img, imgOffsetX: tempOffsetX, imgOffsetY: tempOffsetY };
-                    setActiveCharacter(updated);
-                    setEditingCharacterImg(false);
-                    await saveToDatabase(updated);
-                  }}
-                  className="flex-1 bg-[#00ff66] text-black text-[14px] font-black uppercase py-2 rounded-lg hover:brightness-110 transition-all"
-                >
-                  Salvar
-                </button>
               </div>
             </div>
           </div>
-        )}
-      </>
-    );
+
+          {/* Popup unificado: trocar imagem + enquadramento */}
+          {editingCharacterImg && (
+            <div
+              className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80"
+              onClick={(e) => e.target === e.currentTarget && setEditingCharacterImg(false)}
+            >
+              <div className="bg-[#0a120a] border border-[#1a2a1a] rounded-2xl p-6 w-96 space-y-4 shadow-[0_0_40px_rgba(0,0,0,0.8)]">
+                <h3 className="text-[#f1e5ac] text-base font-black uppercase text-center tracking-widest">Imagem do Personagem</h3>
+
+                {/* Preview */}
+                {(tempCharacterImg || activeCharacter.img) && (
+                  <div
+                    className="w-full h-44 rounded-xl border border-[#1a2a1a] bg-cover"
+                    style={{
+                      backgroundImage: `url(${tempCharacterImg || activeCharacter.img})`,
+                      backgroundPosition: `${tempOffsetX}% ${tempOffsetY}%`
+                    }}
+                  />
+                )}
+
+                {/* Upload */}
+                <div>
+                  <label className="block text-[#4a5a4a] text-[14px] font-black uppercase tracking-widest mb-1">Ou faça upload</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleCharacterImageFileChange}
+                    className="w-full bg-black border border-[#1a2a1a] rounded-lg py-2 px-3 text-white text-base focus:outline-none focus:border-[#00ff66] file:mr-3 file:py-1 file:px-3 file:rounded file:border-0 file:text-base file:font-black file:bg-[#00ff66] file:text-black cursor-pointer"
+                  />
+                </div>
+
+                {/* Botão enquadramento */}
+                <button
+                  type="button"
+                  onClick={() => setShowFramingSliders((v) => !v)}
+                  className="w-full border border-[#1a2a1a] text-[#4a5a4a] hover:text-[#00ff66] hover:border-[#00ff66]/40 text-[14px] font-black uppercase py-2 rounded-lg transition-all flex items-center justify-center gap-2"
+                >
+                  {showFramingSliders ? '▲ Ocultar enquadramento' : '▼ Ajustar enquadramento'}
+                </button>
+
+                {/* Sliders (condicional) */}
+                {showFramingSliders && (
+                  <div className="space-y-3 border border-[#1a2a1a] rounded-xl p-3">
+                    <div>
+                      <label className="block text-[#4a5a4a] text-[14px] font-black uppercase tracking-widest mb-1">Horizontal ({tempOffsetX}%)</label>
+                      <input type="range" min={0} max={100} value={tempOffsetX} onChange={(e) => setTempOffsetX(Number(e.target.value))} className="w-full accent-[#00ff66] cursor-pointer" />
+                    </div>
+                    <div>
+                      <label className="block text-[#4a5a4a] text-[14px] font-black uppercase tracking-widest mb-1">Vertical ({tempOffsetY}%)</label>
+                      <input type="range" min={0} max={100} value={tempOffsetY} onChange={(e) => setTempOffsetY(Number(e.target.value))} className="w-full accent-[#00ff66] cursor-pointer" />
+                    </div>
+                  </div>
+                )}
+
+                {/* Ações. */}
+                <div className="flex gap-2 pt-1">
+                  <button
+                    onClick={() => setEditingCharacterImg(false)}
+                    className="flex-1 border border-[#1a2a1a] text-[#4a5a4a] text-[14px] font-black uppercase py-2 rounded-lg hover:border-[#00ff66]/40 transition-all"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={async () => {
+                      const updated = { ...activeCharacter, img: tempCharacterImg || activeCharacter.img, imgOffsetX: tempOffsetX, imgOffsetY: tempOffsetY };
+                      setActiveCharacter(updated);
+                      setEditingCharacterImg(false);
+                      await saveToDatabase(updated);
+                    }}
+                    className="flex-1 bg-[#00ff66] text-black text-[14px] font-black uppercase py-2 rounded-lg hover:brightness-110 transition-all"
+                  >
+                    Salvar
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+          </div>
+        );
   };
 
-  if (isLoadingAuth) return <div className="min-h-screen flex items-center justify-center bg-black text-[#00ff66] font-black uppercase">Sincronizando com a Névoa...</div>;
-  if (!isAuthenticated) return <div className="min-h-screen flex items-center justify-center bg-black text-red-500 font-black">Acesso negado. Faça login.</div>;
+        if (isLoadingAuth) return <div className="min-h-screen flex items-center justify-center bg-black text-[#00ff66] font-black uppercase">Sincronizando com a Névoa...</div>;
+        if (!isAuthenticated) return <div className="min-h-screen flex items-center justify-center bg-black text-red-500 font-black">Acesso negado. Faça login.</div>;
 
-  return (
-    <>
-    <div className="min-h-screen bg-[#020502]">
-      <Navbar abaAtiva={abaAtiva} setAbaAtiva={setAbaAtiva} />
-      <div className={`${activeCharacter ? 'max-w-[1400px]' : 'max-w-[1000px]'} mx-auto py-12 px-6`}>
-        {!activeCharacter ? (
-          <div>
-            <h2 className="text-[#f1e5ac] text-2xl font-serif mb-10 tracking-[0.2em] uppercase italic">Grimório de Heróis</h2>
-            <div className="space-y-6">
-              <div className="flex justify-between items-center">
-                <h3 className="text-[#4a5a4a] text-base font-black uppercase tracking-[0.2em]">Personagens: {characters.length}</h3>
-                <button onClick={createCharacter} className="flex items-center gap-2 bg-[#00ff66] text-black px-4 py-2 rounded-lg text-[14px] font-black uppercase hover:brightness-110 transition-all">
-                  <Plus size={14} /> Criar Novo
-                </button>
-              </div>
-              {characters.length === 0 ? (
-                <div className="text-center text-[#8a9a8a] text-base py-20 border border-dashed border-[#1a2a1a] rounded-2xl">Nenhum personagem encontrado na taverna.</div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {characters.map((char) => (
-                    <Card
-                      key={char.id} id={char.id} title={char.name} subtitle={`${char.class} • Nível ${char.level}`}
-                      metaLeft={{ icon: 'hp', label: `${char.hp_current ?? 0}/${char.hp_max ?? 0}` }}
-                      metaRight={{ icon: 'ca', label: `${char.ac ?? 10}` }}
-                      showMetaDivider={false} metaLarge image={char.img}
-                      dropdownOpen={dropdownOpen === String(char.id)}
-                      onDropdownToggle={() => setDropdownOpen((prev) => prev === String(char.id) ? null : String(char.id))}
-                      dropdownRef={dropdownRef} onDelete={() => { setDropdownOpen(null); setConfirmDeleteId(char.id); }}
-                      onAccess={() => { setActiveCharacter(char); setDropdownOpen(null); }}
-                      accessLabel="Acessar" deleteLabel="Excluir"
-                    />
-                  ))}
+        return (
+        <>
+          <div className="min-h-screen bg-[#020502]">
+            <Navbar abaAtiva={abaAtiva} setAbaAtiva={setAbaAtiva} />
+            <div className={`${activeCharacter ? 'max-w-[1400px]' : 'max-w-[1000px]'} mx-auto py-12 px-6`}>
+              {!activeCharacter ? (
+                <div>
+                  <h2 className="text-[#f1e5ac] text-2xl font-serif mb-10 tracking-[0.2em] uppercase italic">Grimório de Heróis</h2>
+                  <div className="space-y-6">
+                    <div className="flex justify-between items-center">
+                      <h3 className="text-[#4a5a4a] text-base font-black uppercase tracking-[0.2em]">Personagens: {characters.length}</h3>
+                      <button onClick={createCharacter} className="flex items-center gap-2 bg-[#00ff66] text-black px-4 py-2 rounded-lg text-[14px] font-black uppercase hover:brightness-110 transition-all">
+                        <Plus size={14} /> Criar Novo
+                      </button>
+                    </div>
+                    {characters.length === 0 ? (
+                      <div className="text-center text-[#8a9a8a] text-base py-20 border border-dashed border-[#1a2a1a] rounded-2xl">Nenhum personagem encontrado na taverna.</div>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {characters.map((char) => (
+                          <Card
+                            key={char.id} id={char.id} title={char.name} subtitle={`${char.class} • Nível ${char.level}`}
+                            metaLeft={{ icon: 'hp', label: `${char.hp_current ?? 0}/${char.hp_max ?? 0}` }}
+                            metaRight={{ icon: 'ca', label: `${char.ac ?? 10}` }}
+                            showMetaDivider={false} metaLarge image={char.img}
+                            dropdownOpen={dropdownOpen === String(char.id)}
+                            onDropdownToggle={() => setDropdownOpen((prev) => prev === String(char.id) ? null : String(char.id))}
+                            dropdownRef={dropdownRef} onDelete={() => { setDropdownOpen(null); setConfirmDeleteId(char.id); }}
+                            onAccess={() => { setActiveCharacter(char); setDropdownOpen(null); }}
+                            accessLabel="Acessar" deleteLabel="Excluir"
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
-              )}
+              ) : renderCharacterSheet()}
             </div>
+            <Footer />
+
           </div>
-        ) : renderCharacterSheet()}
-      </div>
-      <Footer />
 
-    </div>
-
-      {confirmDeleteId !== null && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80">
-          <div className="bg-[#0a120a] border border-[#1a2a1a] rounded-2xl p-6 w-80 flex flex-col gap-5">
-            <h3 className="text-white text-base font-black uppercase text-center tracking-widest">Excluir personagem?</h3>
-            <p className="text-[#4a5a4a] text-[14px] text-center uppercase">Esta ação não pode ser desfeita.</p>
-            <div className="flex gap-2">
-              <button type="button" onClick={() => setConfirmDeleteId(null)}
-                className="flex-1 border border-[#1a2a1a] text-[#4a5a4a] text-[14px] font-black uppercase py-2 rounded-lg">
-                Cancelar
-              </button>
-              <button type="button" onClick={() => deleteCharacter(confirmDeleteId)}
-                className="flex-1 bg-red-600 text-white text-[14px] font-black uppercase py-2 rounded-lg">
-                Excluir
-              </button>
+          {confirmDeleteId !== null && (
+            <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80">
+              <div className="bg-[#0a120a] border border-[#1a2a1a] rounded-2xl p-6 w-80 flex flex-col gap-5">
+                <h3 className="text-white text-base font-black uppercase text-center tracking-widest">Excluir personagem?</h3>
+                <p className="text-[#4a5a4a] text-[14px] text-center uppercase">Esta ação não pode ser desfeita.</p>
+                <div className="flex gap-2">
+                  <button type="button" onClick={() => setConfirmDeleteId(null)}
+                    className="flex-1 border border-[#1a2a1a] text-[#4a5a4a] text-[14px] font-black uppercase py-2 rounded-lg">
+                    Cancelar
+                  </button>
+                  <button type="button" onClick={() => deleteCharacter(confirmDeleteId)}
+                    className="flex-1 bg-red-600 text-white text-[14px] font-black uppercase py-2 rounded-lg">
+                    Excluir
+                  </button>
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
-      )}
-    </>
-  );
+          )}
+        </>
+        );
 }
