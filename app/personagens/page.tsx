@@ -220,7 +220,7 @@ export default function PersonagensPage() {
     const color = percentage > 50 ? 'bg-[#00ff66]' : percentage > 20 ? 'bg-yellow-500' : 'bg-red-600';
     return (
       <div className="w-full">
-        <div className="flex justify-between text-[10px] font-black uppercase mb-1 text-[#4a5a4a]">
+        <div className="flex justify-between text-[14px] font-black uppercase mb-1 text-[#4a5a4a]">
           <span>Pontos de Vida</span>
           <span>{current} / {max}</span>
         </div>
@@ -267,8 +267,8 @@ export default function PersonagensPage() {
             return (
               <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center">
                 <div className="bg-[#050a05] border border-[#1a2a1a] rounded-2xl p-6 w-full max-w-sm space-y-4">
-                  <h3 className="text-[#f1e5ac] text-xs font-black uppercase text-center">Meio-Elfo: Escolha 2 Atributos</h3>
-                  <p className="text-[10px] text-[#4a5a4a] text-center uppercase">Selecione 2 atributos para receber +1 (exceto Carisma)</p>
+                  <h3 className="text-[#f1e5ac] text-base font-black uppercase text-center">Meio-Elfo: Escolha 2 Atributos</h3>
+                  <p className="text-[14px] text-[#4a5a4a] text-center uppercase">Selecione 2 atributos para receber +1 (exceto Carisma)</p>
                   <div className="grid grid-cols-2 gap-2">
                     {options.map((s) => {
                       const isSelected = raceModalSelections[s] === s;
@@ -283,7 +283,7 @@ export default function PersonagensPage() {
                               setRaceModalSelections((prev) => ({ ...prev, [s]: s }));
                             }
                           }}
-                          className={`p-2 rounded border text-[10px] font-black uppercase transition-all ${isSelected ? 'bg-[#00ff66] text-black border-[#00ff66]' : 'bg-black/40 text-gray-300 border-[#1a2a1a] hover:border-[#00ff66]/50'}`}
+                          className={`p-2 rounded border text-[14px] font-black uppercase transition-all ${isSelected ? 'bg-[#00ff66] text-black border-[#00ff66]' : 'bg-black/40 text-gray-300 border-[#1a2a1a] hover:border-[#00ff66]/50'}`}
                         >
                           {statLabels[s]}
                         </button>
@@ -301,7 +301,7 @@ export default function PersonagensPage() {
                       setRaceModalOpen(false);
                       setRaceModalSelections({});
                     }}
-                    className="w-full bg-[#00ff66] text-black py-2 rounded-full text-xs font-black uppercase disabled:opacity-30 disabled:cursor-not-allowed hover:scale-105 transition-all"
+                    className="w-full bg-[#00ff66] text-black py-2 rounded-full text-base font-black uppercase disabled:opacity-30 disabled:cursor-not-allowed hover:scale-105 transition-all"
                   >
                     Confirmar
                   </button>
@@ -317,8 +317,8 @@ export default function PersonagensPage() {
             return (
               <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center">
                 <div className="bg-[#050a05] border border-[#1a2a1a] rounded-2xl p-6 w-full max-w-sm space-y-4">
-                  <h3 className="text-[#f1e5ac] text-xs font-black uppercase text-center">Humano (Variante): Escolha 2 Atributos</h3>
-                  <p className="text-[10px] text-[#4a5a4a] text-center uppercase">Selecione 2 atributos diferentes para receber +1</p>
+                  <h3 className="text-[#f1e5ac] text-base font-black uppercase text-center">Humano (Variante): Escolha 2 Atributos</h3>
+                  <p className="text-[14px] text-[#4a5a4a] text-center uppercase">Selecione 2 atributos diferentes para receber +1</p>
                   <div className="grid grid-cols-2 gap-2">
                     {options.map((s) => {
                       const isSelected = raceModalSelections[s] === s;
@@ -333,7 +333,7 @@ export default function PersonagensPage() {
                               setRaceModalSelections((prev) => ({ ...prev, [s]: s }));
                             }
                           }}
-                          className={`p-2 rounded border text-[10px] font-black uppercase transition-all ${isSelected ? 'bg-[#00ff66] text-black border-[#00ff66]' : 'bg-black/40 text-gray-300 border-[#1a2a1a] hover:border-[#00ff66]/50'}`}
+                          className={`p-2 rounded border text-[14px] font-black uppercase transition-all ${isSelected ? 'bg-[#00ff66] text-black border-[#00ff66]' : 'bg-black/40 text-gray-300 border-[#1a2a1a] hover:border-[#00ff66]/50'}`}
                         >
                           {statLabels[s]}
                         </button>
@@ -351,7 +351,7 @@ export default function PersonagensPage() {
                       setRaceModalOpen(false);
                       setRaceModalSelections({});
                     }}
-                    className="w-full bg-[#00ff66] text-black py-2 rounded-full text-xs font-black uppercase disabled:opacity-30 disabled:cursor-not-allowed hover:scale-105 transition-all"
+                    className="w-full bg-[#00ff66] text-black py-2 rounded-full text-base font-black uppercase disabled:opacity-30 disabled:cursor-not-allowed hover:scale-105 transition-all"
                   >
                     Confirmar
                   </button>
@@ -366,13 +366,13 @@ export default function PersonagensPage() {
         <div className="flex justify-between items-center mb-6">
           <button
             onClick={() => setActiveCharacter(null)}
-            className="flex items-center gap-2 text-[#4a5a4a] hover:text-[#00ff66] text-xs font-black transition-colors"
+            className="flex items-center gap-2 text-[#4a5a4a] hover:text-[#00ff66] text-base font-black transition-colors"
           >
             <ArrowLeft size={14} /> VOLTAR
           </button>
           <button
             onClick={() => saveToDatabase(activeCharacter)}
-            className="flex items-center gap-2 bg-[#00ff66] text-black px-6 py-2 rounded-full text-xs font-black uppercase tracking-widest hover:scale-105 transition-all"
+            className="flex items-center gap-2 bg-[#00ff66] text-black px-6 py-2 rounded-full text-base font-black uppercase tracking-widest hover:scale-105 transition-all"
             disabled={loadingAction}
           >
             <Save size={14} /> {loadingAction ? 'Salvando...' : 'Salvar Ficha'}
@@ -393,7 +393,7 @@ export default function PersonagensPage() {
                 onClick={() => { setTempCharacterImg(activeCharacter.img || ''); setTempOffsetX(activeCharacter.imgOffsetX ?? 50); setTempOffsetY(activeCharacter.imgOffsetY ?? 50); setShowFramingSliders(false); setEditingCharacterImg(true); }}
               >
                 <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/50 rounded-xl">
-                  <span className="text-[8px] text-white font-black uppercase tracking-widest text-center px-2">Editar imagem</span>
+                  <span className="text-[12px] text-white font-black uppercase tracking-widest text-center px-2">Editar imagem</span>
                 </div>
               </div>
             </div>
@@ -401,16 +401,16 @@ export default function PersonagensPage() {
             {/* Infos Básicas */}
             <div className="bg-black/60 border border-[#1a2a1a] p-4 rounded-xl grid grid-cols-2 gap-3">
               <div className="col-span-2">
-                <label className="text-[8px] text-[#4a5a4a] font-black uppercase">Nome</label>
+                <label className="text-[12px] text-[#4a5a4a] font-black uppercase">Nome</label>
                 <input
                   value={activeCharacter.name}
                   onChange={(e) => updateCharacter('name', e.target.value)}
-                  className="w-full bg-black/40 border border-[#1a2a1a] p-1.5 text-xs rounded text-white text-center outline-none"
+                  className="w-full bg-black/40 border border-[#1a2a1a] p-1.5 text-base rounded text-white text-center outline-none"
                   placeholder="Nome do Herói"
                 />
               </div>
               <div className="col-span-2">
-                <label className="text-[8px] text-[#4a5a4a] font-black uppercase">Raça</label>
+                <label className="text-[12px] text-[#4a5a4a] font-black uppercase">Raça</label>
                 <select
                   value={activeCharacter.race ?? ''}
                   onChange={(e) => {
@@ -421,7 +421,7 @@ export default function PersonagensPage() {
                       setRaceModalOpen(true);
                     }
                   }}
-                  className="w-full bg-black/40 border border-[#1a2a1a] p-1.5 text-xs rounded text-white"
+                  className="w-full bg-black/40 border border-[#1a2a1a] p-1.5 text-base rounded text-white"
                 >
                   <option value="">Selecione...</option>
                   {Object.keys(RACE_DATA).map((race) => (
@@ -430,7 +430,7 @@ export default function PersonagensPage() {
                 </select>
               </div>
               <div className="col-span-2">
-                <label className="text-[8px] text-[#4a5a4a] font-black uppercase">Classe</label>
+                <label className="text-[12px] text-[#4a5a4a] font-black uppercase">Classe</label>
                 <select
                   value={activeCharacter.class ?? ''}
                   onChange={(e) => {
@@ -452,7 +452,7 @@ export default function PersonagensPage() {
                       updateCharacter('class', chosen);
                     }
                   }}
-                  className="w-full bg-black/40 border border-[#1a2a1a] p-1.5 text-xs rounded text-white"
+                  className="w-full bg-black/40 border border-[#1a2a1a] p-1.5 text-base rounded text-white"
                 >
                   <option value="">Selecione...</option>
                   {Object.keys(CLASS_DATA).map((cls) => (
@@ -460,46 +460,46 @@ export default function PersonagensPage() {
                   ))}
                 </select>
                 {CLASS_DATA[activeCharacter.class] && (
-                  <div className="mt-1 flex justify-between text-[8px] text-[#4a5a4a] font-black uppercase px-1">
+                  <div className="mt-1 flex justify-between text-[12px] text-[#4a5a4a] font-black uppercase px-1">
                     <span> {CLASS_DATA[activeCharacter.class].hp} +con </span>
                     <span> {CLASS_DATA[activeCharacter.class].primaryAttr}</span>
                   </div>
                 )}
               </div>
               <div>
-                <label className="text-[8px] text-[#4a5a4a] font-black uppercase">Nível</label>
+                <label className="text-[12px] text-[#4a5a4a] font-black uppercase">Nível</label>
                 <input
                   type="number"
                   min={1}
                   max={20}
                   value={activeCharacter.level ?? 1}
                   onChange={(e) => updateCharacter('level', Math.min(20, Math.max(1, Number(e.target.value) || 1)))}
-                  className="w-full bg-black/40 border border-[#1a2a1a] p-1.5 text-xs rounded text-[#00ff66] font-bold text-center"
+                  className="w-full bg-black/40 border border-[#1a2a1a] p-1.5 text-base rounded text-[#00ff66] font-bold text-center"
                 />
               </div>
               <div>
-                <label className="text-[8px] text-[#4a5a4a] font-black uppercase">XP</label>
+                <label className="text-[12px] text-[#4a5a4a] font-black uppercase">XP</label>
                 <input
                   type="number"
                   value={activeCharacter.experiencePoints ?? 0}
                   onChange={(e) => updateCharacter('experiencePoints', Number(e.target.value) || 0)}
-                  className="w-full bg-black/40 border border-[#1a2a1a] p-1.5 text-xs rounded text-[#f1e5ac] text-center"
+                  className="w-full bg-black/40 border border-[#1a2a1a] p-1.5 text-base rounded text-[#f1e5ac] text-center"
                 />
               </div>
               <div>
-                <label className="text-[8px] text-[#4a5a4a] font-black uppercase">Alinhamento</label>
+                <label className="text-[12px] text-[#4a5a4a] font-black uppercase">Alinhamento</label>
                 <input
                   value={activeCharacter.alignment ?? ''}
                   onChange={(e) => updateCharacter('alignment', e.target.value)}
-                  className="w-full bg-black/40 border border-[#1a2a1a] p-1.5 text-xs rounded text-white"
+                  className="w-full bg-black/40 border border-[#1a2a1a] p-1.5 text-base rounded text-white"
                 />
               </div>
               <div className="col-span-2">
-                <label className="text-[8px] text-[#4a5a4a] font-black uppercase">Antecedente</label>
+                <label className="text-[12px] text-[#4a5a4a] font-black uppercase">Antecedente</label>
                 <input
                   value={activeCharacter.background ?? ''}
                   onChange={(e) => updateCharacter('background', e.target.value)}
-                  className="w-full bg-black/40 border border-[#1a2a1a] p-1.5 text-xs rounded text-white"
+                  className="w-full bg-black/40 border border-[#1a2a1a] p-1.5 text-base rounded text-white"
                 />
               </div>
             </div>
@@ -514,12 +514,12 @@ export default function PersonagensPage() {
                   onChange={(e) => updateCharacter('ac', Number(e.target.value) || 0)}
                   className="w-full bg-transparent text-2xl font-black outline-none text-center"
                 />
-                <span className="text-[8px] text-[#4a5a4a] font-black uppercase">Classe de Armadura</span>
+                <span className="text-[12px] text-[#4a5a4a] font-black uppercase">Classe de Armadura</span>
               </div>
               <div className="bg-[#0a150a] border-2 border-[#1a2a1a] rounded-xl p-3 text-center">
                 <Zap className="mx-auto text-[#f1e5ac] mb-1" size={18} />
                 <div className="text-2xl font-black">{getModifier(getTotalStat('dex', activeCharacter.stats.dex))}</div>
-                <span className="text-[8px] text-[#4a5a4a] font-black uppercase">Iniciativa</span>
+                <span className="text-[12px] text-[#4a5a4a] font-black uppercase">Iniciativa</span>
               </div>
             </div>
 
@@ -528,21 +528,21 @@ export default function PersonagensPage() {
               <HealthBar current={activeCharacter.hp_current ?? 0} max={activeCharacter.hp_max ?? 1} />
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="text-[8px] text-[#4a5a4a] font-black uppercase">HP Atual</label>
+                  <label className="text-[12px] text-[#4a5a4a] font-black uppercase">HP Atual</label>
                   <input
                     type="number"
                     value={activeCharacter.hp_current ?? 0}
                     onChange={(e) => updateCharacter('hp_current', Number(e.target.value) || 0)}
-                    className="w-full bg-black/40 border border-[#1a2a1a] p-1.5 text-xs rounded text-[#00ff66] font-bold text-center outline-none"
+                    className="w-full bg-black/40 border border-[#1a2a1a] p-1.5 text-base rounded text-[#00ff66] font-bold text-center outline-none"
                   />
                 </div>
                 <div>
-                  <label className="text-[8px] text-[#4a5a4a] font-black uppercase">HP Máximo</label>
+                  <label className="text-[12px] text-[#4a5a4a] font-black uppercase">HP Máximo</label>
                   <input
                     type="number"
                     value={activeCharacter.hp_max ?? 0}
                     onChange={(e) => updateCharacter('hp_max', Number(e.target.value) || 0)}
-                    className="w-full bg-black/40 border border-[#1a2a1a] p-1.5 text-xs rounded text-white text-center outline-none"
+                    className="w-full bg-black/40 border border-[#1a2a1a] p-1.5 text-base rounded text-white text-center outline-none"
                   />
                 </div>
               </div>
@@ -559,7 +559,7 @@ export default function PersonagensPage() {
                 const mod = getModifier(totalVal);
                 return (
                   <div key={s} className="bg-black border border-[#1a2a1a] rounded-xl p-3 text-center">
-                    <span className="text-[9px] text-[#4a5a4a] font-black uppercase">{statLabels[s]}</span>
+                    <span className="text-[13px] text-[#4a5a4a] font-black uppercase">{statLabels[s]}</span>
                     <input
                       type="number"
                       min={0}
@@ -568,7 +568,7 @@ export default function PersonagensPage() {
                       onChange={(e) => updateCharacter('stats', { ...activeCharacter.stats, [s]: Math.min(20, Math.max(0, Number(e.target.value) || 0)) })}
                       className="w-full bg-transparent text-center text-xl font-black outline-none text-white"
                     />
-                    <div className="text-[#00ff66] text-xs font-black mt-1">
+                    <div className="text-[#00ff66] text-base font-black mt-1">
                       {mod >= 0 ? '+' : ''}{mod}
                     </div>
                   </div>
@@ -578,7 +578,7 @@ export default function PersonagensPage() {
 
             {/* Salvaguardas */}
             <div className="bg-black/40 border border-[#1a2a1a] p-4 rounded-xl">
-              <h3 className="text-[9px] text-[#4a5a4a] font-black uppercase mb-3 flex items-center gap-2">
+              <h3 className="text-[13px] text-[#4a5a4a] font-black uppercase mb-3 flex items-center gap-2">
                 <ShieldAlert size={12} /> Salvaguardas
               </h3>
               <div className="grid grid-cols-2 gap-x-6 gap-y-2">
@@ -596,9 +596,9 @@ export default function PersonagensPage() {
                         }
                         className="accent-[#00ff66] w-3 h-3"
                       />
-                      <span className="text-[10px] uppercase text-gray-300">{s}</span>
+                      <span className="text-[14px] uppercase text-gray-300">{s}</span>
                     </div>
-                    <span className="text-[10px] font-black text-[#00ff66]">
+                    <span className="text-[14px] font-black text-[#00ff66]">
                       {(getModifier(getTotalStat(s, activeCharacter.stats[s])) +
                         (activeCharacter.savingThrows[s] ? activeCharacter.proficiencyBonus : 0)) >= 0 ? '+' : ''}
                       {getModifier(getTotalStat(s, activeCharacter.stats[s])) +
@@ -611,7 +611,7 @@ export default function PersonagensPage() {
 
             {/* Magias e Habilidades */}
             <div className="bg-[#050a05] border border-[#1a2a1a] p-5 rounded-xl">
-              <h3 className="text-[#f1e5ac] text-[10px] font-black uppercase mb-4 flex items-center gap-2">
+              <h3 className="text-[#f1e5ac] text-[14px] font-black uppercase mb-4 flex items-center gap-2">
                 <Sparkles size={14} /> Magias & Habilidades
               </h3>
               <div className="max-h-[200px] overflow-y-auto space-y-2 mb-4 pr-2">
@@ -622,8 +622,8 @@ export default function PersonagensPage() {
                     key={trait}
                     className="bg-[#0a1a0a] p-2 rounded border border-[#1a2a1a]/60 flex justify-between items-center"
                   >
-                    <span className="text-[10px] uppercase font-bold text-[#4a7a4a]">{trait}</span>
-                    <span className="text-[8px] text-[#2a4a2a] font-black uppercase">Raça</span>
+                    <span className="text-[14px] uppercase font-bold text-[#4a7a4a]">{trait}</span>
+                    <span className="text-[12px] text-[#2a4a2a] font-black uppercase">Raça</span>
                   </div>
                 ))}
 
@@ -638,7 +638,7 @@ export default function PersonagensPage() {
                     key={spell.id}
                     className="bg-black/60 p-2 rounded border border-[#1a2a1a] flex justify-between items-center group"
                   >
-                    <span className="text-[10px] uppercase font-bold text-gray-300">{spell.name}</span>
+                    <span className="text-[14px] uppercase font-bold text-gray-300">{spell.name}</span>
                     <button
                       onClick={() => updateCharacter('spells', activeCharacter.spells.filter((s: { id: number }) => s.id !== spell.id))}
                       className="text-red-900 group-hover:text-red-500"
@@ -653,7 +653,7 @@ export default function PersonagensPage() {
                   value={newSpellName}
                   onChange={(e) => setNewSpellName(e.target.value)}
                   placeholder="Nova habilidade..."
-                  className="flex-1 bg-black border border-[#1a2a1a] rounded p-2 text-xs text-white"
+                  className="flex-1 bg-black border border-[#1a2a1a] rounded p-2 text-base text-white"
                 />
                 <button
                   onClick={() => {
@@ -670,13 +670,13 @@ export default function PersonagensPage() {
 
             {/* Inventário */}
             <div className="bg-[#050a05] border border-[#1a2a1a] p-4 rounded-xl">
-              <h3 className="text-[#00ff66] text-[10px] font-black uppercase mb-2 flex items-center gap-2">
+              <h3 className="text-[#00ff66] text-[14px] font-black uppercase mb-2 flex items-center gap-2">
                 <Box size={14} /> Inventário
               </h3>
               <div className="max-h-[150px] overflow-y-auto space-y-1 mb-2 pr-1">
                 {activeCharacter.inventory?.map((item: any) => (
                   <div key={item.id} className="flex justify-between items-center bg-black/40 p-1.5 rounded border border-[#1a2a1a]">
-                    <span className="text-[9px] uppercase text-gray-400">{item.name}</span>
+                    <span className="text-[13px] uppercase text-gray-400">{item.name}</span>
                     <button
                       onClick={() =>
                         updateCharacter('inventory', activeCharacter.inventory.filter((i: { id: number }) => i.id !== item.id))
@@ -693,7 +693,7 @@ export default function PersonagensPage() {
                   value={newItem}
                   onChange={(e) => setNewItem(e.target.value)}
                   placeholder="Novo item..."
-                  className="flex-1 bg-black border border-[#1a2a1a] rounded p-1 text-[10px]"
+                  className="flex-1 bg-black border border-[#1a2a1a] rounded p-1 text-[14px]"
                 />
                 <button
                   onClick={() => {
@@ -701,7 +701,7 @@ export default function PersonagensPage() {
                     updateCharacter('inventory', [...activeCharacter.inventory, { id: Date.now(), name: newItem }]);
                     setNewItem('');
                   }}
-                  className="bg-[#1a2a1a] px-2 rounded text-[#00ff66] text-xs"
+                  className="bg-[#1a2a1a] px-2 rounded text-[#00ff66] text-base"
                 >
                   +
                 </button>
@@ -712,7 +712,7 @@ export default function PersonagensPage() {
           {/* COLUNA 3 - col-span-3 — PERÍCIAS */}
           <div className="lg:col-span-3">
             <div className="bg-black border border-[#1a2a1a] p-4 rounded-xl h-full">
-              <h3 className="text-[#f1e5ac] text-[10px] font-black uppercase mb-4 text-center">Perícias</h3>
+              <h3 className="text-[#f1e5ac] text-[14px] font-black uppercase mb-4 text-center">Perícias</h3>
               <div className="space-y-1 overflow-y-auto pr-2">
                 {Object.entries(skillsData).map(([key, info]) => {
                   const mod = getModifier(getTotalStat(info.attr, activeCharacter.stats[info.attr]));
@@ -734,9 +734,9 @@ export default function PersonagensPage() {
                           }
                           className="accent-[#00ff66] w-3 h-3"
                         />
-                        <span className="text-[9px] uppercase text-gray-300">{info.name} <span className="text-gray-500">({info.attr})</span></span>
+                        <span className="text-[13px] uppercase text-gray-300">{info.name} <span className="text-gray-500">({info.attr})</span></span>
                       </div>
-                      <span className="text-[10px] font-black text-[#00ff66]">{total >= 0 ? '+' : ''}{total}</span>
+                      <span className="text-[14px] font-black text-[#00ff66]">{total >= 0 ? '+' : ''}{total}</span>
                     </div>
                   );
                 })}
@@ -752,7 +752,7 @@ export default function PersonagensPage() {
             onClick={(e) => e.target === e.currentTarget && setEditingCharacterImg(false)}
           >
             <div className="bg-[#0a120a] border border-[#1a2a1a] rounded-2xl p-6 w-96 space-y-4 shadow-[0_0_40px_rgba(0,0,0,0.8)]">
-              <h3 className="text-[#f1e5ac] text-xs font-black uppercase text-center tracking-widest">Imagem do Personagem</h3>
+              <h3 className="text-[#f1e5ac] text-base font-black uppercase text-center tracking-widest">Imagem do Personagem</h3>
 
               {/* Preview */}
               {(tempCharacterImg || activeCharacter.img) && (
@@ -767,12 +767,12 @@ export default function PersonagensPage() {
 
               {/* Upload */}
               <div>
-                <label className="block text-[#4a5a4a] text-[10px] font-black uppercase tracking-widest mb-1">Ou faça upload</label>
+                <label className="block text-[#4a5a4a] text-[14px] font-black uppercase tracking-widest mb-1">Ou faça upload</label>
                 <input
                   type="file"
                   accept="image/*"
                   onChange={handleCharacterImageFileChange}
-                  className="w-full bg-black border border-[#1a2a1a] rounded-lg py-2 px-3 text-white text-xs focus:outline-none focus:border-[#00ff66] file:mr-3 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:font-black file:bg-[#00ff66] file:text-black cursor-pointer"
+                  className="w-full bg-black border border-[#1a2a1a] rounded-lg py-2 px-3 text-white text-base focus:outline-none focus:border-[#00ff66] file:mr-3 file:py-1 file:px-3 file:rounded file:border-0 file:text-base file:font-black file:bg-[#00ff66] file:text-black cursor-pointer"
                 />
               </div>
 
@@ -780,7 +780,7 @@ export default function PersonagensPage() {
               <button
                 type="button"
                 onClick={() => setShowFramingSliders((v) => !v)}
-                className="w-full border border-[#1a2a1a] text-[#4a5a4a] hover:text-[#00ff66] hover:border-[#00ff66]/40 text-[10px] font-black uppercase py-2 rounded-lg transition-all flex items-center justify-center gap-2"
+                className="w-full border border-[#1a2a1a] text-[#4a5a4a] hover:text-[#00ff66] hover:border-[#00ff66]/40 text-[14px] font-black uppercase py-2 rounded-lg transition-all flex items-center justify-center gap-2"
               >
                 {showFramingSliders ? '▲ Ocultar enquadramento' : '▼ Ajustar enquadramento'}
               </button>
@@ -789,11 +789,11 @@ export default function PersonagensPage() {
               {showFramingSliders && (
                 <div className="space-y-3 border border-[#1a2a1a] rounded-xl p-3">
                   <div>
-                    <label className="block text-[#4a5a4a] text-[10px] font-black uppercase tracking-widest mb-1">Horizontal ({tempOffsetX}%)</label>
+                    <label className="block text-[#4a5a4a] text-[14px] font-black uppercase tracking-widest mb-1">Horizontal ({tempOffsetX}%)</label>
                     <input type="range" min={0} max={100} value={tempOffsetX} onChange={(e) => setTempOffsetX(Number(e.target.value))} className="w-full accent-[#00ff66] cursor-pointer" />
                   </div>
                   <div>
-                    <label className="block text-[#4a5a4a] text-[10px] font-black uppercase tracking-widest mb-1">Vertical ({tempOffsetY}%)</label>
+                    <label className="block text-[#4a5a4a] text-[14px] font-black uppercase tracking-widest mb-1">Vertical ({tempOffsetY}%)</label>
                     <input type="range" min={0} max={100} value={tempOffsetY} onChange={(e) => setTempOffsetY(Number(e.target.value))} className="w-full accent-[#00ff66] cursor-pointer" />
                   </div>
                 </div>
@@ -803,7 +803,7 @@ export default function PersonagensPage() {
               <div className="flex gap-2 pt-1">
                 <button
                   onClick={() => setEditingCharacterImg(false)}
-                  className="flex-1 border border-[#1a2a1a] text-[#4a5a4a] text-[10px] font-black uppercase py-2 rounded-lg hover:border-[#00ff66]/40 transition-all"
+                  className="flex-1 border border-[#1a2a1a] text-[#4a5a4a] text-[14px] font-black uppercase py-2 rounded-lg hover:border-[#00ff66]/40 transition-all"
                 >
                   Cancelar
                 </button>
@@ -814,7 +814,7 @@ export default function PersonagensPage() {
                     setEditingCharacterImg(false);
                     await saveToDatabase(updated);
                   }}
-                  className="flex-1 bg-[#00ff66] text-black text-[10px] font-black uppercase py-2 rounded-lg hover:brightness-110 transition-all"
+                  className="flex-1 bg-[#00ff66] text-black text-[14px] font-black uppercase py-2 rounded-lg hover:brightness-110 transition-all"
                 >
                   Salvar
                 </button>
@@ -839,13 +839,13 @@ export default function PersonagensPage() {
             <h2 className="text-[#f1e5ac] text-2xl font-serif mb-10 tracking-[0.2em] uppercase italic">Grimório de Heróis</h2>
             <div className="space-y-6">
               <div className="flex justify-between items-center">
-                <h3 className="text-[#4a5a4a] text-xs font-black uppercase tracking-[0.2em]">Personagens: {characters.length}</h3>
-                <button onClick={createCharacter} className="flex items-center gap-2 bg-[#00ff66] text-black px-4 py-2 rounded-lg text-[10px] font-black uppercase hover:brightness-110 transition-all">
+                <h3 className="text-[#4a5a4a] text-base font-black uppercase tracking-[0.2em]">Personagens: {characters.length}</h3>
+                <button onClick={createCharacter} className="flex items-center gap-2 bg-[#00ff66] text-black px-4 py-2 rounded-lg text-[14px] font-black uppercase hover:brightness-110 transition-all">
                   <Plus size={14} /> Criar Novo
                 </button>
               </div>
               {characters.length === 0 ? (
-                <div className="text-center text-[#8a9a8a] text-sm py-20 border border-dashed border-[#1a2a1a] rounded-2xl">Nenhum personagem encontrado na taverna.</div>
+                <div className="text-center text-[#8a9a8a] text-base py-20 border border-dashed border-[#1a2a1a] rounded-2xl">Nenhum personagem encontrado na taverna.</div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {characters.map((char) => (
@@ -874,15 +874,15 @@ export default function PersonagensPage() {
       {confirmDeleteId !== null && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80">
           <div className="bg-[#0a120a] border border-[#1a2a1a] rounded-2xl p-6 w-80 flex flex-col gap-5">
-            <h3 className="text-white text-xs font-black uppercase text-center tracking-widest">Excluir personagem?</h3>
-            <p className="text-[#4a5a4a] text-[10px] text-center uppercase">Esta ação não pode ser desfeita.</p>
+            <h3 className="text-white text-base font-black uppercase text-center tracking-widest">Excluir personagem?</h3>
+            <p className="text-[#4a5a4a] text-[14px] text-center uppercase">Esta ação não pode ser desfeita.</p>
             <div className="flex gap-2">
               <button type="button" onClick={() => setConfirmDeleteId(null)}
-                className="flex-1 border border-[#1a2a1a] text-[#4a5a4a] text-[10px] font-black uppercase py-2 rounded-lg">
+                className="flex-1 border border-[#1a2a1a] text-[#4a5a4a] text-[14px] font-black uppercase py-2 rounded-lg">
                 Cancelar
               </button>
               <button type="button" onClick={() => deleteCharacter(confirmDeleteId)}
-                className="flex-1 bg-red-600 text-white text-[10px] font-black uppercase py-2 rounded-lg">
+                className="flex-1 bg-red-600 text-white text-[14px] font-black uppercase py-2 rounded-lg">
                 Excluir
               </button>
             </div>
