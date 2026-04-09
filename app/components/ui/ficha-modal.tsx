@@ -296,9 +296,9 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
     if (!isOpen) return null;
 
     // ── estilos comuns ────────────────────────────────────────────────────────
-    const inputCls = "w-full bg-black/40 border border-[#1a2a1a] px-2 py-1 text-[10px] rounded text-white outline-none focus:border-[#00ff66]/50 transition-colors";
-    const selectCls = "w-full bg-[#050a05] border border-[#1a2a1a] px-2 py-1 text-[10px] rounded text-white outline-none focus:border-[#00ff66]/50 transition-colors cursor-pointer";
-    const numInputCls = "w-full bg-black/40 border border-[#1a2a1a] px-2 py-1 text-[10px] rounded text-[#00ff66] font-bold text-center outline-none focus:border-[#00ff66]/50 transition-colors";
+    const inputCls = "w-full bg-black/40 border border-[#1a2a1a] px-2 py-1 text-[14px] rounded text-white outline-none focus:border-[#00ff66]/50 transition-colors";
+    const selectCls = "w-full bg-[#050a05] border border-[#1a2a1a] px-2 py-1 text-[14px] rounded text-white outline-none focus:border-[#00ff66]/50 transition-colors cursor-pointer";
+    const numInputCls = "w-full bg-black/40 border border-[#1a2a1a] px-2 py-1 text-[14px] rounded text-[#00ff66] font-bold text-center outline-none focus:border-[#00ff66]/50 transition-colors";
 
     // ── Barra de vida ─────────────────────────────────────────────────────────
     const HealthBar = ({ current, max }: { current: number; max: number }) => {
@@ -306,7 +306,7 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
         const color = pct > 50 ? 'bg-[#00ff66]' : pct > 20 ? 'bg-yellow-500' : 'bg-red-600';
         return (
             <div className="w-full">
-                <div className="flex justify-between text-[10px] font-black uppercase mb-1 text-[#4a5a4a]">
+                <div className="flex justify-between text-[14px] font-black uppercase mb-1 text-[#4a5a4a]">
                     <span>Pontos de Vida</span>
                     <span>{current} / {max}</span>
                 </div>
@@ -326,10 +326,10 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
                 <div className="flex-1 overflow-y-auto px-6 py-8">
 
                     {loading && (
-                        <div className="text-center text-[#8a9a8a] text-sm py-20">Carregando ficha...</div>
+                        <div className="text-center text-[#8a9a8a] text-base py-20">Carregando ficha...</div>
                     )}
                     {!loading && !draft && (
-                        <div className="text-center text-red-400 text-sm py-20">Não foi possível carregar a ficha.</div>
+                        <div className="text-center text-red-400 text-base py-20">Não foi possível carregar a ficha.</div>
                     )}
 
                     {!loading && draft && (() => {
@@ -340,22 +340,22 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
                                 <div className="flex justify-between items-center mb-6">
                                     <button
                                         onClick={onClose}
-                                        className="flex items-center gap-2 text-[#4a5a4a] hover:text-[#00ff66] text-xs font-black transition-colors"
+                                        className="flex items-center gap-2 text-[#4a5a4a] hover:text-[#00ff66] text-base font-black transition-colors"
                                     >
                                         <ArrowLeft size={14} /> FECHAR
                                     </button>
-                                    <span className="text-[#f1e5ac] text-xs font-serif tracking-widest uppercase italic opacity-60">
+                                    <span className="text-[#f1e5ac] text-base font-serif tracking-widest uppercase italic opacity-60">
                                         Ficha — {draft.name}
                                     </span>
                                     {readOnly ? (
-                                        <span className="text-[10px] font-black uppercase tracking-widest text-[#4a5a4a] border border-[#1a2a1a] px-3 py-1.5 rounded-lg">
+                                        <span className="text-[14px] font-black uppercase tracking-widest text-[#4a5a4a] border border-[#1a2a1a] px-3 py-1.5 rounded-lg">
                                             Apenas visualização
                                         </span>
                                     ) : (
                                         <button
                                             onClick={saveCharacter}
                                             disabled={saving}
-                                            className={`flex items-center gap-2 text-xs font-black uppercase px-4 py-1.5 rounded-lg transition-all ${
+                                            className={`flex items-center gap-2 text-base font-black uppercase px-4 py-1.5 rounded-lg transition-all ${
                                                 saveSuccess
                                                     ? 'bg-[#00ff66]/20 text-[#00ff66] border border-[#00ff66]/40'
                                                     : 'bg-[#00ff66] text-black hover:brightness-110'
@@ -368,7 +368,7 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
                                 </div>
 
                                 {/* Layout: 2 colunas */}
-                                <div className={`grid grid-cols-1 lg:grid-cols-2 gap-5 ${readOnly ? 'pointer-events-none select-none' : ''}`}>
+                                <div className={`grid grid-cols-2 gap-5 ${readOnly ? 'pointer-events-none select-none' : ''}`}>
 
                                     {/* ── COLUNA 1 ─────────────────────────── */}
                                     <div className="space-y-3">
@@ -384,7 +384,7 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
                                                 onClick={openFraming}
                                             >
                                                 <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/50 rounded-xl">
-                                                    <span className="text-[8px] text-white font-black uppercase tracking-widest text-center px-2">Ajustar enquadramento</span>
+                                                    <span className="text-[14px] text-white font-black uppercase tracking-widest text-center px-2">Ajustar enquadramento</span>
                                                 </div>
                                             </div>
                                         </div>
@@ -393,7 +393,7 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
                                         {framingOpen && (
                                             <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80" onClick={(e) => e.target === e.currentTarget && setFramingOpen(false)}>
                                                 <div className="bg-[#0a120a] border border-[#1a2a1a] rounded-2xl p-6 w-80 space-y-5 shadow-[0_0_40px_rgba(0,0,0,0.8)]">
-                                                    <h3 className="text-[#f1e5ac] text-xs font-black uppercase text-center tracking-widest">Enquadramento</h3>
+                                                    <h3 className="text-[#f1e5ac] text-base font-black uppercase text-center tracking-widest">Enquadramento</h3>
                                                     <div
                                                         className="w-full h-40 rounded-xl bg-cover border border-[#1a2a1a] mx-auto"
                                                         style={{
@@ -402,16 +402,16 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
                                                         }}
                                                     />
                                                     <div>
-                                                        <label className="block text-[#4a5a4a] text-[10px] font-black uppercase tracking-widest mb-2">Horizontal ({tempOffsetX}%)</label>
+                                                        <label className="block text-[#4a5a4a] text-[14px] font-black uppercase tracking-widest mb-2">Horizontal ({tempOffsetX}%)</label>
                                                         <input type="range" min={0} max={100} value={tempOffsetX} onChange={(e) => setTempOffsetX(Number(e.target.value))} className="w-full accent-[#00ff66] cursor-pointer" />
                                                     </div>
                                                     <div>
-                                                        <label className="block text-[#4a5a4a] text-[10px] font-black uppercase tracking-widest mb-2">Vertical ({tempOffsetY}%)</label>
+                                                        <label className="block text-[#4a5a4a] text-[14px] font-black uppercase tracking-widest mb-2">Vertical ({tempOffsetY}%)</label>
                                                         <input type="range" min={0} max={100} value={tempOffsetY} onChange={(e) => setTempOffsetY(Number(e.target.value))} className="w-full accent-[#00ff66] cursor-pointer" />
                                                     </div>
                                                     <div className="flex gap-2">
-                                                        <button onClick={() => setFramingOpen(false)} className="flex-1 border border-[#1a2a1a] text-[#4a5a4a] text-[10px] font-black uppercase py-2 rounded-lg hover:border-[#00ff66]/40 transition-all">Cancelar</button>
-                                                        <button onClick={saveFraming} disabled={savingFrame} className="flex-1 bg-[#00ff66] text-black text-[10px] font-black uppercase py-2 rounded-lg hover:brightness-110 transition-all disabled:opacity-50">{savingFrame ? 'Salvando...' : 'Salvar'}</button>
+                                                        <button onClick={() => setFramingOpen(false)} className="flex-1 border border-[#1a2a1a] text-[#4a5a4a] text-[14px] font-black uppercase py-2 rounded-lg hover:border-[#00ff66]/40 transition-all">Cancelar</button>
+                                                        <button onClick={saveFraming} disabled={savingFrame} className="flex-1 bg-[#00ff66] text-black text-[14px] font-black uppercase py-2 rounded-lg hover:brightness-110 transition-all disabled:opacity-50">{savingFrame ? 'Salvando...' : 'Salvar'}</button>
                                                     </div>
                                                 </div>
                                             </div>
@@ -420,50 +420,50 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
                                         {/* Infos Básicas */}
                                         <div className="bg-black/60 border border-[#1a2a1a] p-2 rounded-xl grid grid-cols-2 gap-1.5">
                                             <div className="col-span-2">
-                                                <label className="text-[7px] text-[#4a5a4a] font-black uppercase">Nome</label>
+                                                <label className="text-[14px] text-[#4a5a4a] font-black uppercase">Nome</label>
                                                 <input className={inputCls + " text-center"} value={draft.name} onChange={(e) => updateDraft('name', e.target.value)} />
                                             </div>
                                             <div className="col-span-2">
-                                                <label className="text-[7px] text-[#4a5a4a] font-black uppercase">Raça</label>
+                                                <label className="text-[14px] text-[#4a5a4a] font-black uppercase">Raça</label>
                                                 <select className={selectCls} value={draft.race} onChange={(e) => updateDraft('race', e.target.value)}>
                                                     {Object.keys(RACE_DATA).map(r => <option key={r} value={r}>{r}</option>)}
                                                 </select>
                                             </div>
                                             <div className="col-span-2">
-                                                <label className="text-[7px] text-[#4a5a4a] font-black uppercase">Classe</label>
+                                                <label className="text-[14px] text-[#4a5a4a] font-black uppercase">Classe</label>
                                                 <select className={selectCls} value={draft.class} onChange={(e) => updateDraft('class', e.target.value)}>
                                                     {Object.keys(CLASS_DATA).map(c => <option key={c} value={c}>{c}</option>)}
                                                 </select>
                                                 {CLASS_DATA[draft.class] && (
-                                                    <div className="mt-0.5 flex justify-between text-[7px] text-[#4a5a4a] font-black uppercase px-1">
+                                                    <div className="mt-0.5 flex justify-between text-[14px] text-[#4a5a4a] font-black uppercase px-1">
                                                         <span>{CLASS_DATA[draft.class].hp} +con</span>
                                                         <span>{CLASS_DATA[draft.class].primaryAttr}</span>
                                                     </div>
                                                 )}
                                             </div>
                                             <div>
-                                                <label className="text-[7px] text-[#4a5a4a] font-black uppercase">Nível</label>
+                                                <label className="text-[14px] text-[#4a5a4a] font-black uppercase">Nível</label>
                                                 <input type="number" min={1} max={20} className={numInputCls} value={draft.level ?? 1} onChange={(e) => updateDraft('level', Number(e.target.value))} />
                                             </div>
                                             <div>
-                                                <label className="text-[7px] text-[#4a5a4a] font-black uppercase">XP</label>
+                                                <label className="text-[14px] text-[#4a5a4a] font-black uppercase">XP</label>
                                                 <input type="number" min={0} className={inputCls + " text-[#f1e5ac] text-center"} value={draft.experiencePoints ?? 0} onChange={(e) => updateDraft('experiencePoints', Number(e.target.value))} />
                                             </div>
                                             <div>
-                                                <label className="text-[7px] text-[#4a5a4a] font-black uppercase">Alinhamento</label>
+                                                <label className="text-[14px] text-[#4a5a4a] font-black uppercase">Alinhamento</label>
                                                 <input className={inputCls} value={draft.alignment || ''} onChange={(e) => updateDraft('alignment', e.target.value)} />
                                             </div>
                                             <div>
-                                                <label className="text-[7px] text-[#4a5a4a] font-black uppercase">Antecedente</label>
+                                                <label className="text-[14px] text-[#4a5a4a] font-black uppercase">Antecedente</label>
                                                 <input className={inputCls} value={draft.background || ''} onChange={(e) => updateDraft('background', e.target.value)} />
                                             </div>
                                             <div>
-                                                <label className="text-[7px] text-[#4a5a4a] font-black uppercase">Bônus Prof.</label>
+                                                <label className="text-[14px] text-[#4a5a4a] font-black uppercase">Bônus Prof.</label>
                                                 <input type="number" min={2} max={6} className={numInputCls} value={draft.proficiencyBonus ?? 2} onChange={(e) => updateDraft('proficiencyBonus', Number(e.target.value))} />
                                             </div>
                                             <div className="flex items-center gap-2 col-span-2 mt-1">
                                                 <input type="checkbox" id="inspiration" checked={!!draft.inspiration} onChange={(e) => updateDraft('inspiration', e.target.checked)} className="accent-[#00ff66] w-3 h-3 cursor-pointer" />
-                                                <label htmlFor="inspiration" className="text-[9px] text-[#4a5a4a] font-black uppercase cursor-pointer">Inspiração</label>
+                                                <label htmlFor="inspiration" className="text-[13px] text-[#4a5a4a] font-black uppercase cursor-pointer">Inspiração</label>
                                             </div>
                                         </div>
 
@@ -471,15 +471,15 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
                                         <div className="grid grid-cols-2 gap-3">
                                             <div className="bg-[#0a150a] border-2 border-[#1a2a1a] rounded-xl p-3 text-center">
                                                 <Shield className="mx-auto text-[#00ff66] mb-1" size={16} />
-                                                <input type="number" min={0} className="w-full bg-transparent text-xl font-black text-white text-center outline-none border-b border-[#1a2a1a] focus:border-[#00ff66]/50" value={draft.ac ?? 10} onChange={(e) => updateDraft('ac', Number(e.target.value))} />
-                                                <span className="text-[7px] text-[#4a5a4a] font-black uppercase">Armadura</span>
+                                                <input type="number" min={0} className="w-full bg-transparent text-2xl font-black text-white text-center outline-none border-b border-[#1a2a1a] focus:border-[#00ff66]/50" value={draft.ac ?? 10} onChange={(e) => updateDraft('ac', Number(e.target.value))} />
+                                                <span className="text-[14px] text-[#4a5a4a] font-black uppercase">Armadura</span>
                                             </div>
                                             <div className="bg-[#0a150a] border-2 border-[#1a2a1a] rounded-xl p-3 text-center">
                                                 <Zap className="mx-auto text-[#f1e5ac] mb-1" size={16} />
-                                                <div className="text-xl font-black text-white">
+                                                <div className="text-2xl font-black text-white">
                                                     {fmtMod(getModifier(getTotalStat('dex', draft.stats.dex, draft.race)))}
                                                 </div>
-                                                <span className="text-[7px] text-[#4a5a4a] font-black uppercase">Iniciativa</span>
+                                                <span className="text-[14px] text-[#4a5a4a] font-black uppercase">Iniciativa</span>
                                             </div>
                                         </div>
 
@@ -488,11 +488,11 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
                                             <HealthBar current={draft.hp_current} max={draft.hp_max} />
                                             <div className="grid grid-cols-2 gap-2">
                                                 <div>
-                                                    <label className="text-[7px] text-[#4a5a4a] font-black uppercase">HP Atual</label>
+                                                    <label className="text-[14px] text-[#4a5a4a] font-black uppercase">HP Atual</label>
                                                     <input type="number" className={numInputCls} value={draft.hp_current ?? 0} onChange={(e) => updateDraft('hp_current', Number(e.target.value))} />
                                                 </div>
                                                 <div>
-                                                    <label className="text-[7px] text-[#4a5a4a] font-black uppercase">HP Máx</label>
+                                                    <label className="text-[14px] text-[#4a5a4a] font-black uppercase">HP Máx</label>
                                                     <input type="number" className={numInputCls + " text-white"} value={draft.hp_max ?? 0} onChange={(e) => updateDraft('hp_max', Number(e.target.value))} />
                                                 </div>
                                             </div>
@@ -503,7 +503,7 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
                                     <div className="space-y-3">
 
                                         {/* Atributos */}
-                                        <div className="grid grid-cols-3 gap-2">
+                                        <div className="grid grid-cols-2 gap-2">
                                             {(['str', 'dex', 'con', 'int', 'wis', 'cha'] as const).map((s) => {
                                                 const totalVal = getTotalStat(s, draft.stats[s], draft.race);
                                                 const mod = getModifier(totalVal);
@@ -514,15 +514,15 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
                                                         title={`Rolar ${statLabels[s]}`}
                                                         className="bg-black border border-[#1a2a1a] rounded-xl p-2 text-center group relative cursor-pointer hover:border-[#00ff66]/40 transition-colors"
                                                     >
-                                                        <span className="text-[8px] text-[#4a5a4a] font-black uppercase">{statLabels[s]}</span>
+                                                        <span className="text-[14px] text-[#4a5a4a] font-black uppercase">{statLabels[s]}</span>
                                                         <input
                                                             type="number" min={1} max={30}
-                                                            className="w-full bg-transparent text-lg font-black text-white text-center outline-none my-0.5 border-b border-[#1a2a1a] focus:border-[#00ff66]/50"
+                                                            className="w-full bg-transparent text-xl font-black text-white text-center outline-none my-0.5 border-b border-[#1a2a1a] focus:border-[#00ff66]/50"
                                                             value={draft.stats[s]}
                                                             onClick={(e) => e.stopPropagation()}
                                                             onChange={(e) => updateStat(s, Number(e.target.value))}
                                                         />
-                                                        <div className="text-[#00ff66] text-[10px] font-black">{fmtMod(mod)}</div>
+                                                        <div className="text-[#00ff66] text-[14px] font-black">{fmtMod(mod)}</div>
                                                     </div>
                                                 );
                                             })}
@@ -530,7 +530,7 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
 
                                         {/* Salvaguardas */}
                                         <div className="bg-black/40 border border-[#1a2a1a] p-3 rounded-xl">
-                                            <h3 className="text-[9px] text-[#4a5a4a] font-black uppercase mb-2 flex items-center gap-2">
+                                            <h3 className="text-[13px] text-[#4a5a4a] font-black uppercase mb-2 flex items-center gap-2">
                                                 <ShieldAlert size={11} /> Salvaguardas
                                             </h3>
                                             <div className="grid grid-cols-2 gap-x-4 gap-y-1">
@@ -547,9 +547,9 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
                                                         >
                                                             <div className="flex items-center gap-1.5">
                                                                 <input type="checkbox" checked={!!proficient} onClick={(e) => e.stopPropagation()} onChange={() => toggleSavingThrow(s)} className="accent-[#00ff66] w-3 h-3 cursor-pointer" />
-                                                                <span className="text-[9px] uppercase text-gray-300">{statLabels[s]}</span>
+                                                                <span className="text-[13px] uppercase text-gray-300">{statLabels[s]}</span>
                                                             </div>
-                                                            <span className="text-[9px] font-black text-[#00ff66]">{fmtMod(total)}</span>
+                                                            <span className="text-[13px] font-black text-[#00ff66]">{fmtMod(total)}</span>
                                                         </div>
                                                     );
                                                 })}
@@ -558,20 +558,20 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
 
                                         {/* Magias & Habilidades */}
                                         <div className="bg-[#050a05] border border-[#1a2a1a] p-3 rounded-xl">
-                                            <h3 className="text-[#f1e5ac] text-[9px] font-black uppercase mb-3 flex items-center gap-2">
+                                            <h3 className="text-[#f1e5ac] text-[13px] font-black uppercase mb-3 flex items-center gap-2">
                                                 <Sparkles size={12} /> Magias &amp; Habilidades
                                             </h3>
                                             <div className="max-h-[140px] overflow-y-auto space-y-1.5 pr-1 mb-2">
                                                 {raceInfo?.traits && raceInfo.traits.split(', ').map((trait) => (
                                                     <div key={trait} className="bg-[#0a1a0a] p-1.5 rounded border border-[#1a2a1a]/60 flex justify-between items-center">
-                                                        <span className="text-[9px] uppercase font-bold text-[#4a7a4a]">{trait}</span>
-                                                        <span className="text-[7px] text-[#2a4a2a] font-black uppercase">Raça</span>
+                                                        <span className="text-[13px] uppercase font-bold text-[#4a7a4a]">{trait}</span>
+                                                        <span className="text-[14px] text-[#2a4a2a] font-black uppercase">Raça</span>
                                                     </div>
                                                 ))}
                                                 {raceInfo?.traits && draft.spells?.length > 0 && <div className="border-t border-[#1a2a1a] my-1" />}
                                                 {draft.spells?.map((spell: { id: number; name: string }) => (
                                                     <div key={spell.id} className="bg-black/60 p-1.5 rounded border border-[#1a2a1a] flex justify-between items-center">
-                                                        <span className="text-[9px] uppercase font-bold text-gray-300">{spell.name}</span>
+                                                        <span className="text-[13px] uppercase font-bold text-gray-300">{spell.name}</span>
                                                         <button onClick={() => removeSpell(spell.id)} className="text-red-500/60 hover:text-red-400 transition-colors ml-2 shrink-0"><Trash2 size={10} /></button>
                                                     </div>
                                                 ))}
@@ -584,17 +584,17 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
 
                                         {/* Inventário */}
                                         <div className="bg-[#050a05] border border-[#1a2a1a] p-3 rounded-xl">
-                                            <h3 className="text-[#00ff66] text-[9px] font-black uppercase mb-2 flex items-center gap-2">
+                                            <h3 className="text-[#00ff66] text-[13px] font-black uppercase mb-2 flex items-center gap-2">
                                                 <Box size={12} /> Inventário
                                             </h3>
                                             <div className="max-h-[120px] overflow-y-auto space-y-1 pr-1 mb-2">
                                                 {draft.inventory?.length ? draft.inventory.map((item: { id: number; name: string }) => (
                                                     <div key={item.id} className="flex justify-between items-center bg-black/40 p-1.5 rounded border border-[#1a2a1a]">
-                                                        <span className="text-[9px] uppercase text-gray-400">{item.name}</span>
+                                                        <span className="text-[13px] uppercase text-gray-400">{item.name}</span>
                                                         <button onClick={() => removeInventoryItem(item.id)} className="text-red-500/60 hover:text-red-400 transition-colors ml-2 shrink-0"><Trash2 size={10} /></button>
                                                     </div>
                                                 )) : (
-                                                    <p className="text-[9px] text-[#4a5a4a] py-1 text-center">Inventário vazio.</p>
+                                                    <p className="text-[13px] text-[#4a5a4a] py-1 text-center">Inventário vazio.</p>
                                                 )}
                                             </div>
                                             <div className="flex gap-1">
@@ -608,8 +608,8 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
 
                                 {/* ── Perícias — linha completa ─────────────────────────── */}
                                 <div className={`bg-black border border-[#1a2a1a] p-3 rounded-xl mt-5 ${readOnly ? 'pointer-events-none select-none' : ''}`}>
-                                    <h3 className="text-[#f1e5ac] text-[9px] font-black uppercase mb-3 text-center">Perícias</h3>
-                                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-1">
+                                    <h3 className="text-[#f1e5ac] text-[13px] font-black uppercase mb-3 text-center">Perícias</h3>
+                                    <div className="grid grid-cols-2 gap-1">
                                         {Object.entries(skillsData).map(([key, info]) => {
                                             const mod = getModifier(getTotalStat(info.attr, draft.stats[info.attr], draft.race));
                                             const proficient = draft.skills?.[key];
@@ -623,9 +623,9 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
                                                 >
                                                     <div className="flex items-center gap-1.5 min-w-0">
                                                         <input type="checkbox" checked={!!proficient} onClick={(e) => e.stopPropagation()} onChange={() => toggleSkill(key)} className="accent-[#00ff66] w-3 h-3 cursor-pointer shrink-0" />
-                                                        <span className="text-[9px] uppercase text-gray-300 leading-tight truncate">{info.name}</span>
+                                                        <span className="text-[13px] uppercase text-gray-300 leading-tight truncate">{info.name}</span>
                                                     </div>
-                                                    <span className="text-[9px] font-black text-[#00ff66] ml-1 shrink-0">{fmtMod(total)}</span>
+                                                    <span className="text-[13px] font-black text-[#00ff66] ml-1 shrink-0">{fmtMod(total)}</span>
                                                 </div>
                                             );
                                         })}
