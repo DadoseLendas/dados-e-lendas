@@ -104,7 +104,7 @@ export default function PersonagensPage() {
 
   const [newSpellName, setNewSpellName] = useState('');
   const [newItem, setNewItem] = useState<NewInventoryItem>({ nome: '', tipo: '', ataque: '', dano: '', desc: '' });
-  const [itemExpandido, setItemExpandido] = useState<number | null>(null);
+  const [editingInventoryId, setEditingInventoryId] = useState<number | null>(null);
   const [abaAtiva, setAbaAtiva] = useState<string>('personagens');
 
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -130,33 +130,6 @@ export default function PersonagensPage() {
     if (!message) return null;
     const match = message.match(/Could not find the '([^']+)' column/);
     return match?.[1] ?? null;
-  };
-
-  const rollInventoryFormula = (formula?: string) => {
-    if (!formula) return;
-    const sanitized = formula.replace(/\s+/g, '');
-    const match = sanitized.match(/^(\d+)d(\d+)([+-]\d+)?$/i);
-    if (!match) {
-      alert('Fórmula inválida. Use o formato 1d20+5.');
-      return;
-    }
-
-    const count = Number(match[1]);
-    const sides = Number(match[2]);
-    const bonus = Number(match[3] ?? 0);
-
-    if (count <= 0 || sides <= 0 || count > 20 || sides > 1000) {
-      alert('Fórmula fora do limite permitido.');
-      return;
-    }
-
-    let total = 0;
-    for (let i = 0; i < count; i++) {
-      total += Math.floor(Math.random() * sides) + 1;
-    }
-    total += bonus;
-
-    alert(`${sanitized} = ${total}`);
   };
 
   useEffect(() => {
@@ -261,6 +234,45 @@ export default function PersonagensPage() {
     if (!activeCharacter) return;
     setActiveCharacter({ ...activeCharacter, [field]: value } as Character);
   };
+
+  const resetInventoryForm = () => {
+    setNewItem({ nome: '', tipo: '', ataque: '', dano: '', desc: '' });
+    setEditingInventoryId(null);
+  };
+
+  const startEditingInventoryItem = (item: InventoryItem) => {
+    setEditingInventoryId(item.id);
+    setNewItem({
+      nome: item.nome || item.name || '',
+      tipo: item.tipo || '',
+      ataque: item.ataque || '',
+      dano: item.dano || '',
+      desc: item.desc || '',
+    });
+  };
+
+  const saveInventoryItem = () => {
+    if (!activeCharacter || !newItem.nome.trim()) return;
+
+    const normalizedItem: InventoryItem = {
+      id: editingInventoryId ?? Date.now(),
+      nome: newItem.nome.trim(),
+      name: newItem.nome.trim(),
+      tipo: newItem.tipo.trim(),
+      ataque: newItem.ataque.trim(),
+      dano: newItem.dano.trim(),
+      desc: newItem.desc.trim(),
+    };
+
+    const currentInventory = activeCharacter.inventory ?? [];
+    const nextInventory = editingInventoryId === null
+      ? [...currentInventory, normalizedItem]
+      : currentInventory.map((item) => item.id === editingInventoryId ? normalizedItem : item);
+
+    updateCharacter('inventory', nextInventory);
+    resetInventoryForm();
+  };
+
   const HealthBar = ({ current, max }: { current: number, max: number }) => {
     const percentage = Math.min(Math.max((current / max) * 100, 0), 100);
     const color = percentage > 50 ? 'bg-[#00ff66]' : percentage > 20 ? 'bg-yellow-500' : 'bg-red-600';
@@ -714,165 +726,102 @@ export default function PersonagensPage() {
               </div>
             </div>
 
-            {/* Seção de Inventário e Armas */}
-            <div className="bg-[#050a05] border border-[#1a2a1a] p-4 rounded-xl shadow-2xl">
-              <h3 className="text-[#00ff66] text-[10px] font-black uppercase mb-4 flex items-center gap-2 tracking-[0.2em]">
-                <Box size={14} className="text-[#00ff66]" /> Inventário & Equipamento
+            {/* Inventário - Perfil Normal (Com Fórmulas, sem Rolagem Automática) */}
+            <div className="bg-[#050a05] border border-[#1a2a1a] p-5 rounded-xl shadow-2xl">
+              <h3 className="text-[#f1e5ac] text-[14px] font-black uppercase mb-4 flex items-center gap-2 tracking-wider">
+                <Box size={14} className="text-[#f1e5ac]" /> Inventário & Equipamento
               </h3>
 
-              {/* Lista de Itens/Armas */}
-              <div className="max-h-[300px] overflow-y-auto space-y-2 mb-4 pr-1 scrollbar-thin scrollbar-thumb-[#1a2a1a] scrollbar-track-transparent">
-                {activeCharacter.inventory?.map((item: InventoryItem) => (
+              {/* Lista de Itens - Estilo Magias */}
+              <div className="max-h-[200px] overflow-y-auto space-y-2 mb-4 pr-2 scrollbar-thin scrollbar-thumb-[#1a2a1a]">
+                {activeCharacter.inventory?.map((item: any) => (
                   <div
                     key={item.id}
-                    className="bg-black/60 border border-[#1a2a1a] rounded-lg overflow-hidden transition-all duration-200 hover:border-[#00ff66]/40 group"
+                    className="bg-black/60 p-2 rounded border border-[#1a2a1a] flex justify-between items-center group transition-all hover:border-[#f1e5ac]/20"
                   >
-                    {/* Header do Card (Sempre Visível) */}
-                    <div
-                      onClick={() => setItemExpandido(itemExpandido === item.id ? null : item.id)}
-                      className="p-3 cursor-pointer flex justify-between items-center bg-gradient-to-r from-transparent to-white/[0.02]"
-                    >
-                      <div className="flex flex-col">
-                        <span className="text-[11px] font-bold text-white uppercase tracking-tight group-hover:text-[#00ff66] transition-colors">
-                          {item.nome || item.name || 'Item sem nome'}
-                        </span>
-                        <span className="text-[7px] text-gray-500 uppercase font-black">{item.tipo || 'Utilitário'}</span>
-                      </div>
-
+                    <div className="flex flex-col min-w-0">
                       <div className="flex items-center gap-2">
-                        {/* Botão de Ataque */}
-                        {item.ataque && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              rollInventoryFormula(item.ataque);
-                            }}
-                            className="bg-[#0a1a0a] text-[#00ff66] text-[9px] font-bold px-2.5 py-1 rounded border border-[#00ff66]/20 hover:bg-[#00ff66] hover:text-black transition-all active:scale-90"
-                          >
-                            ATK
-                          </button>
+                        <span className="text-[14px] uppercase font-bold text-gray-300 truncate">
+                          {item.nome || item.name}
+                        </span>
+                        {/* Badges discretos para consulta rápida das fórmulas */}
+                        {(item.ataque || item.dano) && (
+                          <div className="flex gap-1.5 ml-2">
+                            {item.ataque && <span className="text-[8px] text-[#00ff66]/60 font-mono">ATK: {item.ataque}</span>}
+                            {item.dano && <span className="text-[8px] text-red-500/60 font-mono">DANO: {item.dano}</span>}
+                          </div>
                         )}
-
-                        {/* Botão de Dano */}
-                        {item.dano && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              rollInventoryFormula(item.dano);
-                            }}
-                            className="bg-[#1a0a0a] text-red-500 text-[9px] font-bold px-2.5 py-1 rounded border border-red-900/20 hover:bg-red-600 hover:text-white transition-all active:scale-90"
-                          >
-                            DANO
-                          </button>
-                        )}
-
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            updateCharacter('inventory', activeCharacter.inventory.filter((i: InventoryItem) => i.id !== item.id))
-                          }}
-                          className="text-gray-700 hover:text-red-500 p-1 transition-colors"
-                        >
-                          <Trash2 size={12} />
-                        </button>
                       </div>
+                      {item.desc && <span className="text-[10px] text-gray-600 italic truncate max-w-[200px]">{item.desc}</span>}
                     </div>
 
-                    {/* Detalhes Expansíveis (Bio/Descrição) */}
-                    {itemExpandido === item.id && (
-                      <div className="px-3 pb-3 pt-1 border-t border-[#1a2a1a] bg-black/40 animate-in slide-in-from-top-1 duration-200">
-                        <div className="grid grid-cols-2 gap-2 mb-3">
-                          <div className="bg-[#050a05] p-2 rounded border border-[#1a2a1a]">
-                            <p className="text-[7px] text-gray-600 uppercase font-bold">Fórmula ATK</p>
-                            <p className="text-[10px] text-[#00ff66] font-mono">{item.ataque || '---'}</p>
-                          </div>
-                          <div className="bg-[#050a05] p-2 rounded border border-[#1a2a1a]">
-                            <p className="text-[7px] text-gray-600 uppercase font-bold">Fórmula Dano</p>
-                            <p className="text-[10px] text-red-500 font-mono">{item.dano || '---'}</p>
-                          </div>
-                        </div>
-                        <p className="text-[10px] text-gray-400 leading-relaxed font-light italic border-l-2 border-[#1a2a1a] pl-2">
-                          {item.desc || "Nenhuma descrição detalhada."}
-                        </p>
-                      </div>
-                    )}
+                    <button
+                      onClick={() => updateCharacter('inventory', activeCharacter.inventory.filter((i: any) => i.id !== item.id))}
+                      className="text-red-900 group-hover:text-red-500 transition-colors"
+                    >
+                      <Trash2 size={12} />
+                    </button>
                   </div>
                 ))}
               </div>
 
-              {/* Formulário de Criação (Novo Item) */}
-              <div className="mt-4 p-3 bg-black/40 border border-[#1a2a1a] rounded-xl space-y-3">
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="space-y-1">
-                    <label className="text-[7px] text-gray-500 uppercase font-bold ml-1">Nome do Item</label>
-                    <input
-                      placeholder="Ex: Machado de Guerra"
-                      className="w-full bg-black border border-[#1a2a1a] rounded p-2 text-[10px] text-white focus:border-[#00ff66]/50 outline-none transition-all"
-                      value={newItem.nome}
-                      onChange={e => setNewItem({ ...newItem, nome: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[7px] text-gray-500 uppercase font-bold ml-1">Tipo</label>
-                    <input
-                      placeholder="Ex: Arma Marcial"
-                      className="w-full bg-black border border-[#1a2a1a] rounded p-2 text-[10px] text-white focus:border-[#00ff66]/50 outline-none transition-all"
-                      value={newItem.tipo}
-                      onChange={e => setNewItem({ ...newItem, tipo: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[7px] text-[#00ff66] uppercase font-bold ml-1 text-center block">Fórmula ATK</label>
-                    <input
-                      placeholder="1d20+5"
-                      className="w-full bg-black border border-[#1a2a1a] rounded p-2 text-[10px] text-[#00ff66] font-mono text-center outline-none"
-                      value={newItem.ataque}
-                      onChange={e => setNewItem({ ...newItem, ataque: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[7px] text-red-500 uppercase font-bold ml-1 text-center block">Fórmula Dano</label>
-                    <input
-                      placeholder="2d6+3"
-                      className="w-full bg-black border border-[#1a2a1a] rounded p-2 text-[10px] text-red-500 font-mono text-center outline-none"
-                      value={newItem.dano}
-                      onChange={e => setNewItem({ ...newItem, dano: e.target.value })}
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-[7px] text-gray-500 uppercase font-bold ml-1">Descrição</label>
-                  <textarea
-                    placeholder="Propriedades mágicas, peso, história..."
-                    className="w-full bg-black border border-[#1a2a1a] rounded p-2 text-[10px] text-gray-400 outline-none h-16 resize-none block"
-                    value={newItem.desc}
-                    onChange={e => setNewItem({ ...newItem, desc: e.target.value })}
+              {/* Formulário de Entrada - Agora com campos de fórmula */}
+              <div className="space-y-2">
+                <div className="flex gap-2">
+                  <input
+                    value={newItem.nome}
+                    onChange={(e) => setNewItem({ ...newItem, nome: e.target.value })}
+                    placeholder="Nome do item ou arma..."
+                    className="flex-1 bg-black border border-[#1a2a1a] rounded p-2 text-base text-white outline-none focus:border-[#f1e5ac]/30"
                   />
+                  <button
+                    onClick={() => {
+                      if (!newItem.nome) return;
+                      // Adiciona o item com as fórmulas, mas sem lógica de clique na lista
+                      updateCharacter('inventory', [
+                        ...(activeCharacter.inventory || []),
+                        {
+                          id: Date.now(),
+                          nome: newItem.nome,
+                          ataque: newItem.ataque,
+                          dano: newItem.dano,
+                          desc: newItem.desc
+                        }
+                      ]);
+                      setNewItem({ nome: '', tipo: '', ataque: '', dano: '', desc: '' });
+                    }}
+                    className="bg-[#f1e5ac] text-black px-4 rounded text-lg font-bold hover:brightness-110 transition-all active:scale-95"
+                  >
+                    +
+                  </button>
                 </div>
 
-                <button
-                  onClick={() => {
-                    const nome = newItem.nome.trim();
-                    if (!nome) return;
-                    const itemFinal: InventoryItem = {
-                      ...newItem,
-                      id: Date.now(),
-                      nome,
-                      name: nome,
-                    };
-                    updateCharacter('inventory', [...(activeCharacter.inventory || []), itemFinal]);
-                    setNewItem({ nome: '', tipo: '', ataque: '', dano: '', desc: '' });
-                    setItemExpandido(itemFinal.id);
-                  }}
-                  className="w-full py-2 bg-[#0a1a0a] hover:bg-[#00ff66] border border-[#00ff66]/30 text-[#00ff66] hover:text-black text-[9px] font-black uppercase tracking-widest rounded-lg transition-all duration-300 active:scale-[0.98]"
-                >
-                  Adicionar ao Inventário
-                </button>
+                {/* Inputs auxiliares para preencher as fórmulas (aparecem se houver um nome) */}
+                {newItem.nome && (
+                  <div className="grid grid-cols-2 gap-2 animate-in slide-in-from-top-1 duration-200">
+                    <div className="space-y-1">
+                      <p className="text-[7px] text-gray-600 uppercase font-black ml-1">Fórmula Ataque</p>
+                      <input
+                        value={newItem.ataque}
+                        onChange={(e) => setNewItem({ ...newItem, ataque: e.target.value })}
+                        placeholder="Ex: 1d20+5"
+                        className="w-full bg-black border border-[#1a2a1a] rounded p-1.5 text-[10px] text-[#00ff66] font-mono outline-none"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[7px] text-gray-600 uppercase font-black ml-1">Fórmula Dano</p>
+                      <input
+                        value={newItem.dano}
+                        onChange={(e) => setNewItem({ ...newItem, dano: e.target.value })}
+                        placeholder="Ex: 2d6+3"
+                        className="w-full bg-black border border-[#1a2a1a] rounded p-1.5 text-[10px] text-red-500 font-mono outline-none"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
-
             {/* COLUNA 3 - col-span-3 — PERÍCIAS */}
             <div className="lg:col-span-3">
               <div className="bg-black border border-[#1a2a1a] p-4 rounded-xl h-full">
@@ -986,7 +935,7 @@ export default function PersonagensPage() {
               </div>
             </div>
           )}
-          </div>
+        </div>
         );
   };
 
