@@ -136,8 +136,6 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
     const [newSpellName, setNewSpellName] = useState('');
     const [currentUserName, setCurrentUserName] = useState('Aventureiro');
     const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-    const [rollingDice, setRollingDice] = useState<{ label: string; value: number | null; modifier: number } | null>(null);
-    const [weaponRolling, setWeaponRolling] = useState<{ label: string; value: number | null; formula: string; itemName: string } | null>(null);
 
     useEffect(() => {
         const fetchUser = async () => {
@@ -151,120 +149,50 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
 
     // ── Rolagem de dados ────────────────────────────────────────────────────
     const rollD20 = async (label: string, modifier: number) => {
-        if (rollingDice) return;
-        setRollingDice({ label, value: null, modifier });
-
         const result = await onRollDice('d20', false);
-        if (!result) {
-            setRollingDice(null);
+        if (result === null) {
             return;
         }
 
-        const animationFrames = [12, 4, 19, 7, 16, 2, 18, 10, 14, 6];
-        let frameIndex = 0;
-        const frameId = window.setInterval(() => {
-            setRollingDice({ label, value: animationFrames[frameIndex % animationFrames.length], modifier });
-            frameIndex += 1;
-        }, 70);
-
-        window.setTimeout(async () => {
-            window.clearInterval(frameId);
-            const total = result + modifier;
-            setRollingDice({ label, value: result, modifier });
-
-            if (currentUserId) {
-                const modStr = modifier >= 0 ? `+${modifier}` : `${modifier}`;
-                await supabase.from('chat_messages').insert([{
-                    campaign_id: campaignId,
-                    user_name: currentUserName,
-                    text: `rolou ${label} (d20${modStr}): ${total}`,
-                    is_roll: true,
-                    is_secret: false,
-                    channel: 'campanha',
-                    sender_id: currentUserId,
-                }]);
-            }
-
-            window.setTimeout(() => setRollingDice(null), 900);
-        }, 650);
-    };
-
-    const parseWeaponFormula = (formula: string) => {
-        const cleaned = formula.replace(/\s+/g, '');
-        if (!cleaned) return null;
-
-        const tokens = cleaned.match(/[+-]?[^+-]+/g);
-        if (!tokens) return null;
-
-        let total = 0;
-        const parts: string[] = [];
-
-        for (const token of tokens) {
-            const sign = token.startsWith('-') ? -1 : 1;
-            const normalized = token.replace(/^[-+]/, '');
-            const diceMatch = normalized.match(/^(\d*)d(\d+)$/i);
-
-            if (diceMatch) {
-                const count = Number(diceMatch[1] || '1');
-                const sides = Number(diceMatch[2]);
-                let subtotal = 0;
-                for (let i = 0; i < count; i++) {
-                    subtotal += Math.floor(Math.random() * sides) + 1;
-                }
-                subtotal *= sign;
-                total += subtotal;
-                parts.push(`${token.startsWith('-') ? '-' : ''}${count}d${sides}=${Math.abs(subtotal)}`);
-                continue;
-            }
-
-            const numeric = Number(normalized);
-            if (!Number.isNaN(numeric)) {
-                const subtotal = numeric * sign;
-                total += subtotal;
-                parts.push(`${subtotal >= 0 ? '+' : ''}${subtotal}`);
-                continue;
-            }
-
-            return null;
+        const total = result + modifier;
+        if (currentUserId) {
+            const modStr = modifier >= 0 ? `+${modifier}` : `${modifier}`;
+            await supabase.from('chat_messages').insert([{
+                campaign_id: campaignId,
+                user_name: currentUserName,
+                text: `rolou ${label} (d20${modStr}): ${total}`,
+                is_roll: true,
+                is_secret: false,
+                channel: 'campanha',
+                sender_id: currentUserId,
+            }]);
         }
-
-        return { total, breakdown: parts.join(' '), cleaned };
     };
 
     const rollWeaponFormula = async (itemName: string, formula: string, label: 'ataque' | 'dano') => {
-        if (weaponRolling) return;
-        const parsed = parseWeaponFormula(formula);
-        if (!parsed) {
-            alert('Fórmula inválida. Use algo como 1d20+5 ou 2d6+3.');
+        const cleaned = formula.toLowerCase().replace(/\s+/g, '');
+        const isFormula = /^(\d+)d(\d+)([+-]\d+)?$/.test(cleaned);
+        const isSingleDie = /^d\d+$/.test(cleaned);
+
+        if (!isFormula && !isSingleDie) {
+            alert('Fórmula inválida. Use algo como 1d20+5, 2d6+3 ou d20.');
             return;
         }
 
-        setWeaponRolling({ label, value: null, formula: parsed.cleaned, itemName });
-        let frameIndex = 0;
-        const animationFrames = [3, 11, 17, 5, 14, 8, 19, 2, 12, 7];
-        const frameId = window.setInterval(() => {
-            setWeaponRolling({ label, value: animationFrames[frameIndex % animationFrames.length], formula: parsed.cleaned, itemName });
-            frameIndex += 1;
-        }, 80);
+        const result = await onRollDice(cleaned, false);
+        if (result === null) return;
 
-        window.setTimeout(async () => {
-            window.clearInterval(frameId);
-            setWeaponRolling({ label, value: parsed.total, formula: parsed.cleaned, itemName });
-
-            if (currentUserId) {
-                await supabase.from('chat_messages').insert([{
-                    campaign_id: campaignId,
-                    user_name: currentUserName,
-                    text: `${currentUserName} rolou ${label} da arma ${itemName}: ${parsed.cleaned} = ${parsed.total}${parsed.breakdown ? ` (${parsed.breakdown})` : ''}`,
-                    is_roll: true,
-                    is_secret: false,
-                    channel: 'campanha',
-                    sender_id: currentUserId,
-                }]);
-            }
-
-            window.setTimeout(() => setWeaponRolling(null), 1000);
-        }, 700);
+        if (currentUserId) {
+            await supabase.from('chat_messages').insert([{
+                campaign_id: campaignId,
+                user_name: currentUserName,
+                text: `${currentUserName} rolou ${label} da arma ${itemName}: ${cleaned} = ${result}`,
+                is_roll: true,
+                is_secret: false,
+                channel: 'campanha',
+                sender_id: currentUserId,
+            }]);
+        }
     };
 
     // ── Enquadramento ────────────────────────────────────────────────────────
@@ -474,32 +402,6 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
             className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-8"
             onClick={(e) => e.target === e.currentTarget && onClose()}
         >
-            {rollingDice && (
-                <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 backdrop-blur-sm pointer-events-none">
-                    <div className="bg-[#081008] border border-[#00ff66]/40 rounded-2xl px-8 py-6 shadow-[0_0_40px_rgba(0,255,102,0.15)] text-center min-w-[240px]">
-                        <p className="text-[13px] text-[#4a5a4a] font-black uppercase tracking-widest mb-2">Rolando</p>
-                        <p className="text-[13px] text-[#f1e5ac] font-black uppercase mb-3">{rollingDice.label}</p>
-                        <div className="text-5xl font-black text-[#00ff66] animate-[pulse_0.25s_ease-in-out_infinite] leading-none">
-                            {rollingDice.value ?? '...'}
-                        </div>
-                        <p className="text-[12px] text-[#4a5a4a] uppercase mt-3">mod {fmtMod(rollingDice.modifier)}</p>
-                    </div>
-                </div>
-            )}
-
-            {weaponRolling && (
-                <div className="fixed inset-0 z-[71] flex items-center justify-center bg-black/75 backdrop-blur-sm pointer-events-none">
-                    <div className="bg-[#0d0904] border border-[#f1e5ac]/40 rounded-2xl px-8 py-6 shadow-[0_0_40px_rgba(241,229,172,0.12)] text-center min-w-[260px]">
-                        <p className="text-[13px] text-[#8a7f55] font-black uppercase tracking-widest mb-2">Rolagem de Arma</p>
-                        <p className="text-[13px] text-[#f1e5ac] font-black uppercase mb-1">{weaponRolling.itemName}</p>
-                        <p className="text-[11px] text-[#8a7f55] font-mono uppercase mb-3">{weaponRolling.label}: {weaponRolling.formula}</p>
-                        <div className="text-5xl font-black text-[#f1e5ac] animate-[pulse_0.25s_ease-in-out_infinite] leading-none">
-                            {weaponRolling.value ?? '...'}
-                        </div>
-                    </div>
-                </div>
-            )}
-
             <div className="bg-[#020502]/95 border border-[#1a2a1a] rounded-2xl shadow-[0_0_80px_rgba(0,255,102,0.06),0_0_60px_rgba(0,0,0,0.9)] w-2/3 min-w-[480px] h-[88vh] flex flex-col overflow-hidden">
                 <div className="flex-1 overflow-y-auto px-6 py-8">
 
@@ -786,7 +688,7 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
                                                                 <div className="flex flex-wrap gap-2">
                                                                     {item.ataque && (
                                                                         <button
-                                                                            onClick={() => rollWeaponFormula(item.nome || item.name || 'arma', item.ataque!, 'ataque')}
+                                                                            onClick={() => rollWeaponFormula(item.nome || item.name || 'arma', item.ataque ?? '', 'ataque')}
                                                                             className="bg-[#f1e5ac]/10 border border-[#f1e5ac]/20 text-[#f1e5ac] px-2 py-1 rounded text-[10px] font-black uppercase hover:bg-[#f1e5ac]/20 transition-colors"
                                                                         >
                                                                             ATK
@@ -794,7 +696,7 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
                                                                     )}
                                                                     {item.dano && (
                                                                         <button
-                                                                            onClick={() => rollWeaponFormula(item.nome || item.name || 'arma', item.dano!, 'dano')}
+                                                                            onClick={() => rollWeaponFormula(item.nome || item.name || 'arma', item.dano ?? '', 'dano')}
                                                                             className="bg-[#1a0a0a] border border-red-900/20 text-red-400 px-2 py-1 rounded text-[10px] font-black uppercase hover:bg-red-600 hover:text-white transition-colors"
                                                                         >
                                                                             DANO
