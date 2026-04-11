@@ -223,7 +223,7 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
         setDraft(prev => prev ? { ...prev, [field]: value } : prev);
 
     const updateStat = (key: string, value: number) =>
-        setDraft(prev => prev ? { ...prev, stats: { ...prev.stats, [key]: value } } : prev);
+        setDraft(prev => prev ? { ...prev, stats: { ...prev.stats, [key]: Math.floor(Number(value) || 0) } } : prev);
 
     const toggleSavingThrow = (key: string) =>
         setDraft(prev => prev ? {

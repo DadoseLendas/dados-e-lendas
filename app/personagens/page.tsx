@@ -621,7 +621,10 @@ export default function PersonagensPage() {
                       min={0}
                       max={20}
                       value={activeCharacter.stats[s]}
-                      onChange={(e) => updateCharacter('stats', { ...activeCharacter.stats, [s]: Math.min(20, Math.max(0, Number(e.target.value) || 0)) })}
+                      onChange={(e) => {
+                        const nextValue = Math.floor(Number(e.target.value) || 0);
+                        updateCharacter('stats', { ...activeCharacter.stats, [s]: Math.min(20, Math.max(0, nextValue)) });
+                      }}
                       className="w-full bg-transparent text-center text-xl font-black outline-none text-white"
                     />
                     <div className="text-[#00ff66] text-base font-black mt-1">
