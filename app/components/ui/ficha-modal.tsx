@@ -63,10 +63,6 @@ const statLabels: Record<string, string> = {
 
 // ─── Utilitários ──────────────────────────────────────────────────────────────
 const getModifier = (value: number) => Math.floor((value - 10) / 2);
-const getTotalStat = (statKey: string, baseValue: number, race: string) => {
-    const raceBonus = RACE_DATA[race]?.stats[statKey] ?? 0;
-    return baseValue + raceBonus;
-};
 const fmtMod = (mod: number) => (mod >= 0 ? `+${mod}` : `${mod}`);
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
@@ -556,7 +552,7 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
                                             <div className="bg-[#0a150a] border-2 border-[#1a2a1a] rounded-xl p-3 text-center">
                                                 <Zap className="mx-auto text-[#f1e5ac] mb-1" size={16} />
                                                 <div className="text-2xl font-black text-white">
-                                                    {fmtMod(getModifier(getTotalStat('dex', draft.stats.dex, draft.race)))}
+                                                    {fmtMod(getModifier(draft.stats.dex))}
                                                 </div>
                                                 <span className="text-[14px] text-[#4a5a4a] font-black uppercase">Iniciativa</span>
                                             </div>
@@ -584,8 +580,7 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
                                         {/* Atributos */}
                                         <div className="grid grid-cols-2 gap-2">
                                             {(['str', 'dex', 'con', 'int', 'wis', 'cha'] as const).map((s) => {
-                                                const totalVal = getTotalStat(s, draft.stats[s], draft.race);
-                                                const mod = getModifier(totalVal);
+                                                const mod = getModifier(draft.stats[s]);
                                                 return (
                                                     <div
                                                         key={s}
@@ -615,7 +610,7 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
                                             <div className="grid grid-cols-2 gap-x-4 gap-y-1">
                                                 {(['str', 'dex', 'con', 'int', 'wis', 'cha'] as const).map((s) => {
                                                     const proficient = draft.savingThrows?.[s];
-                                                    const mod = getModifier(getTotalStat(s, draft.stats[s], draft.race));
+                                                    const mod = getModifier(draft.stats[s]);
                                                     const total = mod + (proficient ? (draft.proficiencyBonus ?? 2) : 0);
                                                     return (
                                                         <div
@@ -740,7 +735,7 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
                                         <h3 className="text-[#f1e5ac] text-[13px] font-black uppercase mb-3 text-center">Perícias</h3>
                                         <div className="grid grid-cols-2 gap-1">
                                             {Object.entries(skillsData).map(([key, info]) => {
-                                                const mod = getModifier(getTotalStat(info.attr, draft.stats[info.attr], draft.race));
+                                                const mod = getModifier(draft.stats[info.attr]);
                                                 const proficient = draft.skills?.[key];
                                                 const total = mod + (proficient ? (draft.proficiencyBonus ?? 2) : 0);
                                                 return (

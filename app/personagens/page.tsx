@@ -114,10 +114,6 @@ export default function PersonagensPage() {
 
   // --- LÓGICA DE CÁLCULO (Adicionado) ---
   const getModifier = (value: number) => Math.floor((value - 10) / 2);
-  const getTotalStat = (statKey: string, baseValue: number) => {
-    const raceBonus = RACE_DATA[activeCharacter?.race || ""]?.stats[statKey] || 0;
-    return baseValue + raceBonus;
-  };
 
   const fetchCharacters = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -497,7 +493,7 @@ export default function PersonagensPage() {
                     if (classInfo) {
                       const newSavingThrows = { str: false, dex: false, con: false, int: false, wis: false, cha: false };
                       classInfo.savingThrows.forEach((s) => { newSavingThrows[s as keyof typeof newSavingThrows] = true; });
-                      const conMod = getModifier(getTotalStat('con', activeCharacter.stats.con));
+                      const conMod = getModifier(activeCharacter.stats.con);
                       const newHp = classInfo.hp + conMod;
                       setActiveCharacter((prev) => prev ? {
                         ...prev,
@@ -576,7 +572,7 @@ export default function PersonagensPage() {
               </div>
               <div className="bg-[#0a150a] border-2 border-[#1a2a1a] rounded-xl p-3 text-center">
                 <Zap className="mx-auto text-[#f1e5ac] mb-1" size={18} />
-                <div className="text-2xl font-black">{getModifier(getTotalStat('dex', activeCharacter.stats.dex))}</div>
+                <div className="text-2xl font-black">{getModifier(activeCharacter.stats.dex)}</div>
                 <span className="text-[12px] text-[#4a5a4a] font-black uppercase">Iniciativa</span>
               </div>
             </div>
@@ -613,8 +609,7 @@ export default function PersonagensPage() {
             {/* Atributos */}
             <div className="grid grid-cols-3 gap-3">
               {(['str', 'dex', 'con', 'int', 'wis', 'cha'] as const).map((s) => {
-                const totalVal = getTotalStat(s, activeCharacter.stats[s]);
-                const mod = getModifier(totalVal);
+                const mod = getModifier(activeCharacter.stats[s]);
                 return (
                   <div key={s} className="bg-black border border-[#1a2a1a] rounded-xl p-3 text-center">
                     <span className="text-[13px] text-[#4a5a4a] font-black uppercase">{statLabels[s]}</span>
@@ -657,9 +652,9 @@ export default function PersonagensPage() {
                       <span className="text-[14px] uppercase text-gray-300">{s}</span>
                     </div>
                     <span className="text-[14px] font-black text-[#00ff66]">
-                      {(getModifier(getTotalStat(s, activeCharacter.stats[s])) +
+                      {(getModifier(activeCharacter.stats[s]) +
                         (activeCharacter.savingThrows[s] ? activeCharacter.proficiencyBonus : 0)) >= 0 ? '+' : ''}
-                      {getModifier(getTotalStat(s, activeCharacter.stats[s])) +
+                      {getModifier(activeCharacter.stats[s]) +
                         (activeCharacter.savingThrows[s] ? activeCharacter.proficiencyBonus : 0)}
                     </span>
                   </div>
@@ -828,7 +823,7 @@ export default function PersonagensPage() {
                 <h3 className="text-[#f1e5ac] text-[14px] font-black uppercase mb-4 text-center">Perícias</h3>
                 <div className="space-y-1 overflow-y-auto pr-2">
                   {Object.entries(skillsData).map(([key, info]) => {
-                    const mod = getModifier(getTotalStat(info.attr, activeCharacter.stats[info.attr]));
+                    const mod = getModifier(activeCharacter.stats[info.attr]);
                     const total = mod + (activeCharacter.skills[key] ? activeCharacter.proficiencyBonus : 0);
                     return (
                       <div
