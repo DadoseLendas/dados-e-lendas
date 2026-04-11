@@ -61,6 +61,14 @@ const statLabels: Record<string, string> = {
     int: 'Inteligência', wis: 'Sabedoria', cha: 'Carisma',
 };
 
+const WEAPON_ATTRIBUTE_OPTIONS = ['str', 'dex'] as const;
+type WeaponAttribute = (typeof WEAPON_ATTRIBUTE_OPTIONS)[number];
+
+const weaponAttributeLabels: Record<WeaponAttribute, string> = {
+    str: 'Força',
+    dex: 'Destreza',
+};
+
 // ─── Utilitários ──────────────────────────────────────────────────────────────
 const getModifier = (value: number) => {
     const normalizedValue = Math.floor(Number(value) || 0);
@@ -98,6 +106,7 @@ type InventoryItem = {
     name?: string;
     nome?: string;
     tipo?: string;
+    atributo?: WeaponAttribute;
     ataque?: string;
     dano?: string;
     desc?: string;
@@ -106,6 +115,7 @@ type InventoryItem = {
 type InventoryFormState = {
     nome: string;
     tipo: string;
+    atributo: WeaponAttribute;
     ataque: string;
     dano: string;
     desc: string;
@@ -130,7 +140,7 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
     const [saveSuccess, setSaveSuccess] = useState(false);
-    const [newInventoryItem, setNewInventoryItem] = useState<InventoryFormState>({ nome: '', tipo: '', ataque: '', dano: '', desc: '' });
+    const [newInventoryItem, setNewInventoryItem] = useState<InventoryFormState>({ nome: '', tipo: '', atributo: 'str', ataque: '', dano: '', desc: '' });
     const [editingInventoryId, setEditingInventoryId] = useState<number | null>(null);
     const [newSpellName, setNewSpellName] = useState('');
     const [currentUserName, setCurrentUserName] = useState('Aventureiro');
@@ -168,24 +178,40 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
         }
     };
 
-    const rollWeaponFormula = async (itemName: string, formula: string, label: 'ataque' | 'dano') => {
+    const buildWeaponFormula = (formula: string, attribute?: WeaponAttribute) => {
         const cleaned = formula.toLowerCase().replace(/\s+/g, '');
-        const isFormula = /^(\d+)d(\d+)([+-]\d+)?$/.test(cleaned);
-        const isSingleDie = /^d\d+$/.test(cleaned);
+        const normalized = cleaned || '1d20';
+        const match = normalized.match(/^(\d*)d(\d+)([+-]\d+)?$/);
 
-        if (!isFormula && !isSingleDie) {
+        if (!match) {
+            return null;
+        }
+
+        const quantity = match[1] ? parseInt(match[1]) : 1;
+        const faces = parseInt(match[2]);
+        const baseModifier = match[3] ? parseInt(match[3]) : 0;
+        const attributeModifier = attribute ? getModifier(draft?.stats?.[attribute] ?? 0) : 0;
+        const totalModifier = baseModifier + attributeModifier;
+
+        return `${quantity}d${faces}${totalModifier !== 0 ? (totalModifier > 0 ? `+${totalModifier}` : `${totalModifier}`) : ''}`;
+    };
+
+    const rollWeaponFormula = async (itemName: string, formula: string, label: 'ataque' | 'dano', attribute?: WeaponAttribute) => {
+        const resolvedFormula = buildWeaponFormula(formula, attribute);
+
+        if (!resolvedFormula) {
             alert('Fórmula inválida. Use algo como 1d20+5, 2d6+3 ou d20.');
             return;
         }
 
-        const result = await onRollDice(cleaned, false);
+        const result = await onRollDice(resolvedFormula, false);
         if (result === null) return;
 
         if (currentUserId) {
             await supabase.from('chat_messages').insert([{
                 campaign_id: campaignId,
                 user_name: currentUserName,
-                text: `${currentUserName} rolou ${label} da arma ${itemName}: ${cleaned} = ${result}`,
+                text: `${currentUserName} rolou ${label} da arma ${itemName}: ${resolvedFormula} = ${result}`,
                 is_roll: true,
                 is_secret: false,
                 channel: 'campanha',
@@ -238,7 +264,7 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
         } : prev);
 
     const resetInventoryForm = () => {
-        setNewInventoryItem({ nome: '', tipo: '', ataque: '', dano: '', desc: '' });
+        setNewInventoryItem({ nome: '', tipo: '', atributo: 'str', ataque: '', dano: '', desc: '' });
         setEditingInventoryId(null);
     };
 
@@ -246,6 +272,7 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
         setNewInventoryItem({
             nome: item.nome || item.name || '',
             tipo: item.tipo || '',
+            atributo: item.atributo || 'str',
             ataque: item.ataque || '',
             dano: item.dano || '',
             desc: item.desc || '',
@@ -261,6 +288,7 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
             nome: newInventoryItem.nome.trim(),
             name: newInventoryItem.nome.trim(),
             tipo: newInventoryItem.tipo.trim(),
+            atributo: newInventoryItem.atributo,
             ataque: newInventoryItem.ataque.trim(),
             dano: newInventoryItem.dano.trim(),
             desc: newInventoryItem.desc.trim(),
@@ -681,21 +709,26 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
                                                                 </button>
                                                             </div>
                                                         </div>
-                                                        {(item.ataque || item.dano || item.desc) && (
+                                                        {(item.ataque || item.dano || item.atributo || item.desc) && (
                                                             <div className="space-y-1 border-t border-[#1a2a1a] pt-2">
                                                                 <div className="flex flex-wrap gap-2">
+                                                                    {item.atributo && (
+                                                                        <span className="bg-[#f1e5ac]/10 border border-[#f1e5ac]/20 text-[#f1e5ac] px-2 py-1 rounded text-[11px] font-black uppercase tracking-wider">
+                                                                            {weaponAttributeLabels[item.atributo]}
+                                                                        </span>
+                                                                    )}
                                                                     {item.ataque && (
                                                                         <button
-                                                                            onClick={() => rollWeaponFormula(item.nome || item.name || 'arma', item.ataque ?? '', 'ataque')}
-                                                                            className="bg-[#f1e5ac]/10 border border-[#f1e5ac]/20 text-[#f1e5ac] px-2 py-1 rounded text-[10px] font-black uppercase hover:bg-[#f1e5ac]/20 transition-colors"
+                                                                            onClick={() => rollWeaponFormula(item.nome || item.name || 'arma', item.ataque ?? '', 'ataque', item.atributo)}
+                                                                            className="bg-[#f1e5ac]/10 border border-[#f1e5ac]/20 text-[#f1e5ac] px-2 py-1 rounded text-[11px] font-black uppercase tracking-wider hover:bg-[#f1e5ac]/20 transition-colors"
                                                                         >
                                                                             ATK
                                                                         </button>
                                                                     )}
                                                                     {item.dano && (
                                                                         <button
-                                                                            onClick={() => rollWeaponFormula(item.nome || item.name || 'arma', item.dano ?? '', 'dano')}
-                                                                            className="bg-[#1a0a0a] border border-red-900/20 text-red-400 px-2 py-1 rounded text-[10px] font-black uppercase hover:bg-red-600 hover:text-white transition-colors"
+                                                                            onClick={() => rollWeaponFormula(item.nome || item.name || 'arma', item.dano ?? '', 'dano', item.atributo)}
+                                                                            className="bg-[#1a0a0a] border border-red-900/20 text-red-400 px-2 py-1 rounded text-[11px] font-black uppercase tracking-wider hover:bg-red-600 hover:text-white transition-colors"
                                                                         >
                                                                             DANO
                                                                         </button>
@@ -713,6 +746,11 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
                                                 <div className="grid grid-cols-2 gap-2">
                                                     <input className={inputCls} placeholder="Nome da arma" value={newInventoryItem.nome} onChange={(e) => setNewInventoryItem(prev => ({ ...prev, nome: e.target.value }))} />
                                                     <input className={inputCls} placeholder="Tipo" value={newInventoryItem.tipo} onChange={(e) => setNewInventoryItem(prev => ({ ...prev, tipo: e.target.value }))} />
+                                                    <select className={inputCls + ' col-span-2'} value={newInventoryItem.atributo} onChange={(e) => setNewInventoryItem(prev => ({ ...prev, atributo: e.target.value as WeaponAttribute }))}>
+                                                        {WEAPON_ATTRIBUTE_OPTIONS.map((option) => (
+                                                            <option key={option} value={option}>{weaponAttributeLabels[option]}</option>
+                                                        ))}
+                                                    </select>
                                                     <input className={inputCls} placeholder="Fórmula ATK (opcional)" value={newInventoryItem.ataque} onChange={(e) => setNewInventoryItem(prev => ({ ...prev, ataque: e.target.value }))} />
                                                     <input className={inputCls} placeholder="Fórmula DANO (opcional)" value={newInventoryItem.dano} onChange={(e) => setNewInventoryItem(prev => ({ ...prev, dano: e.target.value }))} />
                                                 </div>

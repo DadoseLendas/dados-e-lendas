@@ -38,6 +38,14 @@ const CLASS_DATA: Record<string, { hp: number; primaryAttr: string; savingThrows
   "Paladino": { hp: 10, primaryAttr: "Força & Carisma", savingThrows: ["wis", "cha"] },
 };
 
+const WEAPON_ATTRIBUTE_OPTIONS = ['str', 'dex'] as const;
+type WeaponAttribute = (typeof WEAPON_ATTRIBUTE_OPTIONS)[number];
+
+const weaponAttributeLabels: Record<WeaponAttribute, string> = {
+  str: 'Força',
+  dex: 'Destreza',
+};
+
 
 type Character = {
   id: string | number;
@@ -71,6 +79,7 @@ type InventoryItem = {
   name?: string;
   nome?: string;
   tipo?: string;
+  atributo?: WeaponAttribute;
   ataque?: string;
   dano?: string;
   desc?: string;
@@ -79,6 +88,7 @@ type InventoryItem = {
 type NewInventoryItem = {
   nome: string;
   tipo: string;
+  atributo: WeaponAttribute;
   ataque: string;
   dano: string;
   desc: string;
@@ -103,7 +113,7 @@ export default function PersonagensPage() {
   const [showFramingSliders, setShowFramingSliders] = useState(false);
 
   const [newSpellName, setNewSpellName] = useState('');
-  const [newItem, setNewItem] = useState<NewInventoryItem>({ nome: '', tipo: '', ataque: '', dano: '', desc: '' });
+  const [newItem, setNewItem] = useState<NewInventoryItem>({ nome: '', tipo: '', atributo: 'str', ataque: '', dano: '', desc: '' });
   const [editingInventoryId, setEditingInventoryId] = useState<number | null>(null);
   const [abaAtiva, setAbaAtiva] = useState<string>('personagens');
 
@@ -235,7 +245,7 @@ export default function PersonagensPage() {
   };
 
   const resetInventoryForm = () => {
-    setNewItem({ nome: '', tipo: '', ataque: '', dano: '', desc: '' });
+    setNewItem({ nome: '', tipo: '', atributo: 'str', ataque: '', dano: '', desc: '' });
     setEditingInventoryId(null);
   };
 
@@ -244,6 +254,7 @@ export default function PersonagensPage() {
     setNewItem({
       nome: item.nome || item.name || '',
       tipo: item.tipo || '',
+      atributo: item.atributo || 'str',
       ataque: item.ataque || '',
       dano: item.dano || '',
       desc: item.desc || '',
@@ -258,6 +269,7 @@ export default function PersonagensPage() {
       nome: newItem.nome.trim(),
       name: newItem.nome.trim(),
       tipo: newItem.tipo.trim(),
+      atributo: newItem.atributo,
       ataque: newItem.ataque.trim(),
       dano: newItem.dano.trim(),
       desc: newItem.desc.trim(),
@@ -746,22 +758,32 @@ export default function PersonagensPage() {
                           {item.nome || item.name}
                         </span>
                         {/* Badges discretos para consulta rápida das fórmulas */}
-                        {(item.ataque || item.dano) && (
+                        {(item.ataque || item.dano || item.atributo) && (
                           <div className="flex gap-1.5 ml-2">
-                            {item.ataque && <span className="text-[8px] text-[#00ff66]/60 font-mono">ATK: {item.ataque}</span>}
-                            {item.dano && <span className="text-[8px] text-red-500/60 font-mono">DANO: {item.dano}</span>}
+                            {item.atributo && weaponAttributeLabels[item.atributo as WeaponAttribute] && <span className="text-[11px] text-[#f1e5ac]/70 font-mono font-black tracking-wider">{weaponAttributeLabels[item.atributo as WeaponAttribute]}</span>}
+                            {item.ataque && <span className="text-[11px] text-[#00ff66]/70 font-mono font-black tracking-wider">ATK: {item.ataque}</span>}
+                            {item.dano && <span className="text-[11px] text-red-500/70 font-mono font-black tracking-wider">DANO: {item.dano}</span>}
                           </div>
                         )}
                       </div>
+                      {item.tipo && <span className="text-[10px] text-gray-500 uppercase truncate">{item.tipo}</span>}
                       {item.desc && <span className="text-[10px] text-gray-600 italic truncate max-w-[200px]">{item.desc}</span>}
                     </div>
 
-                    <button
-                      onClick={() => updateCharacter('inventory', activeCharacter.inventory.filter((i: any) => i.id !== item.id))}
-                      className="text-red-900 group-hover:text-red-500 transition-colors"
-                    >
-                      <Trash2 size={12} />
-                    </button>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        onClick={() => startEditingInventoryItem(item)}
+                        className="text-[#00ff66] hover:text-white text-[10px] font-black uppercase transition-colors"
+                      >
+                        Editar
+                      </button>
+                      <button
+                        onClick={() => updateCharacter('inventory', activeCharacter.inventory.filter((i: any) => i.id !== item.id))}
+                        className="text-red-900 group-hover:text-red-500 transition-colors"
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -784,12 +806,15 @@ export default function PersonagensPage() {
                         {
                           id: Date.now(),
                           nome: newItem.nome,
+                          name: newItem.nome,
+                          tipo: newItem.tipo,
+                          atributo: newItem.atributo,
                           ataque: newItem.ataque,
                           dano: newItem.dano,
                           desc: newItem.desc
                         }
                       ]);
-                      setNewItem({ nome: '', tipo: '', ataque: '', dano: '', desc: '' });
+                      setNewItem({ nome: '', tipo: '', atributo: 'str', ataque: '', dano: '', desc: '' });
                     }}
                     className="bg-[#f1e5ac] text-black px-4 rounded text-lg font-bold hover:brightness-110 transition-all active:scale-95"
                   >
@@ -800,6 +825,27 @@ export default function PersonagensPage() {
                 {/* Inputs auxiliares para preencher as fórmulas (aparecem se houver um nome) */}
                 {newItem.nome && (
                   <div className="grid grid-cols-2 gap-2 animate-in slide-in-from-top-1 duration-200">
+                    <div className="space-y-1 col-span-2">
+                      <p className="text-[7px] text-gray-600 uppercase font-black ml-1">Tipo</p>
+                      <input
+                        value={newItem.tipo}
+                        onChange={(e) => setNewItem({ ...newItem, tipo: e.target.value })}
+                        placeholder="Ex: arma marcial, adaga, arco..."
+                        className="w-full bg-black border border-[#1a2a1a] rounded p-1.5 text-[10px] text-white outline-none"
+                      />
+                    </div>
+                    <div className="space-y-1 col-span-2">
+                      <p className="text-[7px] text-gray-600 uppercase font-black ml-1">Atributo da arma</p>
+                      <select
+                        value={newItem.atributo}
+                        onChange={(e) => setNewItem({ ...newItem, atributo: e.target.value as WeaponAttribute })}
+                        className="w-full bg-black border border-[#1a2a1a] rounded p-1.5 text-[10px] text-white font-black uppercase outline-none"
+                      >
+                        {WEAPON_ATTRIBUTE_OPTIONS.map((option) => (
+                          <option key={option} value={option}>{weaponAttributeLabels[option]}</option>
+                        ))}
+                      </select>
+                    </div>
                     <div className="space-y-1">
                       <p className="text-[7px] text-gray-600 uppercase font-black ml-1">Fórmula Ataque</p>
                       <input
