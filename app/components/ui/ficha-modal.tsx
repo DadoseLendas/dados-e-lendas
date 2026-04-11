@@ -115,7 +115,7 @@ type InventoryItem = {
 type InventoryFormState = {
     nome: string;
     tipo: string;
-    atributo: WeaponAttribute;
+    atributo: WeaponAttribute | '';
     ataque: string;
     dano: string;
     desc: string;
@@ -140,7 +140,7 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
     const [saveSuccess, setSaveSuccess] = useState(false);
-    const [newInventoryItem, setNewInventoryItem] = useState<InventoryFormState>({ nome: '', tipo: '', atributo: 'str', ataque: '', dano: '', desc: '' });
+    const [newInventoryItem, setNewInventoryItem] = useState<InventoryFormState>({ nome: '', tipo: '', atributo: '', ataque: '', dano: '', desc: '' });
     const [editingInventoryId, setEditingInventoryId] = useState<number | null>(null);
     const [newSpellName, setNewSpellName] = useState('');
     const [currentUserName, setCurrentUserName] = useState('Aventureiro');
@@ -264,7 +264,7 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
         } : prev);
 
     const resetInventoryForm = () => {
-        setNewInventoryItem({ nome: '', tipo: '', atributo: 'str', ataque: '', dano: '', desc: '' });
+        setNewInventoryItem({ nome: '', tipo: '', atributo: '', ataque: '', dano: '', desc: '' });
         setEditingInventoryId(null);
     };
 
@@ -272,7 +272,7 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
         setNewInventoryItem({
             nome: item.nome || item.name || '',
             tipo: item.tipo || '',
-            atributo: item.atributo || 'str',
+            atributo: item.atributo || '',
             ataque: item.ataque || '',
             dano: item.dano || '',
             desc: item.desc || '',
@@ -282,16 +282,17 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
 
     const addInventoryItem = () => {
         if (!draft || !newInventoryItem.nome.trim()) return;
+        const hasWeaponDetails = Boolean(newInventoryItem.ataque.trim() || newInventoryItem.dano.trim());
 
         const payload: InventoryItem = {
             id: editingInventoryId ?? Date.now(),
             nome: newInventoryItem.nome.trim(),
             name: newInventoryItem.nome.trim(),
             tipo: newInventoryItem.tipo.trim(),
-            atributo: newInventoryItem.atributo,
             ataque: newInventoryItem.ataque.trim(),
             dano: newInventoryItem.dano.trim(),
             desc: newInventoryItem.desc.trim(),
+            ...(hasWeaponDetails && newInventoryItem.atributo ? { atributo: newInventoryItem.atributo } : {}),
         };
 
         if (editingInventoryId !== null) {
@@ -747,6 +748,7 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
                                                     <input className={inputCls} placeholder="Nome da arma" value={newInventoryItem.nome} onChange={(e) => setNewInventoryItem(prev => ({ ...prev, nome: e.target.value }))} />
                                                     <input className={inputCls} placeholder="Tipo" value={newInventoryItem.tipo} onChange={(e) => setNewInventoryItem(prev => ({ ...prev, tipo: e.target.value }))} />
                                                     <select className={inputCls + ' col-span-2'} value={newInventoryItem.atributo} onChange={(e) => setNewInventoryItem(prev => ({ ...prev, atributo: e.target.value as WeaponAttribute }))}>
+                                                        <option value="">Sem atributo</option>
                                                         {WEAPON_ATTRIBUTE_OPTIONS.map((option) => (
                                                             <option key={option} value={option}>{weaponAttributeLabels[option]}</option>
                                                         ))}

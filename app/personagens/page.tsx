@@ -88,7 +88,7 @@ type InventoryItem = {
 type NewInventoryItem = {
   nome: string;
   tipo: string;
-  atributo: WeaponAttribute;
+  atributo: WeaponAttribute | '';
   ataque: string;
   dano: string;
   desc: string;
@@ -113,7 +113,7 @@ export default function PersonagensPage() {
   const [showFramingSliders, setShowFramingSliders] = useState(false);
 
   const [newSpellName, setNewSpellName] = useState('');
-  const [newItem, setNewItem] = useState<NewInventoryItem>({ nome: '', tipo: '', atributo: 'str', ataque: '', dano: '', desc: '' });
+  const [newItem, setNewItem] = useState<NewInventoryItem>({ nome: '', tipo: '', atributo: '', ataque: '', dano: '', desc: '' });
   const [editingInventoryId, setEditingInventoryId] = useState<number | null>(null);
   const [abaAtiva, setAbaAtiva] = useState<string>('personagens');
 
@@ -245,7 +245,7 @@ export default function PersonagensPage() {
   };
 
   const resetInventoryForm = () => {
-    setNewItem({ nome: '', tipo: '', atributo: 'str', ataque: '', dano: '', desc: '' });
+    setNewItem({ nome: '', tipo: '', atributo: '', ataque: '', dano: '', desc: '' });
     setEditingInventoryId(null);
   };
 
@@ -254,7 +254,7 @@ export default function PersonagensPage() {
     setNewItem({
       nome: item.nome || item.name || '',
       tipo: item.tipo || '',
-      atributo: item.atributo || 'str',
+      atributo: item.atributo || '',
       ataque: item.ataque || '',
       dano: item.dano || '',
       desc: item.desc || '',
@@ -263,16 +263,17 @@ export default function PersonagensPage() {
 
   const saveInventoryItem = () => {
     if (!activeCharacter || !newItem.nome.trim()) return;
+    const hasWeaponDetails = Boolean(newItem.ataque.trim() || newItem.dano.trim());
 
     const normalizedItem: InventoryItem = {
       id: editingInventoryId ?? Date.now(),
       nome: newItem.nome.trim(),
       name: newItem.nome.trim(),
       tipo: newItem.tipo.trim(),
-      atributo: newItem.atributo,
       ataque: newItem.ataque.trim(),
       dano: newItem.dano.trim(),
       desc: newItem.desc.trim(),
+      ...(hasWeaponDetails && newItem.atributo ? { atributo: newItem.atributo } : {}),
     };
 
     const currentInventory = activeCharacter.inventory ?? [];
@@ -829,9 +830,10 @@ export default function PersonagensPage() {
                       <p className="text-[7px] text-gray-600 uppercase font-black ml-1">Atributo da arma</p>
                       <select
                         value={newItem.atributo}
-                        onChange={(e) => setNewItem({ ...newItem, atributo: e.target.value as WeaponAttribute })}
+                        onChange={(e) => setNewItem({ ...newItem, atributo: e.target.value as NewInventoryItem['atributo'] })}
                         className="w-full bg-black border border-[#1a2a1a] rounded p-1.5 text-[10px] text-white font-black uppercase outline-none"
                       >
+                        <option value="">Sem atributo</option>
                         {WEAPON_ATTRIBUTE_OPTIONS.map((option) => (
                           <option key={option} value={option}>{weaponAttributeLabels[option]}</option>
                         ))}
