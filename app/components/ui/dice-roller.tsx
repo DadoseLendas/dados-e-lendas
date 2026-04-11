@@ -117,15 +117,16 @@ export default function DiceRoller({ campaignId, onReady, isDM, currentUserId }:
         onReady(async (formula: string, isSecret: boolean) => {
           // 1. Limpa a string e tenta identificar se é uma fórmula (ex: 2d6+3)
           const cleanFormula = formula.toLowerCase().replace(/\s+/g, '');
-          const regex = /^(\d+)d(\d+)([+-]\d+)?$/;
+          const regex = /^(\d*)d(\d+)([+-]\d+)?$/;
           const match = cleanFormula.match(regex);
 
           let diceType: string;
-          let rollValue: number;
+          let visualRollValue: number;
+          let finalRollValue: number;
 
           if (match) {
             // Caso seja uma fórmula complexa
-            const qtd = parseInt(match[1]);
+            const qtd = match[1] ? parseInt(match[1]) : 1;
             const faces = parseInt(match[2]);
             const mod = match[3] ? parseInt(match[3]) : 0;
             
@@ -134,23 +135,25 @@ export default function DiceRoller({ campaignId, onReady, isDM, currentUserId }:
             for (let i = 0; i < qtd; i++) {
               sum += Math.floor(Math.random() * faces) + 1;
             }
-            rollValue = sum + mod;
+            visualRollValue = sum;
+            finalRollValue = sum + mod;
           } else {
             // Caso seja um dado simples (ex: "d20")
-            diceType = formula.startsWith('d') ? formula : `d${formula}`;
+            diceType = cleanFormula.startsWith('d') ? cleanFormula : `d${cleanFormula}`;
             const sides = parseInt(diceType.replace('d', ''));
-            rollValue = Math.floor(Math.random() * sides) + 1;
+            visualRollValue = Math.floor(Math.random() * sides) + 1;
+            finalRollValue = visualRollValue;
           }
 
-          // Envia o resultado final via broadcast
+          // A animação sempre recebe apenas o valor cru dos dados (sem modificador).
           channel.send({
             type: 'broadcast',
             event: 'roll',
-            payload: { diceType, isSecret, senderId: currentUserIdRef.current, value: rollValue },
+            payload: { diceType, isSecret, senderId: currentUserIdRef.current, value: visualRollValue },
           });
 
-          // Dispara a animação visual (usando o valor final como resultado do dado)
-          return await triggerVisualRoll(diceType, isSecret, rollValue);
+          await triggerVisualRoll(diceType, isSecret, visualRollValue);
+          return finalRollValue;
         });
 
         return () => { supabase.removeChannel(channel); };
