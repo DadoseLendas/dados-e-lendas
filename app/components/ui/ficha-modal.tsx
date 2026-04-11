@@ -62,7 +62,10 @@ const statLabels: Record<string, string> = {
 };
 
 // ─── Utilitários ──────────────────────────────────────────────────────────────
-const getModifier = (value: number) => Math.floor((value - 10) / 2);
+const getModifier = (value: number) => {
+    const normalizedValue = Math.floor(Number(value) || 0);
+    return Math.floor((normalizedValue - 10) / 2);
+};
 const fmtMod = (mod: number) => (mod >= 0 ? `+${mod}` : `${mod}`);
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────

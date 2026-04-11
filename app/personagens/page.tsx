@@ -113,7 +113,10 @@ export default function PersonagensPage() {
   const [raceModalSelections, setRaceModalSelections] = useState<Record<string, string>>({});
 
   // --- LÓGICA DE CÁLCULO (Adicionado) ---
-  const getModifier = (value: number) => Math.floor((value - 10) / 2);
+  const getModifier = (value: number) => {
+    const normalizedValue = Math.floor(Number(value) || 0);
+    return Math.floor((normalizedValue - 10) / 2);
+  };
 
   const fetchCharacters = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
