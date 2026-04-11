@@ -798,28 +798,19 @@ export default function PersonagensPage() {
                     className="flex-1 bg-black border border-[#1a2a1a] rounded p-2 text-base text-white outline-none focus:border-[#f1e5ac]/30"
                   />
                   <button
-                    onClick={() => {
-                      if (!newItem.nome) return;
-                      // Adiciona o item com as fórmulas, mas sem lógica de clique na lista
-                      updateCharacter('inventory', [
-                        ...(activeCharacter.inventory || []),
-                        {
-                          id: Date.now(),
-                          nome: newItem.nome,
-                          name: newItem.nome,
-                          tipo: newItem.tipo,
-                          atributo: newItem.atributo,
-                          ataque: newItem.ataque,
-                          dano: newItem.dano,
-                          desc: newItem.desc
-                        }
-                      ]);
-                      setNewItem({ nome: '', tipo: '', atributo: 'str', ataque: '', dano: '', desc: '' });
-                    }}
+                    onClick={saveInventoryItem}
                     className="bg-[#f1e5ac] text-black px-4 rounded text-lg font-bold hover:brightness-110 transition-all active:scale-95"
                   >
-                    +
+                    {editingInventoryId !== null ? 'Salvar alterações' : '+'}
                   </button>
+                  {editingInventoryId !== null && (
+                    <button
+                      onClick={resetInventoryForm}
+                      className="border border-[#1a2a1a] text-[#4a5a4a] px-3 rounded text-[12px] font-black uppercase hover:text-white hover:border-[#4a5a4a] transition-all"
+                    >
+                      Cancelar
+                    </button>
+                  )}
                 </div>
 
                 {/* Inputs auxiliares para preencher as fórmulas (aparecem se houver um nome) */}
