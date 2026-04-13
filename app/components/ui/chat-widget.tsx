@@ -28,7 +28,8 @@ interface Message {
 interface ChatWidgetProps {
   campaignId: string;
   isDiceReady: boolean;
-  onRollDice: (diceType: string, isSecret: boolean) => Promise<number | null>;
+  //aceitar o modo de rolagem e retornar any
+  onRollDice: (diceType: string, isSecret: boolean, mode: 'normal' | 'advantage' | 'disadvantage') => Promise<any | null>;
 }
 
 interface PlayerInfo {
@@ -81,6 +82,8 @@ export default function ChatWidget({ campaignId, isDiceReady, onRollDice }: Chat
   const [dmId,          setDmId]          = useState<string | null>(null);
 
   const [playerMap, setPlayerMap] = useState<Record<string, PlayerInfo>>({});
+
+  const [rollMode, setRollMode] = useState<'normal' | 'advantage' | 'disadvantage'>('normal');
 
   //bolinha do chat
   const isOpenRef = useRef(isOpen);
@@ -291,11 +294,29 @@ export default function ChatWidget({ campaignId, isDiceReady, onRollDice }: Chat
   // ---------------------------------------------------------------------------
   const handleRollClick = async (diceType: string) => {
     if (!currentUser) return;
-    const total = await onRollDice(diceType, isSecretRoll);
-    if (total === null || total === undefined) return;
+    
+    const result = await onRollDice(diceType, isSecretRoll, rollMode);
+    if (!result) return;
 
-    const textPublico = `rolou ${diceType} → ${total}`;
-    const textSecreto = `(SECRETO) rolou ${diceType} → ${total}`;
+    let textPublico = '';
+    
+    if (result.rollMode === 'normal') {
+      textPublico = `rolou ${diceType} → ${result.finalValue}`;
+    } else {
+      // Formatação para vantagem/desvantagem
+      const v1 = result.values[0];
+      const v2 = result.values[1];
+      const isV1Chosen = result.rollMode === 'advantage' ? v1 >= v2 : v1 <= v2;
+      
+      const v1Str = isV1Chosen ? `**${v1}**` : `${v1}`;
+      const v2Str = !isV1Chosen ? `**${v2}**` : `${v2}`;
+      
+      const modoTexto = result.rollMode === 'advantage' ? 'Vantagem' : 'Desvantagem';
+      textPublico = `rolou ${diceType} com ${modoTexto} → [${v1Str}, ${v2Str}] = **${result.finalValue}**`;
+    }
+
+    const textSecreto = `(SECRETO) ${textPublico}`;
+
     const { data } = await supabase.from('chat_messages').insert([{
       campaign_id: campaignId,
       user_name:   displayName,
@@ -306,21 +327,22 @@ export default function ChatWidget({ campaignId, isDiceReady, onRollDice }: Chat
       sender_id:   currentUser.id,
       receiver_id: null,
       dice_type:   diceType,
+      roll_mode:   result.rollMode,
+      roll_values: result.values,
+      final_value: result.finalValue
     }]).select().single();
 
     if (data) {
-      const localMsg: Message = {
-        ...data,
-        text: isSecretRoll ? textSecreto : textPublico,
-      };
-
+      const localMsg: Message = { ...data, text: isSecretRoll ? textSecreto : textPublico };
       channelRef.current?.send({ type: 'broadcast', event: 'new_message', payload: localMsg });
-
       setMessages((prev) => {
         if (prev.find((m) => m.id === localMsg.id)) return prev;
         return [...prev, localMsg];
       });
     }
+    
+    // Reseta o modo para normal após rolar
+    setRollMode('normal');
   };
 
   // ---------------------------------------------------------------------------
