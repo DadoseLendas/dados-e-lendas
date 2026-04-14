@@ -127,7 +127,7 @@ interface FichaModalProps {
     characterId: number | string | null;
     onUpdate?: (character: Character) => void;
     campaignId: string;
-    onRollDice: (diceType: string, isSecret: boolean) => Promise<number | null>;
+    onRollDice: (diceType: string, isSecret: boolean, mode: 'normal' | 'advantage' | 'disadvantage') => Promise<any | null>;
     readOnly?: boolean;
 }
 
@@ -144,8 +144,8 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
     const [newSpellName, setNewSpellName] = useState('');
     const [currentUserName, setCurrentUserName] = useState('Aventureiro');
     const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-    const [expandedItemId, setExpandedItemId] = useState<number | null>(null); // NOVO: controle de expansão do inventário
-
+    const [expandedItemId, setExpandedItemId] = useState<number | null>(null); //controle de expansão do inventário
+    const [rollMode, setRollMode] = useState<'normal' | 'advantage' | 'disadvantage'>('normal');
     useEffect(() => {
         const fetchUser = async () => {
             const { data: { user } } = await supabase.auth.getUser();
@@ -158,24 +158,41 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
 
     // ── Rolagem de dados ────────────────────────────────────────────────────
     const rollD20 = async (label: string, modifier: number) => {
-        const result = await onRollDice('d20', false);
-        if (result === null) {
-            return;
-        }
+        const result = await onRollDice('d20', false, rollMode);
+        if (!result) return;
 
-        const total = result + modifier;
+        const total = result.finalValue + modifier;
+        
         if (currentUserId) {
-            const modStr = modifier >= 0 ? `+${modifier}` : `${modifier}`;
+            let textMsg = "";
+            if (result.rollMode === 'normal') {
+                textMsg = `rolou ${label} → ${total}`;
+            } else {
+                const v1 = result.values[0] + modifier;
+                const v2 = result.values[1] + modifier;
+                const isV1Chosen = result.rollMode === 'advantage' ? v1 >= v2 : v1 <= v2;
+                
+                const v1Str = isV1Chosen ? `**${v1}**` : `${v1}`;
+                const v2Str = !isV1Chosen ? `**${v2}**` : `${v2}`;
+                const modo = result.rollMode === 'advantage' ? 'Vantagem' : 'Desvantagem';
+                
+                textMsg = `rolou ${label} com ${modo} → [${v1Str}, ${v2Str}] = **${total}**`;
+            }
+
             await supabase.from('chat_messages').insert([{
                 campaign_id: campaignId,
                 user_name: currentUserName,
-                text: `rolou ${label} (d20${modStr}): ${total}`,
+                text: textMsg,
                 is_roll: true,
                 is_secret: false,
                 channel: 'campanha',
                 sender_id: currentUserId,
+                roll_mode: result.rollMode,
+                roll_values: result.values,
+                final_value: result.finalValue
             }]);
         }
+        setRollMode('normal'); // Reseta após rolar
     };
 
     const buildWeaponFormula = (formula: string, attribute?: WeaponAttribute) => {
@@ -198,26 +215,29 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
 
     const rollWeaponFormula = async (itemName: string, formula: string, label: 'ataque' | 'dano', attribute?: WeaponAttribute) => {
         const resolvedFormula = buildWeaponFormula(formula, attribute);
+        if (!resolvedFormula) return;
 
-        if (!resolvedFormula) {
-            alert('Fórmula inválida. Use algo como 1d20+5, 2d6+3 ou d20.');
-            return;
-        }
-
-        const result = await onRollDice(resolvedFormula, false);
-        if (result === null) return;
+        const result = await onRollDice(resolvedFormula, false, rollMode);
+        if (!result) return;
 
         if (currentUserId) {
+            const modo = result.rollMode !== 'normal' ? ` (${result.rollMode === 'advantage' ? 'Vantagem' : 'Desvantagem'})` : '';
+            const textMsg = `${currentUserName} rolou ${label} de ${itemName}${modo}: ${resolvedFormula} = **${result.finalValue}**`;
+
             await supabase.from('chat_messages').insert([{
                 campaign_id: campaignId,
                 user_name: currentUserName,
-                text: `${currentUserName} rolou ${label} da arma ${itemName}: ${resolvedFormula} = ${result}`,
+                text: textMsg,
                 is_roll: true,
                 is_secret: false,
                 channel: 'campanha',
                 sender_id: currentUserId,
+                roll_mode: result.rollMode,
+                roll_values: result.values,
+                final_value: result.finalValue
             }]);
         }
+        setRollMode('normal'); // Reseta após rolar
     };
 
     // ── Enquadramento ────────────────────────────────────────────────────────
@@ -468,6 +488,30 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
                                         </button>
                                     )}
                                 </div>
+                                
+                                {/* Seletores de Vantagem/Desvantagem */}
+                                {!readOnly && (
+                                    <div className="flex items-center justify-center gap-6 mb-4 p-2 bg-black/40 rounded-xl border border-[#1a2a1a]">
+                                        <label className="flex items-center gap-2 cursor-pointer text-[12px] font-black uppercase tracking-widest hover:text-[#00ff66] transition-colors">
+                                            <input 
+                                                type="checkbox" 
+                                                checked={rollMode === 'advantage'} 
+                                                onChange={() => setRollMode(rollMode === 'advantage' ? 'normal' : 'advantage')}
+                                                className="accent-[#00ff66] w-4 h-4 cursor-pointer"
+                                            />
+                                            <span className={rollMode === 'advantage' ? 'text-[#00ff66]' : 'text-[#4a5a4a]'}>Vantagem</span>
+                                        </label>
+                                        <label className="flex items-center gap-2 cursor-pointer text-[12px] font-black uppercase tracking-widest hover:text-red-500 transition-colors">
+                                            <input 
+                                                type="checkbox" 
+                                                checked={rollMode === 'disadvantage'} 
+                                                onChange={() => setRollMode(rollMode === 'disadvantage' ? 'normal' : 'disadvantage')}
+                                                className="accent-red-500 w-4 h-4 cursor-pointer"
+                                            />
+                                            <span className={rollMode === 'disadvantage' ? 'text-red-500' : 'text-[#4a5a4a]'}>Desvantagem</span>
+                                        </label>
+                                    </div>
+                                )}
 
                                 {/* Layout: 2 colunas */}
                                 <div className={`grid grid-cols-2 gap-5 ${readOnly ? 'pointer-events-none select-none' : ''}`}>

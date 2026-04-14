@@ -388,6 +388,16 @@ export default function ChatWidget({ campaignId, isDiceReady, onRollDice }: Chat
   // ---------------------------------------------------------------------------
   // Render
   // ---------------------------------------------------------------------------
+  const renderMessageText = (text: string) => {
+    const parts = text.split(/(\*\*.*?\*\*)/g);
+    return parts.map((part, i) => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        return <strong key={i} className="text-[#00ff66] font-black text-[15px] mx-0.5">{part.slice(2, -2)}</strong>;
+      }
+      return <span key={i} className={part.includes('[') || part.includes(']') ? 'text-gray-400' : ''}>{part}</span>;
+    });
+  };
+
   return (
     <div className="absolute bottom-6 right-6 z-50 flex flex-col items-end">
 
@@ -479,7 +489,9 @@ export default function ChatWidget({ campaignId, isDiceReady, onRollDice }: Chat
                         ${msg.is_secret ? 'text-red-400' : diceColor.text}`}>
                         {nameLabel}
                       </span>
-                      <span className="text-white text-sm font-medium">{msg.text}</span>
+                      <span className="text-white text-sm font-medium">
+                        {renderMessageText(msg.text)}
+                      </span>
                       {msg.is_secret && isMine && (
                         <span className="block text-[9px] text-red-400/60 mt-1 italic">
                           Apenas você {isDM ? '' : 'e o Mestre '}veem isto
@@ -511,6 +523,29 @@ export default function ChatWidget({ campaignId, isDiceReady, onRollDice }: Chat
             </p>
           ) : (
             <>
+              {/* === INÍCIO CHECKBOXES VANTAGEM/DESVANTAGEM === */}
+              <div className="flex items-center gap-4 px-2 py-1.5 bg-[#1a2a1a]/50 rounded-lg text-[10px] uppercase font-bold text-[#8a9a8a] mb-1 border border-[#1a2a1a] justify-center">
+                <label className="flex items-center gap-1.5 cursor-pointer hover:text-[#00ff66] transition-colors">
+                  <input 
+                    type="checkbox" 
+                    checked={rollMode === 'advantage'} 
+                    onChange={() => setRollMode(rollMode === 'advantage' ? 'normal' : 'advantage')}
+                    className="accent-[#00ff66] w-3 h-3 cursor-pointer"
+                  />
+                  Vantagem
+                </label>
+                <label className="flex items-center gap-1.5 cursor-pointer hover:text-red-500 transition-colors">
+                  <input 
+                    type="checkbox" 
+                    checked={rollMode === 'disadvantage'} 
+                    onChange={() => setRollMode(rollMode === 'disadvantage' ? 'normal' : 'disadvantage')}
+                    className="accent-red-500 w-3 h-3 cursor-pointer"
+                  />
+                  Desvantagem
+                </label>
+              </div>
+              {/* === FIM CHECKBOXES VANTAGEM/DESVANTAGEM === */}
+              
               <div className="flex items-center gap-2 justify-between">
                 <div className="flex flex-wrap gap-1.5 flex-1 justify-center">
                   {dadosDisponiveis.map((dado) => (
