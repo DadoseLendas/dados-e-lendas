@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import {
-    ArrowLeft, Shield, Zap, ShieldAlert, Sparkles, Box, Save, Plus, Trash2,
+    ArrowLeft, Shield, Zap, ShieldAlert, Sparkles, Box, Save, Plus, Trash2, Pencil,
 } from 'lucide-react';
 
 // ─── Dados estáticos (espelho de personagens/page.tsx) ────────────────────────
@@ -134,9 +134,8 @@ interface FichaModalProps {
 // ─── Componente ───────────────────────────────────────────────────────────────
 export default function FichaModal({ isOpen, onClose, characterId, onUpdate, campaignId, onRollDice, readOnly = false }: FichaModalProps) {
     const supabase = createClient();
-    //const [character, setCharacter] = useState<Character | null>(null);
     const [draft, setDraft] = useState<Character | null>(null);
-    const [initialChar, setInitialChar] = useState<Character | null>(null); // NOVO
+    const [initialChar, setInitialChar] = useState<Character | null>(null);
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
     const [saveSuccess, setSaveSuccess] = useState(false);
@@ -145,6 +144,7 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
     const [newSpellName, setNewSpellName] = useState('');
     const [currentUserName, setCurrentUserName] = useState('Aventureiro');
     const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+    const [expandedItemId, setExpandedItemId] = useState<number | null>(null); // NOVO: controle de expansão do inventário
 
     useEffect(() => {
         const fetchUser = async () => {
@@ -237,7 +237,6 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
         setSavingFrame(true);
         await supabase.from('characters').update({ imgOffsetX: tempOffsetX, imgOffsetY: tempOffsetY }).eq('id', draft.id);
         const updated = { ...draft, imgOffsetX: tempOffsetX, imgOffsetY: tempOffsetY };
-        //setCharacter(updated);
         setDraft(updated);
         onUpdate?.(updated);
         setSavingFrame(false);
@@ -345,7 +344,6 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
             setDraft(saved);
             onUpdate?.(saved);
 
-            //Verificar as alterações
             const changes = [];
             if (initialChar.hp_current !== saved.hp_current) changes.push(`HP (${initialChar.hp_current} ➔ ${saved.hp_current})`);
             if (initialChar.hp_max !== saved.hp_max) changes.push(`HP Máx (${initialChar.hp_max} ➔ ${saved.hp_max})`);
@@ -358,15 +356,13 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
                     user_name: saved.name,
                     text: `${currentUserName} alterou atributos: ${changes.join(', ')}`,
                     is_roll: false,
-                    is_secret: true, // Garante que o jogador e o mestre saibam que foi logado
+                    is_secret: true,
                     channel: 'fichas',
                     sender_id: currentUserId,
                 }]);
             }
 
-            setInitialChar(saved); // Reseta a foto inicial para os novos valores
-            // ---------------------------------------------
-
+            setInitialChar(saved);
             setSaveSuccess(true);
             setTimeout(() => setSaveSuccess(false), 2000);
         }
@@ -378,7 +374,6 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
         if (!isOpen || !characterId) return;
         const fetchCharacter = async () => {
             setLoading(true);
-            //setCharacter(null);
             setDraft(null);
             const { data, error } = await supabase
                 .from('characters')
@@ -387,7 +382,7 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
                 .single();
             if (!error && data) {
                 setDraft(data as Character);
-                setInitialChar(data as Character);//Salva a foto do estado original
+                setInitialChar(data as Character);
             }
             setLoading(false);
         };
@@ -688,36 +683,31 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
                                             </div>
                                         </div>
 
-                                        {/* Inventário */}
+                                        {/* Inventário - VERSÃO COLAPSÁVEL COM BOTÕES ATK/DANO SEMPRE VISÍVEIS */}
                                         <div className="bg-[#050a05] border border-[#1a2a1a] p-3 rounded-xl">
                                             <h3 className="text-[#00ff66] text-[13px] font-black uppercase mb-2 flex items-center gap-2">
                                                 <Box size={12} /> Inventário
                                             </h3>
-                                            <div className="max-h-[180px] overflow-y-auto space-y-2 pr-1 mb-2">
-                                                {draft.inventory?.length ? draft.inventory.map((item: InventoryItem) => (
-                                                    <div key={item.id} className="bg-black/40 p-2 rounded border border-[#1a2a1a] space-y-2">
-                                                        <div className="flex justify-between items-start gap-2">
-                                                            <div className="min-w-0">
-                                                                <span className="block text-[13px] uppercase text-gray-300 truncate">{item.nome || item.name || 'Item sem nome'}</span>
-                                                                <span className="block text-[12px] uppercase text-gray-500">{item.tipo || 'Utilitário'}</span>
-                                                            </div>
-                                                            <div className="flex items-center gap-2 shrink-0">
-                                                                <button onClick={() => editInventoryItem(item)} className="text-[#00ff66] hover:text-white text-[10px] font-black uppercase transition-colors">
-                                                                    Editar
-                                                                </button>
-                                                                <button onClick={() => removeInventoryItem(item.id)} className="text-red-500/60 hover:text-red-400 transition-colors ml-1 shrink-0">
-                                                                    <Trash2 size={10} />
-                                                                </button>
-                                                            </div>
-                                                        </div>
-                                                        {(item.ataque || item.dano || item.atributo || item.desc) && (
-                                                            <div className="space-y-1 border-t border-[#1a2a1a] pt-2">
-                                                                <div className="flex flex-wrap gap-2">
-                                                                    {item.atributo && (
-                                                                        <span className="bg-[#f1e5ac]/10 border border-[#f1e5ac]/20 text-[#f1e5ac] px-2 py-1 rounded text-[11px] font-black uppercase tracking-wider">
-                                                                            {weaponAttributeLabels[item.atributo]}
-                                                                        </span>
-                                                                    )}
+                                            <div className="max-h-[240px] overflow-y-auto space-y-2 pr-1 mb-2">
+                                                {draft.inventory?.length ? draft.inventory.map((item: InventoryItem) => {
+                                                    const isExpanded = expandedItemId === item.id;
+                                                    return (
+                                                        <div key={item.id} className="bg-black/40 p-2 rounded border border-[#1a2a1a]">
+                                                            {/* Linha principal: nome + tipo + botões ATK/DANO + seta */}
+                                                            <div className="flex justify-between items-center flex-wrap gap-2">
+                                                                <div
+                                                                    className="flex-1 min-w-0 cursor-pointer hover:bg-white/5 rounded px-1 py-1 transition-colors"
+                                                                    onClick={() => setExpandedItemId(isExpanded ? null : item.id)}
+                                                                >
+                                                                    <span className="block text-[14px] font-black uppercase text-gray-200 truncate">
+                                                                        {item.nome || item.name || 'Item sem nome'}
+                                                                    </span>
+                                                                    <span className="block text-[11px] uppercase text-gray-500">
+                                                                        {item.tipo || 'Utilitário'}
+                                                                    </span>
+                                                                </div>
+                                                                {/* Botões ATK/DANO sempre visíveis */}
+                                                                <div className="flex gap-1 shrink-0">
                                                                     {item.ataque && (
                                                                         <button
                                                                             onClick={() => rollWeaponFormula(item.nome || item.name || 'arma', item.ataque ?? '', 'ataque', item.atributo)}
@@ -735,14 +725,56 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
                                                                         </button>
                                                                     )}
                                                                 </div>
-                                                                {item.desc && <p className="text-[12px] text-gray-400 leading-relaxed">{item.desc}</p>}
+                                                                {/* Botão de expandir (seta) */}
+                                                                <button
+                                                                    onClick={() => setExpandedItemId(isExpanded ? null : item.id)}
+                                                                    className="text-[#4a5a4a] hover:text-[#00ff66] transition-colors p-1 shrink-0"
+                                                                >
+                                                                    {isExpanded ? '▲' : '▼'}
+                                                                </button>
                                                             </div>
-                                                        )}
-                                                    </div>
-                                                )) : (
+
+                                                            {/* Conteúdo expansível: atributo, descrição, editar/excluir */}
+                                                            <div
+                                                                className={`overflow-hidden transition-all duration-300 ease-in-out ${
+                                                                    isExpanded ? 'max-h-96 mt-2' : 'max-h-0'
+                                                                }`}
+                                                            >
+                                                                <div className="space-y-2 border-t border-[#1a2a1a] pt-2">
+                                                                    {item.atributo && (
+                                                                        <div className="flex flex-wrap gap-2">
+                                                                            <span className="bg-[#f1e5ac]/10 border border-[#f1e5ac]/20 text-[#f1e5ac] px-2 py-1 rounded text-[11px] font-black uppercase tracking-wider">
+                                                                                {weaponAttributeLabels[item.atributo]}
+                                                                            </span>
+                                                                        </div>
+                                                                    )}
+                                                                    {item.desc && (
+                                                                        <p className="text-[12px] text-gray-400 leading-relaxed">{item.desc}</p>
+                                                                    )}
+                                                                    <div className="flex justify-end gap-3 pt-1">
+                                                                        <button
+                                                                            onClick={() => editInventoryItem(item)}
+                                                                            className="flex items-center gap-1 text-[#00ff66] text-[12px] font-bold uppercase hover:text-white transition-colors"
+                                                                        >
+                                                                            <Pencil size={12} /> Editar
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={() => removeInventoryItem(item.id)}
+                                                                            className="flex items-center gap-1 text-red-500/70 text-[12px] font-bold uppercase hover:text-red-400 transition-colors"
+                                                                        >
+                                                                            <Trash2 size={12} /> Excluir
+                                                                        </button>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                }) : (
                                                     <p className="text-[13px] text-[#4a5a4a] py-1 text-center">Inventário vazio.</p>
                                                 )}
                                             </div>
+
+                                            {/* Formulário de adição/edição (inalterado) */}
                                             <div className="space-y-2">
                                                 <div className="grid grid-cols-2 gap-2">
                                                     <input className={inputCls} placeholder="Nome da arma" value={newInventoryItem.nome} onChange={(e) => setNewInventoryItem(prev => ({ ...prev, nome: e.target.value }))} />
@@ -773,39 +805,36 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
                                     </div>
                                 </div>{/* fim grid 2 colunas */}
 
-                                    {/* ── Perícias — linha completa ─────────────────────────── */}
-                                    <div className={`bg-black border border-[#1a2a1a] p-3 rounded-xl mt-5 ${readOnly ? 'pointer-events-none select-none' : ''}`}>
-                                        <h3 className="text-[#f1e5ac] text-[13px] font-black uppercase mb-3 text-center">Perícias</h3>
-                                        <div className="grid grid-cols-2 gap-1">
-                                            {Object.entries(skillsData).map(([key, info]) => {
-                                                const mod = getModifier(draft.stats[info.attr]);
-                                                const proficient = draft.skills?.[key];
-                                                const total = mod + (proficient ? (draft.proficiencyBonus ?? 2) : 0);
-                                                return (
-                                                    <div
-                                                        key={key}
-                                                        onClick={() => rollD20(info.name, total)}
-                                                        title={`Rolar ${info.name}`}
-                                                        className="flex items-center justify-between bg-black/40 px-2 py-1 rounded border border-[#1a2a1a] cursor-pointer hover:border-[#00ff66]/40 transition-colors"
-                                                    >
-                                                        <div className="flex items-center gap-1.5 min-w-0">
-                                                            <input type="checkbox" checked={!!proficient} onClick={(e) => e.stopPropagation()} onChange={() => toggleSkill(key)} className="accent-[#00ff66] w-3 h-3 cursor-pointer shrink-0" />
-                                                            <span className="text-[13px] uppercase text-gray-300 leading-tight truncate">{info.name}</span>
-                                                        </div>
-                                                        <span className="text-[13px] font-black text-[#00ff66] ml-1 shrink-0">{fmtMod(total)}</span>
+                                {/* ── Perícias — linha completa ─────────────────────────── */}
+                                <div className={`bg-black border border-[#1a2a1a] p-3 rounded-xl mt-5 ${readOnly ? 'pointer-events-none select-none' : ''}`}>
+                                    <h3 className="text-[#f1e5ac] text-[13px] font-black uppercase mb-3 text-center">Perícias</h3>
+                                    <div className="grid grid-cols-2 gap-1">
+                                        {Object.entries(skillsData).map(([key, info]) => {
+                                            const mod = getModifier(draft.stats[info.attr]);
+                                            const proficient = draft.skills?.[key];
+                                            const total = mod + (proficient ? (draft.proficiencyBonus ?? 2) : 0);
+                                            return (
+                                                <div
+                                                    key={key}
+                                                    onClick={() => rollD20(info.name, total)}
+                                                    title={`Rolar ${info.name}`}
+                                                    className="flex items-center justify-between bg-black/40 px-2 py-1 rounded border border-[#1a2a1a] cursor-pointer hover:border-[#00ff66]/40 transition-colors"
+                                                >
+                                                    <div className="flex items-center gap-1.5 min-w-0">
+                                                        <input type="checkbox" checked={!!proficient} onClick={(e) => e.stopPropagation()} onChange={() => toggleSkill(key)} className="accent-[#00ff66] w-3 h-3 cursor-pointer shrink-0" />
+                                                        <span className="text-[13px] uppercase text-gray-300 leading-tight truncate">{info.name}</span>
                                                     </div>
-                                                );
-                                            })}
-                                        </div>
+                                                    <span className="text-[13px] font-black text-[#00ff66] ml-1 shrink-0">{fmtMod(total)}</span>
+                                                </div>
+                                            );
+                                        })}
                                     </div>
-                                </>
-                                );
+                                </div>
+                            </>
+                        );
                     })()}
-
-                            </div >
-
-
+                </div>
             </div>
-            </div>
-            );
+        </div>
+    );
 }
