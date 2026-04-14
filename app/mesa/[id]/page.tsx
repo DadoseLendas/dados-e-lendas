@@ -403,7 +403,7 @@ export default function TelaDeMesa() {
   };
   
   // Função de rolagem que virá do componente DiceRoller
-  const [rollDiceFunc, setRollDiceFunc] = useState<((diceType: string, isSecret: boolean) => Promise<number | null>) | null>(null);
+  const [rollDiceFunc, setRollDiceFunc] = useState<((formula: string, isSecret: boolean, mode: 'normal' | 'advantage' | 'disadvantage') => Promise<any | null>) | null>(null);
 
   // Busca role do usuário e personagem vinculado
   useEffect(() => {
@@ -794,7 +794,7 @@ export default function TelaDeMesa() {
           <ChatWidget 
             campaignId={campaignId} 
             isDiceReady={!!rollDiceFunc} 
-            onRollDice={rollDiceFunc ? (type, secret) => rollDiceFunc(type, secret) : (async () => null)} 
+            onRollDice={rollDiceFunc ? (type, secret, mode) => rollDiceFunc(type, secret, mode) : (async () => null)} 
           />
         </div>
       </div>
