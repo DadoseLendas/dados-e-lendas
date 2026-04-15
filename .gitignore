@@ -33,6 +33,11 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 
+# local spell import assets
+splells1.json
+scripts/convert-spells.mjs
+scripts/converte-spells.mjs
+
 # vercel
 .vercel
 

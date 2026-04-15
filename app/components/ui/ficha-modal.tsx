@@ -121,6 +121,21 @@ type InventoryFormState = {
     desc: string;
 };
 
+type SpellCatalogItem = {
+    id: number;
+    slug: string;
+    nome: string;
+    escola: string;
+    nivel_magia: number;
+    tempo_conjuracao: string;
+    alcance: string;
+    componentes: string;
+    duracao: string;
+    material?: string | null;
+    descricao: string;
+    escala_por_nivel?: string | null;
+};
+
 interface FichaModalProps {
     isOpen: boolean;
     onClose: () => void;
@@ -141,7 +156,12 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
     const [saveSuccess, setSaveSuccess] = useState(false);
     const [newInventoryItem, setNewInventoryItem] = useState<InventoryFormState>({ nome: '', tipo: '', atributo: '', ataque: '', dano: '', desc: '' });
     const [editingInventoryId, setEditingInventoryId] = useState<number | null>(null);
-    const [newSpellName, setNewSpellName] = useState('');
+    const [spellPickerOpen, setSpellPickerOpen] = useState(false);
+    const [spellSearch, setSpellSearch] = useState('');
+    const [spellCatalog, setSpellCatalog] = useState<SpellCatalogItem[]>([]);
+    const [spellLoading, setSpellLoading] = useState(false);
+    const [spellLoadError, setSpellLoadError] = useState('');
+    const [spellPreview, setSpellPreview] = useState<SpellCatalogItem | null>(null);
     const [currentUserName, setCurrentUserName] = useState('Aventureiro');
     const [currentUserId, setCurrentUserId] = useState<string | null>(null);
     const [expandedItemId, setExpandedItemId] = useState<number | null>(null); //controle de expansão do inventário
@@ -326,10 +346,34 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
     const removeInventoryItem = (id: number) =>
         setDraft(prev => prev ? { ...prev, inventory: prev.inventory.filter(i => i.id !== id) } : prev);
 
-    const addSpell = () => {
-        if (!newSpellName.trim() || !draft) return;
-        updateDraft('spells', [...(draft.spells ?? []), { id: Date.now(), name: newSpellName.trim() }]);
-        setNewSpellName('');
+    const getMaxSpellLevelForCharacter = (characterLevel: number) => {
+        if (characterLevel >= 17) return 9;
+        if (characterLevel >= 15) return 8;
+        if (characterLevel >= 13) return 7;
+        if (characterLevel >= 11) return 6;
+        if (characterLevel >= 9) return 5;
+        if (characterLevel >= 7) return 4;
+        if (characterLevel >= 5) return 3;
+        if (characterLevel >= 3) return 2;
+        if (characterLevel >= 1) return 1;
+        return 0;
+    };
+
+    const canLearnSpellByLevel = (spell: SpellCatalogItem) => {
+        if (!draft) return false;
+        if (spell.nivel_magia === 0) return true;
+        return spell.nivel_magia <= getMaxSpellLevelForCharacter(draft.level ?? 1);
+    };
+
+    const addSpellFromCatalog = (spell: SpellCatalogItem) => {
+        if (!draft) return;
+        const alreadyHasSpell = (draft.spells ?? []).some((s) => s.name.toLowerCase() === spell.nome.toLowerCase());
+        if (alreadyHasSpell || !canLearnSpellByLevel(spell)) return;
+
+        updateDraft('spells', [
+            ...(draft.spells ?? []),
+            { id: Date.now() + Math.floor(Math.random() * 1000), name: spell.nome, level: `${spell.nivel_magia}` },
+        ]);
     };
 
     const removeSpell = (id: number) =>
@@ -409,6 +453,39 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
         fetchCharacter();
     }, [isOpen, characterId, supabase]);
 
+    useEffect(() => {
+        if (!isOpen || !spellPickerOpen) return;
+
+        let active = true;
+        const fetchSpellCatalog = async () => {
+            setSpellLoading(true);
+            setSpellLoadError('');
+
+            const { data, error } = await supabase
+                .from('spell_catalog')
+                .select('id, slug, nome, escola, nivel_magia, tempo_conjuracao, alcance, componentes, duracao, material, descricao, escala_por_nivel')
+                .order('nivel_magia', { ascending: true })
+                .order('nome', { ascending: true });
+
+            if (!active) return;
+
+            if (error) {
+                setSpellCatalog([]);
+                setSpellLoadError('Nao foi possivel carregar o repositorio de magias.');
+            } else {
+                setSpellCatalog((data as SpellCatalogItem[]) ?? []);
+            }
+
+            setSpellLoading(false);
+        };
+
+        fetchSpellCatalog();
+
+        return () => {
+            active = false;
+        };
+    }, [isOpen, spellPickerOpen]);
+
     // Bloqueia scroll do body enquanto modal está aberto
     useEffect(() => {
         if (isOpen) document.body.style.overflow = 'hidden';
@@ -422,6 +499,18 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
     const inputCls = "w-full bg-black/40 border border-[#1a2a1a] px-2 py-1 text-[14px] rounded text-white outline-none focus:border-[#00ff66]/50 transition-colors";
     const selectCls = "w-full bg-[#050a05] border border-[#1a2a1a] px-2 py-1 text-[14px] rounded text-white outline-none focus:border-[#00ff66]/50 transition-colors cursor-pointer";
     const numInputCls = "w-full bg-black/40 border border-[#1a2a1a] px-2 py-1 text-[14px] rounded text-[#00ff66] font-bold text-center outline-none focus:border-[#00ff66]/50 transition-colors";
+    const maxSpellLevel = getMaxSpellLevelForCharacter(draft?.level ?? 1);
+    const learnedSpellNames = new Set((draft?.spells ?? []).map((s) => s.name.toLowerCase()));
+    const spellCatalogByName = new Map(spellCatalog.map((spell) => [spell.nome.toLowerCase(), spell]));
+    const filteredSpellCatalog = spellCatalog.filter((spell) => {
+        const query = spellSearch.trim().toLowerCase();
+        if (!query) return true;
+        return (
+            spell.nome.toLowerCase().includes(query) ||
+            spell.escola.toLowerCase().includes(query) ||
+            `${spell.nivel_magia}` === query
+        );
+    });
 
     // ── Barra de vida ─────────────────────────────────────────────────────────
     const HealthBar = ({ current, max }: { current: number; max: number }) => {
@@ -445,7 +534,7 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
             className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-8"
             onClick={(e) => e.target === e.currentTarget && onClose()}
         >
-            <div className="bg-[#020502]/95 border border-[#1a2a1a] rounded-2xl shadow-[0_0_80px_rgba(0,255,102,0.06),0_0_60px_rgba(0,0,0,0.9)] w-2/3 min-w-[480px] h-[88vh] flex flex-col overflow-hidden">
+            <div className="relative bg-[#020502]/95 border border-[#1a2a1a] rounded-2xl shadow-[0_0_80px_rgba(0,255,102,0.06),0_0_60px_rgba(0,0,0,0.9)] w-2/3 min-w-[480px] h-[88vh] flex flex-col overflow-hidden">
                 <div className="flex-1 overflow-y-auto px-6 py-8">
 
                     {loading && (
@@ -701,33 +790,25 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
                                             </div>
                                         </div>
 
-                                        {/* Magias & Habilidades */}
+                                        {/* Habilidades de Raca */}
                                         <div className="bg-[#050a05] border border-[#1a2a1a] p-3 rounded-xl">
                                             <h3 className="text-[#f1e5ac] text-[13px] font-black uppercase mb-3 flex items-center gap-2">
-                                                <Sparkles size={12} /> Magias &amp; Habilidades
+                                                <Sparkles size={12} /> Habilidades de Raca
                                             </h3>
-                                            <div className="max-h-[140px] overflow-y-auto space-y-1.5 pr-1 mb-2">
+                                            <div className="max-h-[220px] overflow-y-auto space-y-1.5 pr-1">
                                                 {raceInfo?.traits && raceInfo.traits.split(', ').map((trait) => (
                                                     <div key={trait} className="bg-[#0a1a0a] p-1.5 rounded border border-[#1a2a1a]/60 flex justify-between items-center">
                                                         <span className="text-[13px] uppercase font-bold text-[#4a7a4a]">{trait}</span>
                                                         <span className="text-[14px] text-[#2a4a2a] font-black uppercase">Raça</span>
                                                     </div>
                                                 ))}
-                                                {raceInfo?.traits && draft.spells?.length > 0 && <div className="border-t border-[#1a2a1a] my-1" />}
-                                                {draft.spells?.map((spell: { id: number; name: string }) => (
-                                                    <div key={spell.id} className="bg-black/60 p-1.5 rounded border border-[#1a2a1a] flex justify-between items-center">
-                                                        <span className="text-[13px] uppercase font-bold text-gray-300">{spell.name}</span>
-                                                        <button onClick={() => removeSpell(spell.id)} className="text-red-500/60 hover:text-red-400 transition-colors ml-2 shrink-0"><Trash2 size={10} /></button>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                            <div className="flex gap-1">
-                                                <input className={inputCls + " flex-1"} placeholder="Nova magia..." value={newSpellName} onChange={(e) => setNewSpellName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addSpell()} />
-                                                <button onClick={addSpell} className="bg-[#f1e5ac]/10 border border-[#f1e5ac]/20 text-[#f1e5ac] px-2 rounded hover:bg-[#f1e5ac]/20 transition-colors"><Plus size={10} /></button>
+                                                {!raceInfo?.traits && (
+                                                    <p className="text-[13px] text-[#4a5a4a] py-1 text-center">Nenhuma habilidade de raça cadastrada.</p>
+                                                )}
                                             </div>
                                         </div>
 
-                                        {/* Inventário - VERSÃO COLAPSÁVEL COM BOTÕES ATK/DANO SEMPRE VISÍVEIS */}
+                                        {/* Inventário */}
                                         <div className="bg-[#050a05] border border-[#1a2a1a] p-3 rounded-xl">
                                             <h3 className="text-[#00ff66] text-[13px] font-black uppercase mb-2 flex items-center gap-2">
                                                 <Box size={12} /> Inventário
@@ -769,7 +850,7 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
                                                                         </button>
                                                                     )}
                                                                 </div>
-                                                                {/* Botão de expandir (seta) */}
+                                                                {/* Botão de expandir */}
                                                                 <button
                                                                     onClick={() => setExpandedItemId(isExpanded ? null : item.id)}
                                                                     className="text-[#4a5a4a] hover:text-[#00ff66] transition-colors p-1 shrink-0"
@@ -778,7 +859,7 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
                                                                 </button>
                                                             </div>
 
-                                                            {/* Conteúdo expansível: atributo, descrição, editar/excluir */}
+                                                            {/* Expandible content */}
                                                             <div
                                                                 className={`overflow-hidden transition-all duration-300 ease-in-out ${
                                                                     isExpanded ? 'max-h-96 mt-2' : 'max-h-0'
@@ -818,7 +899,7 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
                                                 )}
                                             </div>
 
-                                            {/* Formulário de adição/edição (inalterado) */}
+                                            {/* Formulário de adição/edição */}
                                             <div className="space-y-2">
                                                 <div className="grid grid-cols-2 gap-2">
                                                     <input className={inputCls} placeholder="Nome da arma" value={newInventoryItem.nome} onChange={(e) => setNewInventoryItem(prev => ({ ...prev, nome: e.target.value }))} />
@@ -874,6 +955,8 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
                                         })}
                                     </div>
                                 </div>
+
+
                             </>
                         );
                     })()}
