@@ -69,6 +69,23 @@ const weaponAttributeLabels: Record<WeaponAttribute, string> = {
     dex: 'Destreza',
 };
 
+// ─── Categorias de inventário ─────────────────────────────────────────────────
+type ItemCategoria = 'arma' | 'armadura' | 'consumivel' | 'item';
+
+const CATEGORIA_LABELS: Record<ItemCategoria, string> = {
+    arma: '⚔️ Arma',
+    armadura: '🛡️ Armadura',
+    consumivel: '🧪 Consumível',
+    item: '📦 Item',
+};
+
+const TIPO_ARMADURA_OPTIONS = [
+    { value: 'leve', label: 'Leve' },
+    { value: 'media', label: 'Média' },
+    { value: 'pesada', label: 'Pesada' },
+    { value: 'escudo', label: 'Escudo' },
+];
+
 // ─── Utilitários ──────────────────────────────────────────────────────────────
 const getModifier = (value: number) => {
     const normalizedValue = Math.floor(Number(value) || 0);
@@ -105,20 +122,52 @@ type InventoryItem = {
     id: number;
     name?: string;
     nome?: string;
+    categoria?: ItemCategoria;
     tipo?: string;
+    // Arma
     atributo?: WeaponAttribute;
     ataque?: string;
     dano?: string;
+    // Armadura
+    caBase?: number;
+    tipoArmadura?: string;
+    // Consumível
+    quantidade?: number;
+    efeito?: string;
+    // Compartilhado
     desc?: string;
 };
 
 type InventoryFormState = {
     nome: string;
+    categoria: ItemCategoria;
     tipo: string;
+    // Arma
     atributo: WeaponAttribute | '';
     ataque: string;
     dano: string;
+    // Armadura
+    caBase: string;
+    tipoArmadura: string;
+    // Consumível
+    quantidade: string;
+    efeito: string;
+    // Compartilhado
     desc: string;
+};
+
+const EMPTY_FORM: InventoryFormState = {
+    nome: '',
+    categoria: 'arma',
+    tipo: '',
+    atributo: '',
+    ataque: '',
+    dano: '',
+    caBase: '',
+    tipoArmadura: '',
+    quantidade: '1',
+    efeito: '',
+    desc: '',
 };
 
 interface FichaModalProps {
@@ -139,12 +188,12 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
     const [saveSuccess, setSaveSuccess] = useState(false);
-    const [newInventoryItem, setNewInventoryItem] = useState<InventoryFormState>({ nome: '', tipo: '', atributo: '', ataque: '', dano: '', desc: '' });
+    const [newInventoryItem, setNewInventoryItem] = useState<InventoryFormState>(EMPTY_FORM);
     const [editingInventoryId, setEditingInventoryId] = useState<number | null>(null);
     const [newSpellName, setNewSpellName] = useState('');
     const [currentUserName, setCurrentUserName] = useState('Aventureiro');
     const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-    const [expandedItemId, setExpandedItemId] = useState<number | null>(null); // NOVO: controle de expansão do inventário
+    const [expandedItemId, setExpandedItemId] = useState<number | null>(null);
 
     useEffect(() => {
         const fetchUser = async () => {
@@ -159,9 +208,7 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
     // ── Rolagem de dados ────────────────────────────────────────────────────
     const rollD20 = async (label: string, modifier: number) => {
         const result = await onRollDice('d20', false);
-        if (result === null) {
-            return;
-        }
+        if (result === null) return;
 
         const total = result + modifier;
         if (currentUserId) {
@@ -182,10 +229,7 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
         const cleaned = formula.toLowerCase().replace(/\s+/g, '');
         const normalized = cleaned || '1d20';
         const match = normalized.match(/^(\d*)d(\d+)([+-]\d+)?$/);
-
-        if (!match) {
-            return null;
-        }
+        if (!match) return null;
 
         const quantity = match[1] ? parseInt(match[1]) : 1;
         const faces = parseInt(match[2]);
@@ -198,7 +242,6 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
 
     const rollWeaponFormula = async (itemName: string, formula: string, label: 'ataque' | 'dano', attribute?: WeaponAttribute) => {
         const resolvedFormula = buildWeaponFormula(formula, attribute);
-
         if (!resolvedFormula) {
             alert('Fórmula inválida. Use algo como 1d20+5, 2d6+3 ou d20.');
             return;
@@ -263,17 +306,22 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
         } : prev);
 
     const resetInventoryForm = () => {
-        setNewInventoryItem({ nome: '', tipo: '', atributo: '', ataque: '', dano: '', desc: '' });
+        setNewInventoryItem(EMPTY_FORM);
         setEditingInventoryId(null);
     };
 
     const editInventoryItem = (item: InventoryItem) => {
         setNewInventoryItem({
             nome: item.nome || item.name || '',
+            categoria: item.categoria || 'arma',
             tipo: item.tipo || '',
             atributo: item.atributo || '',
             ataque: item.ataque || '',
             dano: item.dano || '',
+            caBase: item.caBase?.toString() || '',
+            tipoArmadura: item.tipoArmadura || '',
+            quantidade: item.quantidade?.toString() || '1',
+            efeito: item.efeito || '',
             desc: item.desc || '',
         });
         setEditingInventoryId(item.id);
@@ -281,21 +329,50 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
 
     const addInventoryItem = () => {
         if (!draft || !newInventoryItem.nome.trim()) return;
-        const hasWeaponDetails = Boolean(newInventoryItem.ataque.trim() || newInventoryItem.dano.trim());
 
-        const payload: InventoryItem = {
+        const base = {
             id: editingInventoryId ?? Date.now(),
             nome: newInventoryItem.nome.trim(),
             name: newInventoryItem.nome.trim(),
-            tipo: newInventoryItem.tipo.trim(),
-            ataque: newInventoryItem.ataque.trim(),
-            dano: newInventoryItem.dano.trim(),
+            categoria: newInventoryItem.categoria,
             desc: newInventoryItem.desc.trim(),
-            ...(hasWeaponDetails && newInventoryItem.atributo ? { atributo: newInventoryItem.atributo } : {}),
         };
 
+        let payload: InventoryItem;
+
+        if (newInventoryItem.categoria === 'arma') {
+            payload = {
+                ...base,
+                tipo: 'Arma',
+                atributo: newInventoryItem.atributo || undefined,
+                ataque: newInventoryItem.ataque.trim(),
+                dano: newInventoryItem.dano.trim(),
+            };
+        } else if (newInventoryItem.categoria === 'armadura') {
+            payload = {
+                ...base,
+                tipo: 'Armadura',
+                tipoArmadura: newInventoryItem.tipoArmadura || undefined,
+                caBase: newInventoryItem.caBase ? Number(newInventoryItem.caBase) : undefined,
+            };
+        } else if (newInventoryItem.categoria === 'consumivel') {
+            payload = {
+                ...base,
+                tipo: 'Consumível',
+                quantidade: newInventoryItem.quantidade ? Number(newInventoryItem.quantidade) : 1,
+                efeito: newInventoryItem.efeito.trim(),
+            };
+        } else {
+            payload = {
+                ...base,
+                tipo: newInventoryItem.tipo.trim() || 'Item',
+            };
+        }
+
         if (editingInventoryId !== null) {
-            updateDraft('inventory', (draft.inventory ?? []).map(item => item.id === editingInventoryId ? payload : item));
+            updateDraft('inventory', (draft.inventory ?? []).map(i =>
+                i.id === editingInventoryId ? payload : i
+            ));
         } else {
             updateDraft('inventory', [...(draft.inventory ?? []), payload]);
         }
@@ -338,6 +415,7 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
                 saveError = error; break;
             }
         }
+
         if (saveError) {
             alert('Erro ao salvar: ' + saveError.message);
         } else if (saved) {
@@ -368,7 +446,6 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
         }
         setSaving(false);
     };
-    // ─────────────────────────────────────────────────────────────────────────
 
     useEffect(() => {
         if (!isOpen || !characterId) return;
@@ -389,7 +466,6 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
         fetchCharacter();
     }, [isOpen, characterId, supabase]);
 
-    // Bloqueia scroll do body enquanto modal está aberto
     useEffect(() => {
         if (isOpen) document.body.style.overflow = 'hidden';
         else document.body.style.overflow = '';
@@ -398,7 +474,7 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
 
     if (!isOpen) return null;
 
-    // ── estilos comuns ────────────────────────────────────────────────────────
+    // ── Estilos comuns ────────────────────────────────────────────────────────
     const inputCls = "w-full bg-black/40 border border-[#1a2a1a] px-2 py-1 text-[14px] rounded text-white outline-none focus:border-[#00ff66]/50 transition-colors";
     const selectCls = "w-full bg-[#050a05] border border-[#1a2a1a] px-2 py-1 text-[14px] rounded text-white outline-none focus:border-[#00ff66]/50 transition-colors cursor-pointer";
     const numInputCls = "w-full bg-black/40 border border-[#1a2a1a] px-2 py-1 text-[14px] rounded text-[#00ff66] font-bold text-center outline-none focus:border-[#00ff66]/50 transition-colors";
@@ -417,6 +493,23 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
                     <div className={`h-full ${color} transition-all duration-500`} style={{ width: `${pct}%` }} />
                 </div>
             </div>
+        );
+    };
+
+    // ── Badge de categoria ────────────────────────────────────────────────────
+    const CategoriaBadge = ({ item }: { item: InventoryItem }) => {
+        const cat = item.categoria;
+        if (!cat || cat === 'arma') return null;
+        const styles: Record<string, string> = {
+            armadura: 'bg-blue-900/30 border-blue-800/40 text-blue-300',
+            consumivel: 'bg-purple-900/30 border-purple-800/40 text-purple-300',
+            item: 'bg-gray-800/40 border-gray-700/40 text-gray-400',
+        };
+        const icons: Record<string, string> = { armadura: '🛡️', consumivel: '🧪', item: '📦' };
+        return (
+            <span className={`border px-1.5 py-0.5 rounded text-[10px] font-black uppercase ${styles[cat]}`}>
+                {icons[cat]} {cat}
+            </span>
         );
     };
 
@@ -459,9 +552,9 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
                                             onClick={saveCharacter}
                                             disabled={saving}
                                             className={`flex items-center gap-2 text-base font-black uppercase px-4 py-1.5 rounded-lg transition-all ${saveSuccess
-                                                    ? 'bg-[#00ff66]/20 text-[#00ff66] border border-[#00ff66]/40'
-                                                    : 'bg-[#00ff66] text-black hover:brightness-110'
-                                                } disabled:opacity-50`}
+                                                ? 'bg-[#00ff66]/20 text-[#00ff66] border border-[#00ff66]/40'
+                                                : 'bg-[#00ff66] text-black hover:brightness-110'
+                                            } disabled:opacity-50`}
                                         >
                                             <Save size={12} />
                                             {saving ? 'Salvando...' : saveSuccess ? 'Salvo!' : 'Salvar'}
@@ -683,17 +776,19 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
                                             </div>
                                         </div>
 
-                                        {/* Inventário - VERSÃO COLAPSÁVEL COM BOTÕES ATK/DANO SEMPRE VISÍVEIS */}
+                                        {/* ── INVENTÁRIO ───────────────────── */}
                                         <div className="bg-[#050a05] border border-[#1a2a1a] p-3 rounded-xl">
                                             <h3 className="text-[#00ff66] text-[13px] font-black uppercase mb-2 flex items-center gap-2">
                                                 <Box size={12} /> Inventário
                                             </h3>
-                                            <div className="max-h-[240px] overflow-y-auto space-y-2 pr-1 mb-2">
+
+                                            {/* Lista de itens */}
+                                            <div className="max-h-[240px] overflow-y-auto space-y-2 pr-1 mb-3">
                                                 {draft.inventory?.length ? draft.inventory.map((item: InventoryItem) => {
                                                     const isExpanded = expandedItemId === item.id;
                                                     return (
                                                         <div key={item.id} className="bg-black/40 p-2 rounded border border-[#1a2a1a]">
-                                                            {/* Linha principal: nome + tipo + botões ATK/DANO + seta */}
+                                                            {/* Linha principal */}
                                                             <div className="flex justify-between items-center flex-wrap gap-2">
                                                                 <div
                                                                     className="flex-1 min-w-0 cursor-pointer hover:bg-white/5 rounded px-1 py-1 transition-colors"
@@ -702,11 +797,26 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
                                                                     <span className="block text-[14px] font-black uppercase text-gray-200 truncate">
                                                                         {item.nome || item.name || 'Item sem nome'}
                                                                     </span>
-                                                                    <span className="block text-[11px] uppercase text-gray-500">
-                                                                        {item.tipo || 'Utilitário'}
-                                                                    </span>
+                                                                    <div className="flex items-center gap-1.5 mt-0.5">
+                                                                        <span className="text-[11px] uppercase text-gray-500">
+                                                                            {item.tipo || 'Item'}
+                                                                        </span>
+                                                                        {/* Badge de quantidade para consumíveis */}
+                                                                        {item.categoria === 'consumivel' && item.quantidade !== undefined && (
+                                                                            <span className="bg-purple-900/40 border border-purple-800/40 text-purple-300 px-1.5 rounded text-[10px] font-black">
+                                                                                ×{item.quantidade}
+                                                                            </span>
+                                                                        )}
+                                                                        {/* Badge de CA para armaduras */}
+                                                                        {item.categoria === 'armadura' && item.caBase !== undefined && (
+                                                                            <span className="bg-blue-900/40 border border-blue-800/40 text-blue-300 px-1.5 rounded text-[10px] font-black">
+                                                                                CA {item.caBase}
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
                                                                 </div>
-                                                                {/* Botões ATK/DANO sempre visíveis */}
+
+                                                                {/* Botões ATK/DANO (apenas armas) */}
                                                                 <div className="flex gap-1 shrink-0">
                                                                     {item.ataque && (
                                                                         <button
@@ -725,7 +835,8 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
                                                                         </button>
                                                                     )}
                                                                 </div>
-                                                                {/* Botão de expandir (seta) */}
+
+                                                                {/* Botão expandir */}
                                                                 <button
                                                                     onClick={() => setExpandedItemId(isExpanded ? null : item.id)}
                                                                     className="text-[#4a5a4a] hover:text-[#00ff66] transition-colors p-1 shrink-0"
@@ -734,13 +845,11 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
                                                                 </button>
                                                             </div>
 
-                                                            {/* Conteúdo expansível: atributo, descrição, editar/excluir */}
-                                                            <div
-                                                                className={`overflow-hidden transition-all duration-300 ease-in-out ${
-                                                                    isExpanded ? 'max-h-96 mt-2' : 'max-h-0'
-                                                                }`}
-                                                            >
+                                                            {/* Conteúdo expandido */}
+                                                            <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isExpanded ? 'max-h-96 mt-2' : 'max-h-0'}`}>
                                                                 <div className="space-y-2 border-t border-[#1a2a1a] pt-2">
+
+                                                                    {/* Detalhes de ARMA */}
                                                                     {item.atributo && (
                                                                         <div className="flex flex-wrap gap-2">
                                                                             <span className="bg-[#f1e5ac]/10 border border-[#f1e5ac]/20 text-[#f1e5ac] px-2 py-1 rounded text-[11px] font-black uppercase tracking-wider">
@@ -748,9 +857,38 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
                                                                             </span>
                                                                         </div>
                                                                     )}
+
+                                                                    {/* Detalhes de ARMADURA */}
+                                                                    {item.categoria === 'armadura' && (item.tipoArmadura || item.caBase !== undefined) && (
+                                                                        <div className="flex flex-wrap gap-2">
+                                                                            {item.tipoArmadura && (
+                                                                                <span className="bg-blue-900/30 border border-blue-800/40 text-blue-300 px-2 py-1 rounded text-[11px] font-black uppercase">
+                                                                                    {item.tipoArmadura}
+                                                                                </span>
+                                                                            )}
+                                                                            {item.caBase !== undefined && (
+                                                                                <span className="bg-blue-900/30 border border-blue-800/40 text-blue-300 px-2 py-1 rounded text-[11px] font-black uppercase">
+                                                                                    CA base: {item.caBase}
+                                                                                </span>
+                                                                            )}
+                                                                        </div>
+                                                                    )}
+
+                                                                    {/* Detalhes de CONSUMÍVEL */}
+                                                                    {item.categoria === 'consumivel' && item.efeito && (
+                                                                        <div className="flex flex-wrap gap-2">
+                                                                            <span className="bg-purple-900/30 border border-purple-800/40 text-purple-300 px-2 py-1 rounded text-[11px] font-black">
+                                                                                Efeito: {item.efeito}
+                                                                            </span>
+                                                                        </div>
+                                                                    )}
+
+                                                                    {/* Descrição */}
                                                                     {item.desc && (
                                                                         <p className="text-[12px] text-gray-400 leading-relaxed">{item.desc}</p>
                                                                     )}
+
+                                                                    {/* Ações */}
                                                                     <div className="flex justify-end gap-3 pt-1">
                                                                         <button
                                                                             onClick={() => editInventoryItem(item)}
@@ -774,27 +912,143 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
                                                 )}
                                             </div>
 
-                                            {/* Formulário de adição/edição (inalterado) */}
-                                            <div className="space-y-2">
-                                                <div className="grid grid-cols-2 gap-2">
-                                                    <input className={inputCls} placeholder="Nome da arma" value={newInventoryItem.nome} onChange={(e) => setNewInventoryItem(prev => ({ ...prev, nome: e.target.value }))} />
-                                                    <input className={inputCls} placeholder="Tipo" value={newInventoryItem.tipo} onChange={(e) => setNewInventoryItem(prev => ({ ...prev, tipo: e.target.value }))} />
-                                                    <select className={inputCls + ' col-span-2'} value={newInventoryItem.atributo} onChange={(e) => setNewInventoryItem(prev => ({ ...prev, atributo: e.target.value as WeaponAttribute }))}>
-                                                        <option value="">Sem atributo</option>
-                                                        {WEAPON_ATTRIBUTE_OPTIONS.map((option) => (
-                                                            <option key={option} value={option}>{weaponAttributeLabels[option]}</option>
-                                                        ))}
-                                                    </select>
-                                                    <input className={inputCls} placeholder="Fórmula ATK (opcional)" value={newInventoryItem.ataque} onChange={(e) => setNewInventoryItem(prev => ({ ...prev, ataque: e.target.value }))} />
-                                                    <input className={inputCls} placeholder="Fórmula DANO (opcional)" value={newInventoryItem.dano} onChange={(e) => setNewInventoryItem(prev => ({ ...prev, dano: e.target.value }))} />
+                                            {/* ── Formulário de adição/edição ── */}
+                                            <div className="space-y-2 border-t border-[#1a2a1a] pt-3">
+
+                                                {/* Seletor de categoria */}
+                                                <div className="grid grid-cols-4 gap-1">
+                                                    {(Object.keys(CATEGORIA_LABELS) as ItemCategoria[]).map((cat) => (
+                                                        <button
+                                                            key={cat}
+                                                            onClick={() => setNewInventoryItem(prev => ({ ...prev, categoria: cat }))}
+                                                            className={`text-[10px] font-black uppercase py-1.5 rounded border transition-all ${
+                                                                newInventoryItem.categoria === cat
+                                                                    ? 'bg-[#00ff66]/20 border-[#00ff66]/60 text-[#00ff66]'
+                                                                    : 'bg-black/40 border-[#1a2a1a] text-[#4a5a4a] hover:border-[#00ff66]/30 hover:text-[#8a9a8a]'
+                                                            }`}
+                                                        >
+                                                            {CATEGORIA_LABELS[cat]}
+                                                        </button>
+                                                    ))}
                                                 </div>
-                                                <textarea className={inputCls + ' h-16 resize-none'} placeholder="Descrição" value={newInventoryItem.desc} onChange={(e) => setNewInventoryItem(prev => ({ ...prev, desc: e.target.value }))} />
+
+                                                {/* Nome — sempre presente */}
+                                                <input
+                                                    className={inputCls}
+                                                    placeholder={
+                                                        newInventoryItem.categoria === 'arma' ? 'Nome da arma' :
+                                                        newInventoryItem.categoria === 'armadura' ? 'Nome da armadura' :
+                                                        newInventoryItem.categoria === 'consumivel' ? 'Nome do consumível' :
+                                                        'Nome do item'
+                                                    }
+                                                    value={newInventoryItem.nome}
+                                                    onChange={(e) => setNewInventoryItem(prev => ({ ...prev, nome: e.target.value }))}
+                                                />
+
+                                                {/* Campos específicos de ARMA */}
+                                                {newInventoryItem.categoria === 'arma' && (
+                                                    <>
+                                                        <select
+                                                            className={selectCls}
+                                                            value={newInventoryItem.atributo}
+                                                            onChange={(e) => setNewInventoryItem(prev => ({ ...prev, atributo: e.target.value as WeaponAttribute }))}
+                                                        >
+                                                            <option value="">Sem atributo</option>
+                                                            {WEAPON_ATTRIBUTE_OPTIONS.map((opt) => (
+                                                                <option key={opt} value={opt}>{weaponAttributeLabels[opt]}</option>
+                                                            ))}
+                                                        </select>
+                                                        <div className="grid grid-cols-2 gap-2">
+                                                            <input
+                                                                className={inputCls}
+                                                                placeholder="ATK (ex: 1d20+3)"
+                                                                value={newInventoryItem.ataque}
+                                                                onChange={(e) => setNewInventoryItem(prev => ({ ...prev, ataque: e.target.value }))}
+                                                            />
+                                                            <input
+                                                                className={inputCls}
+                                                                placeholder="DANO (ex: 1d8+3)"
+                                                                value={newInventoryItem.dano}
+                                                                onChange={(e) => setNewInventoryItem(prev => ({ ...prev, dano: e.target.value }))}
+                                                            />
+                                                        </div>
+                                                    </>
+                                                )}
+
+                                                {/* Campos específicos de ARMADURA */}
+                                                {newInventoryItem.categoria === 'armadura' && (
+                                                    <div className="grid grid-cols-2 gap-2">
+                                                        <select
+                                                            className={selectCls}
+                                                            value={newInventoryItem.tipoArmadura}
+                                                            onChange={(e) => setNewInventoryItem(prev => ({ ...prev, tipoArmadura: e.target.value }))}
+                                                        >
+                                                            <option value="">Tipo de armadura</option>
+                                                            {TIPO_ARMADURA_OPTIONS.map((opt) => (
+                                                                <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                                            ))}
+                                                        </select>
+                                                        <input
+                                                            type="number"
+                                                            min={0}
+                                                            className={numInputCls}
+                                                            placeholder="CA base"
+                                                            value={newInventoryItem.caBase}
+                                                            onChange={(e) => setNewInventoryItem(prev => ({ ...prev, caBase: e.target.value }))}
+                                                        />
+                                                    </div>
+                                                )}
+
+                                                {/* Campos específicos de CONSUMÍVEL */}
+                                                {newInventoryItem.categoria === 'consumivel' && (
+                                                    <div className="grid grid-cols-2 gap-2">
+                                                        <input
+                                                            type="number"
+                                                            min={1}
+                                                            className={numInputCls}
+                                                            placeholder="Qtd"
+                                                            value={newInventoryItem.quantidade}
+                                                            onChange={(e) => setNewInventoryItem(prev => ({ ...prev, quantidade: e.target.value }))}
+                                                        />
+                                                        <input
+                                                            className={inputCls}
+                                                            placeholder="Efeito (ex: Cura 2d4+2)"
+                                                            value={newInventoryItem.efeito}
+                                                            onChange={(e) => setNewInventoryItem(prev => ({ ...prev, efeito: e.target.value }))}
+                                                        />
+                                                    </div>
+                                                )}
+
+                                                {/* Campo de subtipo para ITEM genérico */}
+                                                {newInventoryItem.categoria === 'item' && (
+                                                    <input
+                                                        className={inputCls}
+                                                        placeholder="Subtipo (ex: Ferramenta, Chave, Joia...)"
+                                                        value={newInventoryItem.tipo}
+                                                        onChange={(e) => setNewInventoryItem(prev => ({ ...prev, tipo: e.target.value }))}
+                                                    />
+                                                )}
+
+                                                {/* Descrição — sempre presente */}
+                                                <textarea
+                                                    className={inputCls + ' h-14 resize-none'}
+                                                    placeholder="Descrição (opcional)"
+                                                    value={newInventoryItem.desc}
+                                                    onChange={(e) => setNewInventoryItem(prev => ({ ...prev, desc: e.target.value }))}
+                                                />
+
                                                 <div className="flex gap-2">
-                                                    <button onClick={addInventoryItem} className="flex-1 bg-[#00ff66]/10 border border-[#00ff66]/20 text-[#00ff66] px-2 rounded hover:bg-[#00ff66]/20 transition-colors text-[12px] font-black uppercase">
+                                                    <button
+                                                        onClick={addInventoryItem}
+                                                        className="flex-1 bg-[#00ff66]/10 border border-[#00ff66]/20 text-[#00ff66] px-2 py-1.5 rounded hover:bg-[#00ff66]/20 transition-colors text-[12px] font-black uppercase"
+                                                    >
                                                         {editingInventoryId !== null ? 'Salvar edição' : 'Adicionar'}
                                                     </button>
                                                     {editingInventoryId !== null && (
-                                                        <button onClick={resetInventoryForm} className="bg-black/40 border border-[#1a2a1a] text-[#4a5a4a] px-2 rounded hover:border-[#00ff66]/40 transition-colors text-[12px] font-black uppercase">
+                                                        <button
+                                                            onClick={resetInventoryForm}
+                                                            className="bg-black/40 border border-[#1a2a1a] text-[#4a5a4a] px-2 rounded hover:border-[#00ff66]/40 transition-colors text-[12px] font-black uppercase"
+                                                        >
                                                             Cancelar
                                                         </button>
                                                     )}
