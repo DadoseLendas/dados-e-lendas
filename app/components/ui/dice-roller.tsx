@@ -46,58 +46,51 @@ export default function DiceRoller({ campaignId, onReady, isDM, currentUserId }:
     const currentRollId = ++rollCounterRef.current;
 
     if (clearTimerRef.current) clearTimeout(clearTimerRef.current);
-    
     if (diceBoxRef.current.clearDice) diceBoxRef.current.clearDice();
     else if (diceBoxRef.current.clear) diceBoxRef.current.clear();
 
-    // 1. Aplica a cor global do dado (como era no seu código original)
-    const hexColor = isSecret ? '#ef4444' : (COLORSETS[diceType] || '#ffffff');
+    // 1. Configura a cor do dado
+    const baseColor = isSecret ? '#ef4444' : (COLORSETS[diceType] || '#ffffff');
     if (diceBoxRef.current.updateConfig) {
-      await diceBoxRef.current.updateConfig({ 
+      await diceBoxRef.current.updateConfig({
         theme_colorset: "custom",
-        theme_customColorset: {
-          background: hexColor,
-          foreground: '#ffffff',
-          texture: 'none'
-        }
+        theme_customColorset: { background: baseColor, foreground: '#ffffff', texture: 'none' }
       });
       await new Promise(resolve => setTimeout(resolve, 50));
     } else if (diceBoxRef.current.config) {
-      diceBoxRef.current.config.theme_customColorset = { background: hexColor, foreground: '#ffffff', texture: 'none' };
+      diceBoxRef.current.config.theme_customColorset = { background: baseColor, foreground: '#ffffff', texture: 'none' };
     }
 
-    // 2. Monta a string de notação que a biblioteca espera (ex: "1d20@15, 1d20@8")
-    const notationParts: string[] = [];
+    // 2. Lança os dados com valores predeterminados
+    if (diceType === 'd100') {
+      const pairs: { ten: number; one: number }[] = values.map(val => ({
+        ten: val === 100 ? 0 : Math.floor(val / 10) * 10,
+        one: val % 10 === 0 ? 10 : val % 10,
+      }));
 
-    values.forEach((val) => {
-      // Regra especial e realista para d100: Roda 1d100 (dezenas) e 1d10 (unidades)
-      if (diceType === 'd100') {
-        let tens, ones;
-        // Lógica física de dados: se der 74, a dezena é 70 e unidade 4.
-        // Se der 70, a dezena é 60 e unidade 10. Se der 100, dezena é 90 e unidade 10.
-        if (val % 10 === 0) {
-          tens = val - 10;
-          ones = 10;
-        } else {
-          tens = Math.floor(val / 10) * 10;
-          ones = val % 10;
-        }
-        notationParts.push(`1d100@${tens}`, `1d10@${ones}`);
-      } else {
-        notationParts.push(`1${diceType}@${val}`);
+      // Primeiro par simultâneo
+      await diceBoxRef.current.roll(`1d100@${pairs[0].ten}`);
+      await diceBoxRef.current.add(`1d10@${pairs[0].one}`); // sem delay
+
+      // Pares adicionais (vantagem/desvantagem) também sem delay entre si
+      for (let i = 1; i < pairs.length; i++) {
+        await diceBoxRef.current.add(`1d100@${pairs[i].ten}`);
+        await diceBoxRef.current.add(`1d10@${pairs[i].one}`);
       }
-    });
+    } else {
+      // Normal:    "1d20@15"
+      // Vantagem:  "2d20@15,8"
+      await diceBoxRef.current.roll(
+        `${values.length}${diceType}@${values.join(',')}`
+      );
+    }
 
-    // Junta tudo com vírgula. A biblioteca vai dar o .split(',') internamente sem quebrar!
-    const notationString = notationParts.join(', ');
-
-    await diceBoxRef.current.roll(notationString);
-
+    // 3. Limpa a mesa após 4s
     if (currentRollId === rollCounterRef.current) {
       clearTimerRef.current = setTimeout(() => {
         if (diceBoxRef.current?.clearDice) diceBoxRef.current.clearDice();
         else if (diceBoxRef.current?.clear) diceBoxRef.current.clear();
-      }, 5000); 
+      }, 4000);
     }
   }, []);
 

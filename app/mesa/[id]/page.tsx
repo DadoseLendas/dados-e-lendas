@@ -5,8 +5,10 @@ import {
   UserRound, Users, Home, BookOpen, Map as MapIcon, 
   ShieldCheck, ChevronLeft, ChevronRight, X, Upload, HelpCircle 
 } from 'lucide-react'; 
+import { FiBook } from 'react-icons/fi';
 import { createClient } from '@/utils/supabase/client';
 import FichaModal from '@/app/components/ui/ficha-modal';
+import SpellModal from '@/app/components/ui/spell-modal';
 import ChatWidget from '@/app/components/ui/chat-widget'; 
 import CampaignBooksWidget from '@/app/components/ui/campaign-books-widget';
 import DiceRoller from '@/app/components/ui/dice-roller';
@@ -373,6 +375,7 @@ export default function TelaDeMesa() {
 
   // --- Logic de Dados/Ficha ---
   const [showFicha, setShowFicha] = useState(false);
+  const [showSpellModal, setShowSpellModal] = useState(false);
   const [fichaCharacterId, setFichaCharacterId] = useState<number | string | null>(null);
   const [isDM, setIsDM] = useState(false);
   // DM visualizando ficha de jogador
@@ -403,7 +406,7 @@ export default function TelaDeMesa() {
   };
   
   // Função de rolagem que virá do componente DiceRoller
-  const [rollDiceFunc, setRollDiceFunc] = useState<((diceType: string, isSecret: boolean) => Promise<number | null>) | null>(null);
+  const [rollDiceFunc, setRollDiceFunc] = useState<((formula: string, isSecret: boolean, mode: 'normal' | 'advantage' | 'disadvantage') => Promise<any | null>) | null>(null);
 
   // Busca role do usuário e personagem vinculado
   useEffect(() => {
@@ -628,6 +631,19 @@ export default function TelaDeMesa() {
             </button>
           )}
 
+          {!isDM && (
+            <button
+              onClick={() => {
+                if (!fichaCharacterId) { alert('Você não vinculou um personagem a esta mesa!'); return; }
+                setShowSpellModal(true);
+              }}
+              className={`p-2 hover:drop-shadow-[0_0_8px_#00ff66] transition-all duration-300 ${fichaCharacterId ? 'text-white/30 hover:text-[#00ff66]' : 'text-white/10 cursor-not-allowed'}`}
+              title="Magias"
+            >
+              <FiBook size={22} />
+            </button>
+          )}
+
           {/* Mestre */}
           {isDM && (
             <>
@@ -794,7 +810,7 @@ export default function TelaDeMesa() {
           <ChatWidget 
             campaignId={campaignId} 
             isDiceReady={!!rollDiceFunc} 
-            onRollDice={rollDiceFunc ? (type, secret) => rollDiceFunc(type, secret) : (async () => null)} 
+            onRollDice={rollDiceFunc ? (type, secret, mode) => rollDiceFunc(type, secret, mode) : (async () => null)} 
           />
         </div>
       </div>
@@ -842,6 +858,12 @@ export default function TelaDeMesa() {
         characterId={fichaCharacterId}
         campaignId={campaignId}
         onRollDice={rollDiceFunc ?? (async () => null)}
+      />
+
+      <SpellModal
+        isOpen={showSpellModal}
+        onClose={() => setShowSpellModal(false)}
+        characterId={fichaCharacterId}
       />
 
       {/* Ficha de jogador — visualização do Mestre */}
