@@ -376,13 +376,13 @@ export default function ChatWidget({ campaignId, isDiceReady, onRollDice }: Chat
   };
 
   const dadosDisponiveis = [
-    { nome: 'd20',  cor: 'border-red-500    text-red-500    hover:bg-red-500/20'    },
-    { nome: 'd12',  cor: 'border-orange-500 text-orange-500 hover:bg-orange-500/20' },
-    { nome: 'd10',  cor: 'border-yellow-500 text-yellow-500 hover:bg-yellow-500/20' },
-    { nome: 'd8',   cor: 'border-green-500  text-green-500  hover:bg-green-500/20'  },
-    { nome: 'd6',   cor: 'border-blue-500   text-blue-500   hover:bg-blue-500/20'   },
-    { nome: 'd4',   cor: 'border-purple-500 text-purple-500 hover:bg-purple-500/20' },
-    { nome: 'd100', cor: 'border-gray-400   text-gray-400   hover:bg-gray-500/20'   },
+    { nome: 'd20',  bg: 'bg-red-600    hover:bg-red-500',    border: 'border-red-700'    },
+    { nome: 'd12',  bg: 'bg-orange-500 hover:bg-orange-400', border: 'border-orange-600' },
+    { nome: 'd10',  bg: 'bg-yellow-500 hover:bg-yellow-400', border: 'border-yellow-600' },
+    { nome: 'd8',   bg: 'bg-green-600  hover:bg-green-500',  border: 'border-green-700'  },
+    { nome: 'd6',   bg: 'bg-blue-600   hover:bg-blue-500',   border: 'border-blue-700'   },
+    { nome: 'd4',   bg: 'bg-purple-600 hover:bg-purple-500', border: 'border-purple-700' },
+    { nome: 'd100', bg: 'bg-gray-600   hover:bg-gray-500',   border: 'border-gray-700'   },
   ];
 
   // ---------------------------------------------------------------------------
@@ -523,28 +523,6 @@ export default function ChatWidget({ campaignId, isDiceReady, onRollDice }: Chat
             </p>
           ) : (
             <>
-              {/* === INÍCIO CHECKBOXES VANTAGEM/DESVANTAGEM === */}
-              <div className="flex items-center gap-4 px-2 py-1.5 bg-[#1a2a1a]/50 rounded-lg text-[10px] uppercase font-bold text-[#8a9a8a] mb-1 border border-[#1a2a1a] justify-center">
-                <label className="flex items-center gap-1.5 cursor-pointer hover:text-[#00ff66] transition-colors">
-                  <input 
-                    type="checkbox" 
-                    checked={rollMode === 'advantage'} 
-                    onChange={() => setRollMode(rollMode === 'advantage' ? 'normal' : 'advantage')}
-                    className="accent-[#00ff66] w-3 h-3 cursor-pointer"
-                  />
-                  Vantagem
-                </label>
-                <label className="flex items-center gap-1.5 cursor-pointer hover:text-red-500 transition-colors">
-                  <input 
-                    type="checkbox" 
-                    checked={rollMode === 'disadvantage'} 
-                    onChange={() => setRollMode(rollMode === 'disadvantage' ? 'normal' : 'disadvantage')}
-                    className="accent-red-500 w-3 h-3 cursor-pointer"
-                  />
-                  Desvantagem
-                </label>
-              </div>
-              {/* === FIM CHECKBOXES VANTAGEM/DESVANTAGEM === */}
               
               <div className="flex items-center gap-2 justify-between">
                 <div className="flex flex-wrap gap-1.5 flex-1 justify-center">
@@ -553,10 +531,10 @@ export default function ChatWidget({ campaignId, isDiceReady, onRollDice }: Chat
                       key={dado.nome}
                       onClick={() => handleRollClick(dado.nome)}
                       disabled={!isDiceReady}
-                      className={`border ${dado.cor} bg-transparent py-1.5 px-2 rounded flex items-center gap-1 hover:scale-105 transition-all shadow-sm disabled:opacity-50`}
+                      className={`${dado.bg} ${dado.border} border text-white py-2 px-3 rounded-lg flex items-center gap-1.5 hover:scale-105 hover:brightness-110 transition-all shadow-sm disabled:opacity-50`}
                     >
-                      <Dices size={12} />
-                      <span className="text-[9px] font-bold uppercase">{dado.nome}</span>
+                      <Dices size={14} />
+                      <span className="text-[11px] font-bold uppercase">{dado.nome}</span>
                     </button>
                   ))}
                 </div>

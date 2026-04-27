@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import {
     ArrowLeft, Shield, Zap, ShieldAlert, Sparkles, Box, Save, Plus, Trash2, Pencil, Sword, ShieldHalf, FlaskConical, Backpack, Wand2
@@ -210,6 +210,8 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
     const [currentUserName, setCurrentUserName] = useState('Aventureiro');
     const [currentUserId, setCurrentUserId] = useState<string | null>(null);
     const [expandedItemId, setExpandedItemId] = useState<number | null>(null);
+    const [rollPopup, setRollPopup] = useState<{ label: string; modifier: number } | null>(null);
+    const broadcastChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
     useEffect(() => {
         const fetchUser = async () => {
@@ -221,15 +223,32 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
         fetchUser();
     }, [supabase]);
 
-    // ── Rolagem de dados ────────────────────────────────────────────────────
-    const rollD20 = async (label: string, modifier: number) => {
-        const result = await onRollDice('d20', false);
-        if (result === null) return;
+    useEffect(() => {
+        if (!campaignId || campaignId === '00000000-0000-0000-0000-000000000000') return;
+        const ch = supabase.channel(`chat_room_${campaignId}`);
+        ch.subscribe();
+        broadcastChannelRef.current = ch;
+        return () => { supabase.removeChannel(ch); };
+    }, [campaignId, supabase]);
 
-        const total = result + modifier;
+    // ── Rolagem de dados ────────────────────────────────────────────────────
+    const rollD20 = (label: string, modifier: number) => {
+        setRollPopup({ label, modifier });
+    };
+
+    const executeRoll = async (mode: 'normal' | 'advantage' | 'disadvantage') => {
+        if (!rollPopup) return;
+        const { label, modifier } = rollPopup;
+        setRollPopup(null);
+
+        const rawResult = await onRollDice('d20', false, mode);
+        if (rawResult === null) return;
+        const finalValue = typeof rawResult === 'object' ? rawResult.finalValue : rawResult;
+
+        const total = finalValue + modifier;
         if (currentUserId) {
             const modStr = modifier >= 0 ? `+${modifier}` : `${modifier}`;
-            await supabase.from('chat_messages').insert([{
+            const { data } = await supabase.from('chat_messages').insert([{
                 campaign_id: campaignId,
                 user_name: currentUserName,
                 text: `rolou ${label} (d20${modStr}): ${total}`,
@@ -237,7 +256,10 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
                 is_secret: false,
                 channel: 'campanha',
                 sender_id: currentUserId,
-            }]);
+            }]).select().single();
+            if (data && broadcastChannelRef.current) {
+                broadcastChannelRef.current.send({ type: 'broadcast', event: 'new_message', payload: data });
+            }
         }
     };
 
@@ -263,19 +285,22 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
             return;
         }
 
-        const result = await onRollDice(resolvedFormula, false);
-        if (result === null) return;
-
+        const rawResult = await onRollDice(resolvedFormula, false, 'normal');
+        if (rawResult === null) return;
+        const finalValue = typeof rawResult === 'object' ? rawResult.finalValue : rawResult;
         if (currentUserId) {
-            await supabase.from('chat_messages').insert([{
+            const { data } = await supabase.from('chat_messages').insert([{
                 campaign_id: campaignId,
                 user_name: currentUserName,
-                text: `${currentUserName} rolou ${label} da arma ${itemName}: ${resolvedFormula} = ${result}`,
+                text: `${currentUserName} rolou ${label} da arma ${itemName}: ${resolvedFormula} = ${finalValue}`,
                 is_roll: true,
                 is_secret: false,
                 channel: 'campanha',
                 sender_id: currentUserId,
-            }]);
+            }]).select().single();
+            if (data && broadcastChannelRef.current) {
+                broadcastChannelRef.current.send({ type: 'broadcast', event: 'new_message', payload: data });
+            }
         }
     };
 
@@ -513,6 +538,37 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
     };
 
     return (
+    <>
+    {rollPopup && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 backdrop-blur-sm">
+            <div className="bg-[#0a120a] border border-[#1a2a1a] rounded-2xl p-6 w-72 shadow-[0_0_50px_rgba(0,0,0,0.95)]">
+                <h3 className="text-[#f1e5ac] text-sm font-black uppercase tracking-widest text-center mb-1">
+                    {rollPopup.label}
+                </h3>
+                <p className="text-[#4a5a4a] text-[10px] uppercase tracking-widest text-center mb-5">
+                    d20 {rollPopup.modifier >= 0 ? `+${rollPopup.modifier}` : rollPopup.modifier}
+                </p>
+                <div className="grid grid-cols-3 gap-2">
+                    <button onClick={() => executeRoll('disadvantage')}
+                        className="bg-red-700 hover:bg-red-600 text-white font-black text-[11px] uppercase tracking-wide py-3 px-2 rounded-xl transition-all">
+                        Desvant.
+                    </button>
+                    <button onClick={() => executeRoll('normal')}
+                        className="bg-[#00ff66] text-black font-black text-[11px] uppercase tracking-wide py-3 px-2 rounded-xl hover:brightness-110 transition-all">
+                        Normal
+                    </button>
+                    <button onClick={() => executeRoll('advantage')}
+                        className="bg-green-700 hover:bg-green-600 text-white font-black text-[11px] uppercase tracking-wide py-3 px-2 rounded-xl transition-all">
+                        Vantagem
+                    </button>
+                </div>
+                <button onClick={() => setRollPopup(null)}
+                    className="w-full mt-3 text-[10px] text-[#4a5a4a] hover:text-white uppercase tracking-widest transition-colors">
+                    Cancelar
+                </button>
+            </div>
+        </div>
+    )}
         <div
             className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-8"
             onClick={(e) => e.target === e.currentTarget && onClose()}
@@ -1062,5 +1118,6 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
                 </div>
             </div>
         </div>
+        </>
     );
 }
