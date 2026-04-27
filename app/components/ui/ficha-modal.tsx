@@ -184,7 +184,7 @@ interface FichaModalProps {
     characterId: number | string | null;
     onUpdate?: (character: Character) => void;
     campaignId: string;
-    onRollDice: (diceType: string, isSecret: boolean) => Promise<number | null>;
+    onRollDice: (diceType: string, isSecret: boolean) => Promise<unknown | null>;
     readOnly?: boolean;
 }
 
@@ -222,11 +222,21 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
     }, [supabase]);
 
     // ── Rolagem de dados ────────────────────────────────────────────────────
+    const extractRollValue = (rollResult: unknown) => {
+        if (typeof rollResult === 'number') return rollResult;
+        if (rollResult && typeof rollResult === 'object' && 'finalValue' in rollResult) {
+            const maybeValue = (rollResult as { finalValue?: unknown }).finalValue;
+            return typeof maybeValue === 'number' ? maybeValue : null;
+        }
+        return null;
+    };
+
     const rollD20 = async (label: string, modifier: number) => {
         const result = await onRollDice('d20', false);
-        if (result === null) return;
+        const baseRoll = extractRollValue(result);
+        if (baseRoll === null) return;
 
-        const total = result + modifier;
+        const total = baseRoll + modifier;
         if (currentUserId) {
             const modStr = modifier >= 0 ? `+${modifier}` : `${modifier}`;
             await supabase.from('chat_messages').insert([{
@@ -264,13 +274,14 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
         }
 
         const result = await onRollDice(resolvedFormula, false);
-        if (result === null) return;
+        const finalValue = extractRollValue(result);
+        if (finalValue === null) return;
 
         if (currentUserId) {
             await supabase.from('chat_messages').insert([{
                 campaign_id: campaignId,
                 user_name: currentUserName,
-                text: `${currentUserName} rolou ${label} da arma ${itemName}: ${resolvedFormula} = ${result}`,
+                text: `${currentUserName} rolou ${label} da arma ${itemName}: ${resolvedFormula} = ${finalValue}`,
                 is_roll: true,
                 is_secret: false,
                 channel: 'campanha',

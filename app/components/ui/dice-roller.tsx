@@ -148,20 +148,22 @@ export default function DiceRoller({ campaignId, onReady, isDM, currentUserId }:
             const mod = match[3] ? parseInt(match[3]) : 0;
             diceType = `d${faces}`;
 
-            // Função helper para rolar um "conjunto" da fórmula (ex: 2d6)
+            // Rola os valores individuais para suportar fórmulas como 2d20, 3d6 etc.
             const rollSet = () => {
-              let sum = 0;
+              const values: number[] = [];
               for (let i = 0; i < qtd; i++) {
-                sum += Math.floor(Math.random() * faces) + 1;
+                values.push(Math.floor(Math.random() * faces) + 1);
               }
-              return sum;
+              return values;
             };
 
-            const val1 = rollSet();
-            const val2 = mode !== 'normal' ? rollSet() : val1;
-            
-            generatedValues = mode === 'normal' ? [val1] : [val1, val2];
-            
+            const set1 = rollSet();
+            const set2 = mode !== 'normal' ? rollSet() : set1;
+            const val1 = set1.reduce((acc, value) => acc + value, 0);
+            const val2 = set2.reduce((acc, value) => acc + value, 0);
+
+            generatedValues = mode === 'normal' ? set1 : [val1, val2];
+
             let rawChosen = val1;
             if (mode === 'advantage') rawChosen = Math.max(val1, val2);
             if (mode === 'disadvantage') rawChosen = Math.min(val1, val2);
