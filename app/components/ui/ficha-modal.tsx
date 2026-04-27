@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import {
-    ArrowLeft, Shield, Zap, ShieldAlert, Sparkles, Box, Save, Plus, Trash2, Pencil, Sword, ShieldHalf, FlaskConical, Backpack, Wand2
+    ArrowLeft, Shield, Zap, ShieldAlert, Sparkles, Box, Save, Trash2, Pencil, Sword, ShieldHalf, FlaskConical, Backpack, Wand2
 } from 'lucide-react';
 
 // ─── Dados estáticos (espelho de personagens/page.tsx) ────────────────────────
@@ -206,7 +206,6 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
     const [saveSuccess, setSaveSuccess] = useState(false);
     const [newInventoryItem, setNewInventoryItem] = useState<InventoryFormState>(EMPTY_FORM);
     const [editingInventoryId, setEditingInventoryId] = useState<number | null>(null);
-    const [newSpellName, setNewSpellName] = useState('');
     const [currentUserName, setCurrentUserName] = useState('Aventureiro');
     const [currentUserId, setCurrentUserId] = useState<string | null>(null);
     const [expandedItemId, setExpandedItemId] = useState<number | null>(null);
@@ -409,12 +408,6 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
 
     const removeInventoryItem = (id: number) =>
         setDraft(prev => prev ? { ...prev, inventory: prev.inventory.filter(i => i.id !== id) } : prev);
-
-    const addSpell = () => {
-        if (!newSpellName.trim() || !draft) return;
-        updateDraft('spells', [...(draft.spells ?? []), { id: Date.now(), name: newSpellName.trim() }]);
-        setNewSpellName('');
-    };
 
     const removeSpell = (id: number) =>
         setDraft(prev => prev ? { ...prev, spells: prev.spells.filter(s => s.id !== id) } : prev);
@@ -777,10 +770,6 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
                                                     <button onClick={() => removeSpell(spell.id)} className="text-red-500/60 hover:text-red-400 transition-colors ml-2 shrink-0"><Trash2 size={10} /></button>
                                                 </div>
                                             ))}
-                                        </div>
-                                        <div className="flex gap-1">
-                                            <input className={inputCls + " flex-1"} placeholder="Nova magia..." value={newSpellName} onChange={(e) => setNewSpellName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addSpell()} />
-                                            <button onClick={addSpell} className="bg-[#f1e5ac]/10 border border-[#f1e5ac]/20 text-[#f1e5ac] px-2 rounded hover:bg-[#f1e5ac]/20 transition-colors"><Plus size={10} /></button>
                                         </div>
                                     </div>
 
