@@ -862,7 +862,7 @@ export default function TelaDeMesa() {
     return await rollDiceFunc(formula, isSecret, "normal");
   }
   return null;
-}}""
+}}
       />
 
       <SpellModal
