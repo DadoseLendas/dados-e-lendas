@@ -877,7 +877,12 @@ export default function TelaDeMesa() {
         onClose={() => setShowFichaDM(false)}
         characterId={fichaCharacterIdDM}
         campaignId={campaignId}
-        onRollDice={rollDiceFunc ?? (async () => null)}
+        onRollDice={async (formula: string, isSecret: boolean) => {
+          if (rollDiceFunc) {
+            return await rollDiceFunc(formula, isSecret, "normal");
+            }
+            return null;
+}}
         readOnly
       />
 
