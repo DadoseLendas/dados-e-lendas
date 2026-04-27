@@ -6,6 +6,7 @@ import {
   ShieldCheck, ChevronLeft, ChevronRight, X, Upload, HelpCircle 
 } from 'lucide-react'; 
 import { FiBook } from 'react-icons/fi';
+import { GiSpellBook } from 'react-icons/gi';
 import { createClient } from '@/utils/supabase/client';
 import FichaModal from '@/app/components/ui/ficha-modal';
 import SpellModal from '@/app/components/ui/spell-modal';
@@ -640,7 +641,7 @@ export default function TelaDeMesa() {
               className={`p-2 hover:drop-shadow-[0_0_8px_#00ff66] transition-all duration-300 ${fichaCharacterId ? 'text-white/30 hover:text-[#00ff66]' : 'text-white/10 cursor-not-allowed'}`}
               title="Magias"
             >
-              <FiBook size={22} />
+              {showSpellModal ? <GiSpellBook size={28} /> : <FiBook size={22} />}
             </button>
           )}
 
