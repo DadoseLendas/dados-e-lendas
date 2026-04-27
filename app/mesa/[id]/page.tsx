@@ -854,10 +854,15 @@ export default function TelaDeMesa() {
 
       <FichaModal
         isOpen={showFicha}
-        onClose={() => setShowFicha(false)}
+        onClose={() => setShowFicha(false)}npm run build
         characterId={fichaCharacterId}
         campaignId={campaignId}
-        onRollDice={rollDiceFunc ?? (async () => null)}
+       onRollDice={async (formula: string, isSecret: boolean) => {
+  if (rollDiceFunc) {
+    return await rollDiceFunc(formula, isSecret, "normal");
+  }
+  return null;
+}}
       />
 
       <SpellModal
