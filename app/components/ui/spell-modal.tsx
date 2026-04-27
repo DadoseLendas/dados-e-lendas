@@ -273,15 +273,40 @@ export default function SpellModal({ isOpen, onClose, characterId }: SpellModalP
 
   const descriptionSpell = isAdding ? hoverCatalogSpell : selectedKnownSpell;
 
+  // ===== MODO GRANDE: isAdding = true =====
+  // Lista todas as magias da biblioteca para adicionar
+  // - Modal expandido (95vh, 1450px)
+  // - Centralizado na tela com blur no fundo
+  // - Grid: 70% listagem de magias + 30% descrição
+  // - Mostra catálogo com search e círculos colapsáveis
+  //
+  // ===== MODO PEQUENO: isAdding = false =====
+  // Lista as magias do personagem
+  // - Modal compacto (82vh, 780px)
+  // - Posicionado na esquerda (lg:ml-20)
+  // - Grid: listagem flex + 360px de descrição
+  // - Sem blur, sem search, mostra magias aprendidas
+
+  const modalHeightClass = isAdding ? "h-[95vh]" : "h-[82vh]";
+  const modalMaxWidthClass = isAdding ? "max-w-[1450px]" : "max-w-[780px]";
+  const gridHeightClass = isAdding ? "h-[calc(95vh-54px)]" : "h-[calc(82vh-54px)]";
+  const gridColsClass = isAdding ? "lg:grid-cols-[1fr_0.55fr]" : "lg:grid-cols-[minmax(0,1fr)_360px]";
+  const listingMaxHeightClass = isAdding ? "max-h-[80vh]" : "max-h-[68vh]";
+  const catalogMaxHeightClass = isAdding ? "max-h-[82vh]" : "max-h-[64vh]";
+  const descriptionMaxHeightClass = isAdding ? "max-h-[80vh]" : "max-h-[70vh]";
+  const overlayBlur = isAdding ? "backdrop-blur-sm" : "";
+  const modalCenter = isAdding ? "mx-auto" : "mx-auto lg:mx-0 lg:ml-20";
+  const containerAlign = isAdding ? "flex items-center justify-center" : "flex items-center";
+
   return (
-    <div className="fixed inset-0 z-[95] bg-black/75 backdrop-blur-sm p-4 md:p-6" onClick={onClose}>
+    <div className={`fixed inset-0 z-[95] bg-black/50 ${overlayBlur} p-2 md:p-3 ${containerAlign}`} onClick={onClose}>
       <div
-        className="mx-auto h-[92vh] w-full max-w-[1450px] rounded-2xl border border-[#1a2a1a] bg-[#050a05] shadow-[0_0_80px_rgba(0,255,102,0.12)] overflow-hidden"
+        className={`${modalHeightClass} ${modalMaxWidthClass} w-full rounded-xl border border-[#1a2a1a] bg-[#050a05] shadow-[0_0_80px_rgba(0,255,102,0.12)] overflow-hidden ${modalCenter}`}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between border-b border-[#1a2a1a] px-4 py-3 md:px-6">
+        <div className="flex items-center justify-between border-b border-[#1a2a1a] px-3 py-2 md:px-4">
           <div>
-            <h2 className="text-[15px] md:text-[18px] font-black uppercase tracking-widest text-[#f1e5ac]">Livro de Magias</h2>
+            <h2 className="text-[14px] md:text-[16px] font-black uppercase tracking-widest text-[#f1e5ac]">Livro de Magias</h2>
             <p className="text-[11px] md:text-[12px] uppercase text-[#4a5a4a]">
               {character ? `${character.name} • Nivel ${character.level} • Circulo maximo ${maxSpellLevel}` : "Carregando personagem..."}
             </p>
@@ -294,42 +319,42 @@ export default function SpellModal({ isOpen, onClose, characterId }: SpellModalP
                   setIsAdding(false);
                   setHoverCatalogSpell(null);
                 }}
-                className="inline-flex items-center gap-2 rounded-lg border border-[#1a2a1a] px-3 py-1.5 text-[11px] font-black uppercase text-[#4a5a4a] hover:border-[#00ff66]/40 hover:text-[#00ff66]"
+                className="inline-flex items-center gap-2 rounded-md border border-[#1a2a1a] px-3 py-2 text-[12px] font-black uppercase text-[#4a5a4a] hover:border-[#00ff66]/40 hover:text-[#00ff66]"
               >
-                <ArrowLeft size={13} /> Voltar
+                <ArrowLeft size={14} /> Voltar
               </button>
             ) : (
               <button
                 onClick={() => setIsAdding(true)}
-                className="inline-flex items-center gap-2 rounded-lg border border-[#f1e5ac]/30 bg-[#f1e5ac]/10 px-3 py-1.5 text-[11px] font-black uppercase text-[#f1e5ac] hover:bg-[#f1e5ac]/20"
+                className="inline-flex items-center gap-2 rounded-md border border-[#f1e5ac]/30 bg-[#f1e5ac]/10 px-3 py-2 text-[12px] font-black uppercase text-[#f1e5ac] hover:bg-[#f1e5ac]/20"
               >
-                <Plus size={13} /> Adicionar Magias
+                <Plus size={14} /> Adicionar Magias
               </button>
             )}
 
             <button
               onClick={saveSpells}
               disabled={saving || !character}
-              className="inline-flex items-center gap-2 rounded-lg border border-[#00ff66]/30 bg-[#00ff66]/10 px-3 py-1.5 text-[11px] font-black uppercase text-[#00ff66] hover:bg-[#00ff66]/20 disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded-md border border-[#00ff66]/30 bg-[#00ff66]/10 px-3 py-2 text-[12px] font-black uppercase text-[#00ff66] hover:bg-[#00ff66]/20 disabled:opacity-50"
             >
-              <Save size={13} /> {saving ? "Salvando" : "Salvar"}
+              <Save size={14} /> {saving ? "Salvando" : "Salvar"}
             </button>
 
             <button
               onClick={onClose}
-              className="rounded-lg border border-[#1a2a1a] px-2 py-1 text-[#4a5a4a] hover:border-[#00ff66]/40 hover:text-[#00ff66]"
+              className="rounded-md border border-[#1a2a1a] px-2.5 py-1.5 text-[#4a5a4a] hover:border-[#00ff66]/40 hover:text-[#00ff66]"
             >
               <X size={16} />
             </button>
           </div>
         </div>
 
-        <div className="grid h-[calc(92vh-62px)] grid-cols-1 lg:grid-cols-[minmax(0,1fr)_440px]">
-          <section className="border-b border-[#1a2a1a] p-4 lg:border-b-0 lg:border-r">
+        <div className={`grid ${gridHeightClass} grid-cols-1 ${gridColsClass}`}>
+          <section className="border-b border-[#1a2a1a] p-3 lg:border-b-0 lg:border-r">
             {!isAdding && (
               <>
-                <h3 className="mb-3 text-[12px] font-black uppercase tracking-widest text-[#f1e5ac]">Magias do Personagem</h3>
-                <div className="max-h-[75vh] overflow-y-auto space-y-3 pr-1">
+                <h3 className="mb-2 text-[12px] font-black uppercase tracking-widest text-[#f1e5ac]">Magias do Personagem</h3>
+                <div className={`${listingMaxHeightClass} overflow-y-auto space-y-2 pr-1 pb-2`}>
                   {loadingCharacter && <p className="text-[12px] uppercase text-[#4a5a4a]">Carregando...</p>}
                   {!loadingCharacter && groupedKnown.length === 0 && (
                     <p className="text-[12px] uppercase text-[#4a5a4a]">Nenhuma magia selecionada.</p>
@@ -338,8 +363,8 @@ export default function SpellModal({ isOpen, onClose, characterId }: SpellModalP
                   {groupedKnown.map(([level, spells]) => (
                     <div key={`known-${level}`} className="rounded-lg border border-[#1a2a1a] bg-black/20">
                       <div className="border-b border-[#1a2a1a] bg-[#070d07] px-3 py-2">
-                        <span className="text-[11px] font-black uppercase text-[#00ff66]">{level === 0 ? "Truques" : `Circulo ${level}`}</span>
-                        <span className="ml-2 text-[10px] uppercase text-[#4a5a4a]">({spells.length})</span>
+                        <span className="text-[12px] font-black uppercase text-[#00ff66]">{level === 0 ? "Truques" : `Circulo ${level}`}</span>
+                        <span className="ml-2 text-[11px] uppercase text-[#4a5a4a]">({spells.length})</span>
                       </div>
                       <div className="space-y-1.5 p-2">
                         {spells.map((spell) => {
@@ -350,7 +375,7 @@ export default function SpellModal({ isOpen, onClose, characterId }: SpellModalP
                               onClick={() => setSelectedSpellName(spell.name)}
                               className={`w-full flex items-center justify-between gap-2 rounded-md border px-2 py-2 text-left transition-colors ${selected ? "border-[#00ff66]/40 bg-[#00ff66]/10" : "border-[#1a2a1a] bg-black/35 hover:border-[#00ff66]/25"}`}
                             >
-                              <span className="truncate text-[12px] font-black uppercase text-gray-200">{spell.name}</span>
+                              <span className="truncate text-[13px] font-black uppercase text-gray-200">{spell.name}</span>
                               <span
                                 onClick={(e) => {
                                   e.stopPropagation();
@@ -358,7 +383,7 @@ export default function SpellModal({ isOpen, onClose, characterId }: SpellModalP
                                 }}
                                 className="text-red-400/70 hover:text-red-300"
                               >
-                                <Trash2 size={13} />
+                                <Trash2 size={14} />
                               </span>
                             </button>
                           );
@@ -372,16 +397,16 @@ export default function SpellModal({ isOpen, onClose, characterId }: SpellModalP
 
             {isAdding && (
               <>
-                <h3 className="mb-3 text-[12px] font-black uppercase tracking-widest text-[#f1e5ac]">Biblioteca de Magias</h3>
-                <div className="mb-3">
+                <h3 className="mb-2 text-[12px] font-black uppercase tracking-widest text-[#f1e5ac]">Biblioteca de Magias</h3>
+                <div className="mb-2">
                   <input
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     placeholder="Buscar por nome, escola ou circulo..."
-                    className="w-full rounded-lg border border-[#1a2a1a] bg-black/40 px-3 py-2 text-[13px] text-white outline-none focus:border-[#00ff66]/50"
+                    className="w-full rounded-md border border-[#1a2a1a] bg-black/40 px-2.5 py-2 text-[13px] text-white outline-none focus:border-[#00ff66]/50"
                   />
                 </div>
-                <div className="max-h-[70vh] overflow-y-auto pr-1">
+                <div className={`${catalogMaxHeightClass} overflow-y-auto pr-1`}>
                   {loadingCatalog && <p className="text-[12px] uppercase text-[#4a5a4a]">Carregando biblioteca...</p>}
                   {!loadingCatalog && catalogError && <p className="text-[12px] uppercase text-red-400">{catalogError}</p>}
                   {!loadingCatalog && !catalogError && groupedCatalog.length === 0 && (
@@ -399,8 +424,8 @@ export default function SpellModal({ isOpen, onClose, characterId }: SpellModalP
                           className="sticky top-0 z-10 flex w-full items-center justify-between border-b border-[#1a2a1a] bg-[#070d07] px-3 py-2 text-left hover:bg-[#0a1a0a]"
                         >
                           <div>
-                            <span className="text-[11px] font-black uppercase text-[#00ff66]">{level === 0 ? "Truques" : `Circulo ${level}`}</span>
-                            <span className="ml-2 text-[10px] uppercase text-[#4a5a4a]">({spells.length})</span>
+                            <span className="text-[12px] font-black uppercase text-[#00ff66]">{level === 0 ? "Truques" : `Circulo ${level}`}</span>
+                            <span className="ml-2 text-[11px] uppercase text-[#4a5a4a]">({spells.length})</span>
                           </div>
                           {isExpanded ? <ChevronDown size={14} className="text-[#8a9a8a]" /> : <ChevronRight size={14} className="text-[#8a9a8a]" />}
                         </button>
@@ -419,15 +444,15 @@ export default function SpellModal({ isOpen, onClose, characterId }: SpellModalP
                                   className="flex items-start justify-between gap-2 rounded-md border border-[#1a2a1a] bg-black/40 p-2 hover:border-[#00ff66]/35"
                                 >
                                   <div className="min-w-0">
-                                    <p className="truncate text-[12px] font-black uppercase text-gray-200">{spell.nome}</p>
-                                    <p className="text-[10px] uppercase text-[#8a9a8a]">{spell.escola} • {spell.tempo_conjuracao} • {spell.alcance}</p>
+                                    <p className="truncate text-[13px] font-black uppercase text-gray-200">{spell.nome}</p>
+                                    <p className="text-[11px] uppercase text-[#8a9a8a]">{spell.escola} • {spell.tempo_conjuracao} • {spell.alcance}</p>
                                   </div>
                                   <button
                                     onClick={() => addSpell(spell)}
                                     disabled={!canAdd}
-                                    className={`shrink-0 rounded border px-2 py-1 text-[10px] font-black uppercase ${canAdd ? "border-[#00ff66]/30 text-[#00ff66] hover:bg-[#00ff66]/10" : "border-[#1a2a1a] text-[#4a5a4a]"}`}
+                                    className={`shrink-0 rounded border px-3 py-2 text-[12px] font-black uppercase ${canAdd ? "border-[#00ff66]/30 text-[#00ff66] hover:bg-[#00ff66]/10" : "border-[#1a2a1a] text-[#4a5a4a]"}`}
                                   >
-                                    {already ? "ok" : allowed ? <Plus size={12} /> : "lvl"}
+                                    {already ? "ok" : allowed ? <Plus size={14} /> : "lvl"}
                                   </button>
                                 </div>
                               );
@@ -442,8 +467,8 @@ export default function SpellModal({ isOpen, onClose, characterId }: SpellModalP
             )}
           </section>
 
-          <section className="p-4">
-            <h3 className="mb-3 text-[12px] font-black uppercase tracking-widest text-[#f1e5ac]">Descricao</h3>
+          <section className="p-3">
+            <h3 className="mb-2 text-[12px] font-black uppercase tracking-widest text-[#f1e5ac]">Descricao</h3>
 
             {!descriptionSpell && (
               <p className="text-[12px] uppercase text-[#4a5a4a]">
@@ -452,11 +477,11 @@ export default function SpellModal({ isOpen, onClose, characterId }: SpellModalP
             )}
 
             {descriptionSpell && (
-              <div className="max-h-[78vh] overflow-y-auto rounded-xl border border-[#1a2a1a] bg-black/30 p-4">
-                <p className="text-[16px] font-black uppercase tracking-wider text-[#f1e5ac]">{descriptionSpell.nome}</p>
-                <p className="mt-1 text-[11px] uppercase text-[#8a9a8a]">Circulo {descriptionSpell.nivel_magia} • {descriptionSpell.escola}</p>
+              <div className={`${descriptionMaxHeightClass} overflow-y-auto rounded-lg border border-[#1a2a1a] bg-black/30 p-3`}>
+                <p className="text-[15px] font-black uppercase tracking-wider text-[#f1e5ac]">{descriptionSpell.nome}</p>
+                <p className="mt-1 text-[12px] uppercase text-[#8a9a8a]">Circulo {descriptionSpell.nivel_magia} • {descriptionSpell.escola}</p>
 
-                <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] uppercase text-[#9ea8a0]">
+                <div className="mt-3 grid grid-cols-2 gap-2 text-[12px] uppercase text-[#9ea8a0]">
                   <p><span className="text-[#00ff66] font-black">Tempo:</span> {descriptionSpell.tempo_conjuracao}</p>
                   <p><span className="text-[#00ff66] font-black">Alcance:</span> {descriptionSpell.alcance}</p>
                   <p><span className="text-[#00ff66] font-black">Comp:</span> {descriptionSpell.componentes}</p>
@@ -464,13 +489,13 @@ export default function SpellModal({ isOpen, onClose, characterId }: SpellModalP
                 </div>
 
                 {descriptionSpell.material && (
-                  <p className="mt-3 text-[11px] uppercase text-[#9ea8a0]">
+                  <p className="mt-3 text-[12px] uppercase text-[#9ea8a0]">
                     <span className="text-[#00ff66] font-black">Material:</span> {descriptionSpell.material}
                   </p>
                 )}
 
-                <div className="mt-4 rounded-lg border border-[#1a2a1a] bg-black/35 p-3">
-                  <p className="text-[15px] leading-8 text-gray-200 whitespace-pre-line">{descriptionSpell.descricao}</p>
+                <div className="mt-3 rounded-lg border border-[#1a2a1a] bg-black/35 p-2.5">
+                  <p className="text-[14px] leading-6 text-gray-200 whitespace-pre-line">{descriptionSpell.descricao}</p>
                 </div>
 
                 {descriptionSpell.escala_por_nivel && (
