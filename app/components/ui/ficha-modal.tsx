@@ -72,28 +72,19 @@ const weaponAttributeLabels: Record<WeaponAttribute, string> = {
 // ─── Categorias de inventário ─────────────────────────────────────────────────
 type ItemCategoria = 'arma' | 'armadura' | 'consumivel' | 'item';
 
-
 const CATEGORIAS_CONFIG = {
-    arma: {
-        label: 'Arma',
-        icon: <Sword size={16} />,
-        cor: 'text-green-500'
-    },
-    armadura: {
-        label: 'Armadura',
-        icon: <Shield size={16} />,
-        cor: 'text-blue-500'
-    },
-    consumivel: {
-        label: 'Consumível',
-        icon: <FlaskConical size={16} />,
-        cor: 'text-purple-500'
-    },
-    item: {
-        label: 'Item',
-        icon: <Backpack size={16} />,
-        cor: 'text-amber-500'
-    },
+    arma: { label: 'Arma', icon: <Sword size={16} />, cor: 'text-green-500' },
+    armadura: { label: 'Armadura', icon: <Shield size={16} />, cor: 'text-blue-500' },
+    consumivel: { label: 'Consumível', icon: <FlaskConical size={16} />, cor: 'text-purple-500' },
+    item: { label: 'Item', icon: <Backpack size={16} />, cor: 'text-amber-500' },
+};
+
+// DEFINIÇÃO ADICIONADA: mapeamento de categoria para rótulo curto (usado nos botões)
+const CATEGORIA_LABELS: Record<ItemCategoria, string> = {
+    arma: 'Arma',
+    armadura: 'Armadura',
+    consumivel: 'Consumível',
+    item: 'Item',
 };
 
 const TIPO_ARMADURA_OPTIONS = [
@@ -197,7 +188,15 @@ interface FichaModalProps {
     readOnly?: boolean;
 }
 
-// ─── Componente ───────────────────────────────────────────────────────────────
+// ─── Ícones por categoria (movido para fora do loop) ─────────────────────────
+const categoriaIcons: Record<ItemCategoria, React.ReactNode> = {
+    arma: <Sword size={14} className="text-[#00ff66]" />,
+    armadura: <Shield size={14} className="text-[#4a9eff]" />,
+    consumivel: <FlaskConical size={14} className="text-[#e5acff]" />,
+    item: <Box size={14} className="text-[#f1e5ac]" />,
+};
+
+// ─── Componente principal ─────────────────────────────────────────────────────
 export default function FichaModal({ isOpen, onClose, characterId, onUpdate, campaignId, onRollDice, readOnly = false }: FichaModalProps) {
     const supabase = createClient();
     const [draft, setDraft] = useState<Character | null>(null);
@@ -513,45 +512,22 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
         );
     };
 
-    // ── Badge de categoria ────────────────────────────────────────────────────
-    const CategoriaBadge = ({ item }: { item: InventoryItem }) => {
-        const cat = item.categoria;
-        if (!cat || cat === 'arma') return null;
-        const styles: Record<string, string> = {
-            armadura: 'bg-blue-900/30 border-blue-800/40 text-blue-300',
-            consumivel: 'bg-purple-900/30 border-purple-800/40 text-purple-300',
-            item: 'bg-gray-800/40 border-gray-700/40 text-gray-400',
-        };
-        const icons: Record<string, React.ReactNode> = {
-            arma: <Sword size={16} />,
-            armadura: <Shield size={16} />,
-            consumivel: <FlaskConical size={16} />,
-            item: <Box size={16} />
-        };
-        <span className={`border px-1.5 py-0.5 rounded text-[10px] font-black uppercase ${styles[cat]}`}>
-            {icons[cat]} {cat}
-        </span>
-        );
-};
+    return (
+        <div
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-8"
+            onClick={(e) => e.target === e.currentTarget && onClose()}
+        >
+            <div className="bg-[#020502]/95 border border-[#1a2a1a] rounded-2xl shadow-[0_0_80px_rgba(0,255,102,0.06),0_0_60px_rgba(0,0,0,0.9)] w-2/3 min-w-[480px] h-[88vh] flex flex-col overflow-hidden">
+                <div className="flex-1 overflow-y-auto px-6 py-8">
 
-return (
-    <div
-        className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-8"
-        onClick={(e) => e.target === e.currentTarget && onClose()}
-    >
-        <div className="bg-[#020502]/95 border border-[#1a2a1a] rounded-2xl shadow-[0_0_80px_rgba(0,255,102,0.06),0_0_60px_rgba(0,0,0,0.9)] w-2/3 min-w-[480px] h-[88vh] flex flex-col overflow-hidden">
-            <div className="flex-1 overflow-y-auto px-6 py-8">
+                    {loading && (
+                        <div className="text-center text-[#8a9a8a] text-base py-20">Carregando ficha...</div>
+                    )}
+                    {!loading && !draft && (
+                        <div className="text-center text-red-400 text-base py-20">Não foi possível carregar a ficha.</div>
+                    )}
 
-                {loading && (
-                    <div className="text-center text-[#8a9a8a] text-base py-20">Carregando ficha...</div>
-                )}
-                {!loading && !draft && (
-                    <div className="text-center text-red-400 text-base py-20">Não foi possível carregar a ficha.</div>
-                )}
-
-                {!loading && draft && (() => {
-                    const raceInfo = RACE_DATA[draft.race];
-                    return (
+                    {!loading && draft && (
                         <>
                             {/* Barra de navegação */}
                             <div className="flex justify-between items-center mb-6">
@@ -777,13 +753,13 @@ return (
                                             <Sparkles size={12} /> Magias &amp; Habilidades
                                         </h3>
                                         <div className="max-h-[140px] overflow-y-auto space-y-1.5 pr-1 mb-2">
-                                            {raceInfo?.traits && raceInfo.traits.split(', ').map((trait) => (
+                                            {RACE_DATA[draft.race]?.traits.split(', ').map((trait) => (
                                                 <div key={trait} className="bg-[#0a1a0a] p-1.5 rounded border border-[#1a2a1a]/60 flex justify-between items-center">
                                                     <span className="text-[13px] uppercase font-bold text-[#4a7a4a]">{trait}</span>
                                                     <span className="text-[14px] text-[#2a4a2a] font-black uppercase">Raça</span>
                                                 </div>
                                             ))}
-                                            {raceInfo?.traits && draft.spells?.length > 0 && <div className="border-t border-[#1a2a1a] my-1" />}
+                                            {RACE_DATA[draft.race]?.traits && draft.spells?.length > 0 && <div className="border-t border-[#1a2a1a] my-1" />}
                                             {draft.spells?.map((spell: { id: number; name: string }) => (
                                                 <div key={spell.id} className="bg-black/60 p-1.5 rounded border border-[#1a2a1a] flex justify-between items-center">
                                                     <span className="text-[13px] uppercase font-bold text-gray-300">{spell.name}</span>
@@ -805,37 +781,24 @@ return (
 
                                         {draft.inventory?.length ? draft.inventory.map((item: InventoryItem) => {
                                             const isExpanded = expandedItemId === item.id;
-
-                                            const icons: Record<string, React.ReactNode> = {
-                                                arma: <Sword size={14} className="text-[#00ff66]" />,
-                                                armadura: <Shield size={14} className="text-[#4a9eff]" />,
-                                                consumivel: <FlaskConical size={14} className="text-[#e5acff]" />,
-                                                item: <Box size={14} className="text-[#f1e5ac]" />
-                                            };
-
+                                            const cat = item.categoria || 'item';
                                             return (
-                                                <div key={item.id} className="bg-black/40 p-2 rounded border border-[#1a2a1a]">
+                                                <div key={item.id} className="bg-black/40 p-2 rounded border border-[#1a2a1a] mb-2 last:mb-0">
                                                     <div className="flex justify-between items-center flex-wrap gap-2">
                                                         <div
                                                             className="flex-1 min-w-0 cursor-pointer hover:bg-white/5 rounded px-1 py-1 transition-colors"
                                                             onClick={() => setExpandedItemId(isExpanded ? null : item.id)}
                                                         >
-                                                            {/* Linha do Nome com Ícone */}
                                                             <div className="flex items-center gap-2">
-                                                                {/* 2. Aqui o ícone aparece antes do nome */}
-                                                                {icons[item.categoria] || <Box size={14} className="text-gray-500" />}
-
+                                                                {categoriaIcons[cat]}
                                                                 <span className="block text-[14px] font-black uppercase text-gray-200 truncate">
                                                                     {item.nome || item.name || 'Item sem nome'}
                                                                 </span>
                                                             </div>
-
                                                             <div className="flex items-center gap-1.5 mt-0.5">
                                                                 <span className="text-[11px] uppercase text-gray-500 ml-5">
                                                                     {item.tipo || item.categoria || 'Item'}
                                                                 </span>
-
-                                                                {/* Badges existentes (Quantidade e CA) */}
                                                                 {item.categoria === 'consumivel' && item.quantidade !== undefined && (
                                                                     <span className="bg-purple-900/40 border border-purple-800/40 text-purple-300 px-1.5 rounded text-[10px] font-black">
                                                                         ×{item.quantidade}
@@ -849,7 +812,6 @@ return (
                                                             </div>
                                                         </div>
 
-                                                        {/* Botões ATK/DANO (apenas armas) */}
                                                         <div className="flex gap-1 shrink-0">
                                                             {item.ataque && (
                                                                 <button
@@ -869,7 +831,6 @@ return (
                                                             )}
                                                         </div>
 
-                                                        {/* Botão expandir */}
                                                         <button
                                                             onClick={() => setExpandedItemId(isExpanded ? null : item.id)}
                                                             className="text-[#4a5a4a] hover:text-[#00ff66] transition-colors p-1 shrink-0"
@@ -881,8 +842,6 @@ return (
                                                     {/* Conteúdo expandido */}
                                                     <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isExpanded ? 'max-h-96 mt-2' : 'max-h-0'}`}>
                                                         <div className="space-y-2 border-t border-[#1a2a1a] pt-2">
-
-                                                            {/* Detalhes de ARMA */}
                                                             {item.atributo && (
                                                                 <div className="flex flex-wrap gap-2">
                                                                     <span className="bg-[#f1e5ac]/10 border border-[#f1e5ac]/20 text-[#f1e5ac] px-2 py-1 rounded text-[11px] font-black uppercase tracking-wider">
@@ -890,8 +849,6 @@ return (
                                                                     </span>
                                                                 </div>
                                                             )}
-
-                                                            {/* Detalhes de ARMADURA */}
                                                             {item.categoria === 'armadura' && (item.tipoArmadura || item.caBase !== undefined) && (
                                                                 <div className="flex flex-wrap gap-2">
                                                                     {item.tipoArmadura && (
@@ -906,8 +863,6 @@ return (
                                                                     )}
                                                                 </div>
                                                             )}
-
-                                                            {/* Detalhes de CONSUMÍVEL */}
                                                             {item.categoria === 'consumivel' && item.efeito && (
                                                                 <div className="flex flex-wrap gap-2">
                                                                     <span className="bg-purple-900/30 border border-purple-800/40 text-purple-300 px-2 py-1 rounded text-[11px] font-black">
@@ -915,13 +870,9 @@ return (
                                                                     </span>
                                                                 </div>
                                                             )}
-
-                                                            {/* Descrição */}
                                                             {item.desc && (
                                                                 <p className="text-[12px] text-gray-400 leading-relaxed">{item.desc}</p>
                                                             )}
-
-                                                            {/* Ações */}
                                                             <div className="flex justify-end gap-3 pt-1">
                                                                 <button
                                                                     onClick={() => editInventoryItem(item)}
@@ -947,16 +898,14 @@ return (
 
                                     {/* ── Formulário de adição/edição ── */}
                                     <div className="space-y-2 border-t border-[#1a2a1a] pt-3">
-
-                                        {/* Seletor de categoria */}
                                         <div className="grid grid-cols-4 gap-1">
                                             {(Object.keys(CATEGORIA_LABELS) as ItemCategoria[]).map((cat) => (
                                                 <button
                                                     key={cat}
                                                     onClick={() => setNewInventoryItem(prev => ({ ...prev, categoria: cat }))}
                                                     className={`text-[10px] font-black uppercase py-1.5 rounded border transition-all ${newInventoryItem.categoria === cat
-                                                            ? 'bg-[#00ff66]/20 border-[#00ff66]/60 text-[#00ff66]'
-                                                            : 'bg-black/40 border-[#1a2a1a] text-[#4a5a4a] hover:border-[#00ff66]/30 hover:text-[#8a9a8a]'
+                                                        ? 'bg-[#00ff66]/20 border-[#00ff66]/60 text-[#00ff66]'
+                                                        : 'bg-black/40 border-[#1a2a1a] text-[#4a5a4a] hover:border-[#00ff66]/30 hover:text-[#8a9a8a]'
                                                         }`}
                                                 >
                                                     {CATEGORIA_LABELS[cat]}
@@ -964,7 +913,6 @@ return (
                                             ))}
                                         </div>
 
-                                        {/* Nome — sempre presente */}
                                         <input
                                             className={inputCls}
                                             placeholder={
@@ -977,7 +925,6 @@ return (
                                             onChange={(e) => setNewInventoryItem(prev => ({ ...prev, nome: e.target.value }))}
                                         />
 
-                                        {/* Campos específicos de ARMA */}
                                         {newInventoryItem.categoria === 'arma' && (
                                             <>
                                                 <select
@@ -1007,7 +954,6 @@ return (
                                             </>
                                         )}
 
-                                        {/* Campos específicos de ARMADURA */}
                                         {newInventoryItem.categoria === 'armadura' && (
                                             <div className="grid grid-cols-2 gap-2">
                                                 <select
@@ -1031,7 +977,6 @@ return (
                                             </div>
                                         )}
 
-                                        {/* Campos específicos de CONSUMÍVEL */}
                                         {newInventoryItem.categoria === 'consumivel' && (
                                             <div className="grid grid-cols-2 gap-2">
                                                 <input
@@ -1051,7 +996,6 @@ return (
                                             </div>
                                         )}
 
-                                        {/* Campo de subtipo para ITEM genérico */}
                                         {newInventoryItem.categoria === 'item' && (
                                             <input
                                                 className={inputCls}
@@ -1061,7 +1005,6 @@ return (
                                             />
                                         )}
 
-                                        {/* Descrição — sempre presente */}
                                         <textarea
                                             className={inputCls + ' h-14 resize-none'}
                                             placeholder="Descrição (opcional)"
@@ -1087,40 +1030,37 @@ return (
                                         </div>
                                     </div>
                                 </div>
-
                             </div>
-                        </div > {/* fim grid 2 colunas */ }
 
-                    {/* ── Perícias — linha completa ─────────────────────────── */ }
-                    <div className={`bg-black border border-[#1a2a1a] p-3 rounded-xl mt-5 ${readOnly ? 'pointer-events-none select-none' : ''}`}>
-                        <h3 className="text-[#f1e5ac] text-[13px] font-black uppercase mb-3 text-center">Perícias</h3>
-                        <div className="grid grid-cols-2 gap-1">
-                            {Object.entries(skillsData).map(([key, info]) => {
-                                const mod = getModifier(draft.stats[info.attr]);
-                                const proficient = draft.skills?.[key];
-                                const total = mod + (proficient ? (draft.proficiencyBonus ?? 2) : 0);
-                                return (
-                                    <div
-                                        key={key}
-                                        onClick={() => rollD20(info.name, total)}
-                                        title={`Rolar ${info.name}`}
-                                        className="flex items-center justify-between bg-black/40 px-2 py-1 rounded border border-[#1a2a1a] cursor-pointer hover:border-[#00ff66]/40 transition-colors"
-                                    >
-                                        <div className="flex items-center gap-1.5 min-w-0">
-                                            <input type="checkbox" checked={!!proficient} onClick={(e) => e.stopPropagation()} onChange={() => toggleSkill(key)} className="accent-[#00ff66] w-3 h-3 cursor-pointer shrink-0" />
-                                            <span className="text-[13px] uppercase text-gray-300 leading-tight truncate">{info.name}</span>
-                                        </div>
-                                        <span className="text-[13px] font-black text-[#00ff66] ml-1 shrink-0">{fmtMod(total)}</span>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </div>
-                            </>
-            );
-                    })()}
+                            {/* Perícias (fora das colunas, ocupando largura total) */}
+                            <div className={`bg-black border border-[#1a2a1a] p-3 rounded-xl mt-5 ${readOnly ? 'pointer-events-none select-none' : ''}`}>
+                                <h3 className="text-[#f1e5ac] text-[13px] font-black uppercase mb-3 text-center">Perícias</h3>
+                                <div className="grid grid-cols-2 gap-1">
+                                    {Object.entries(skillsData).map(([key, info]) => {
+                                        const mod = getModifier(draft.stats[info.attr]);
+                                        const proficient = draft.skills?.[key];
+                                        const total = mod + (proficient ? (draft.proficiencyBonus ?? 2) : 0);
+                                        return (
+                                            <div
+                                                key={key}
+                                                onClick={() => rollD20(info.name, total)}
+                                                title={`Rolar ${info.name}`}
+                                                className="flex items-center justify-between bg-black/40 px-2 py-1 rounded border border-[#1a2a1a] cursor-pointer hover:border-[#00ff66]/40 transition-colors"
+                                            >
+                                                <div className="flex items-center gap-1.5 min-w-0">
+                                                    <input type="checkbox" checked={!!proficient} onClick={(e) => e.stopPropagation()} onChange={() => toggleSkill(key)} className="accent-[#00ff66] w-3 h-3 cursor-pointer shrink-0" />
+                                                    <span className="text-[13px] uppercase text-gray-300 leading-tight truncate">{info.name}</span>
+                                                </div>
+                                                <span className="text-[13px] font-black text-[#00ff66] ml-1 shrink-0">{fmtMod(total)}</span>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        </>
+                    )}
+                </div>
+            </div>
         </div>
-    </div>
-        </div >
     );
 }
