@@ -184,7 +184,7 @@ interface FichaModalProps {
     characterId: number | string | null;
     onUpdate?: (character: Character) => void;
     campaignId: string;
-    onRollDice: (diceType: string, isSecret: boolean) => Promise<number | null>;
+    onRollDice: (diceType: string, isSecret: boolean) => Promise<unknown | null>;
     readOnly?: boolean;
 }
 
@@ -292,6 +292,7 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
             const { data } = await supabase.from('chat_messages').insert([{
                 campaign_id: campaignId,
                 user_name: currentUserName,
+                text: `${currentUserName} rolou ${label} da arma ${itemName}: ${resolvedFormula} = ${finalValue}`,
                 text: `${currentUserName} rolou ${label} da arma ${itemName}: ${resolvedFormula} = ${finalValue}`,
                 is_roll: true,
                 is_secret: false,

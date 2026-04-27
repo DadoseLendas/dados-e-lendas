@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/utils/supabase/client";
-import { ArrowLeft, Plus, Save, Trash2, X } from "lucide-react";
+import { ArrowLeft, ChevronDown, ChevronRight, Plus, Save, Trash2, X } from "lucide-react";
 
 type CharacterSpell = {
   id: number;
@@ -66,6 +66,7 @@ export default function SpellModal({ isOpen, onClose, characterId }: SpellModalP
   const [search, setSearch] = useState("");
   const [selectedSpellName, setSelectedSpellName] = useState<string | null>(null);
   const [hoverCatalogSpell, setHoverCatalogSpell] = useState<SpellCatalogItem | null>(null);
+  const [expandedCatalogLevels, setExpandedCatalogLevels] = useState<Set<number>>(new Set([0, 1]));
 
   useEffect(() => {
     if (!isOpen || !characterId) return;
@@ -189,7 +190,38 @@ export default function SpellModal({ isOpen, onClose, characterId }: SpellModalP
     return Array.from(grouped.entries()).sort(([a], [b]) => a - b);
   }, [filteredCatalog]);
 
+  useEffect(() => {
+    if (!isAdding) return;
+
+    setExpandedCatalogLevels((prev) => {
+      const available = new Set(groupedCatalog.map(([level]) => level));
+      const next = new Set<number>();
+
+      prev.forEach((level) => {
+        if (available.has(level)) next.add(level);
+      });
+
+      if (next.size === 0 && groupedCatalog.length > 0) {
+        next.add(groupedCatalog[0][0]);
+      }
+
+      return next;
+    });
+  }, [isAdding, groupedCatalog]);
+
   const canLearnSpell = (spell: SpellCatalogItem) => spell.nivel_magia === 0 || spell.nivel_magia <= maxSpellLevel;
+
+  const toggleCatalogLevel = (level: number) => {
+    setExpandedCatalogLevels((prev) => {
+      const next = new Set(prev);
+      if (next.has(level)) {
+        next.delete(level);
+      } else {
+        next.add(level);
+      }
+      return next;
+    });
+  };
 
   const addSpell = (spell: SpellCatalogItem) => {
     if (!character) return;
@@ -356,41 +388,55 @@ export default function SpellModal({ isOpen, onClose, characterId }: SpellModalP
                     <p className="text-[12px] uppercase text-[#4a5a4a]">Nenhuma magia encontrada.</p>
                   )}
 
-                  {groupedCatalog.map(([level, spells]) => (
-                    <div key={`catalog-${level}`} className="mb-4 rounded-lg border border-[#1a2a1a] bg-black/20">
-                      <div className="sticky top-0 z-10 border-b border-[#1a2a1a] bg-[#070d07] px-3 py-2">
-                        <span className="text-[11px] font-black uppercase text-[#00ff66]">{level === 0 ? "Truques" : `Circulo ${level}`}</span>
-                        <span className="ml-2 text-[10px] uppercase text-[#4a5a4a]">({spells.length})</span>
-                      </div>
-                      <div className="space-y-1.5 p-2">
-                        {spells.map((spell) => {
-                          const already = learnedNames.has(spell.nome.toLowerCase());
-                          const allowed = canLearnSpell(spell);
-                          const canAdd = !already && allowed;
+                  {groupedCatalog.map(([level, spells]) => {
+                    const isExpanded = expandedCatalogLevels.has(level);
 
-                          return (
-                            <div
-                              key={spell.id}
-                              onMouseEnter={() => setHoverCatalogSpell(spell)}
-                              className="flex items-start justify-between gap-2 rounded-md border border-[#1a2a1a] bg-black/40 p-2 hover:border-[#00ff66]/35"
-                            >
-                              <div className="min-w-0">
-                                <p className="truncate text-[12px] font-black uppercase text-gray-200">{spell.nome}</p>
-                                <p className="text-[10px] uppercase text-[#8a9a8a]">{spell.escola} • {spell.tempo_conjuracao} • {spell.alcance}</p>
-                              </div>
-                              <button
-                                onClick={() => addSpell(spell)}
-                                disabled={!canAdd}
-                                className={`shrink-0 rounded border px-2 py-1 text-[10px] font-black uppercase ${canAdd ? "border-[#00ff66]/30 text-[#00ff66] hover:bg-[#00ff66]/10" : "border-[#1a2a1a] text-[#4a5a4a]"}`}
-                              >
-                                {already ? "ok" : allowed ? <Plus size={12} /> : "lvl"}
-                              </button>
-                            </div>
-                          );
-                        })}
+                    return (
+                      <div key={`catalog-${level}`} className="mb-4 rounded-lg border border-[#1a2a1a] bg-black/20">
+                        <button
+                          type="button"
+                          onClick={() => toggleCatalogLevel(level)}
+                          className="sticky top-0 z-10 flex w-full items-center justify-between border-b border-[#1a2a1a] bg-[#070d07] px-3 py-2 text-left hover:bg-[#0a1a0a]"
+                        >
+                          <div>
+                            <span className="text-[11px] font-black uppercase text-[#00ff66]">{level === 0 ? "Truques" : `Circulo ${level}`}</span>
+                            <span className="ml-2 text-[10px] uppercase text-[#4a5a4a]">({spells.length})</span>
+                          </div>
+                          {isExpanded ? <ChevronDown size={14} className="text-[#8a9a8a]" /> : <ChevronRight size={14} className="text-[#8a9a8a]" />}
+                        </button>
+
+                        {isExpanded && (
+                          <div className="space-y-1.5 p-2">
+                            {spells.map((spell) => {
+                              const already = learnedNames.has(spell.nome.toLowerCase());
+                              const allowed = canLearnSpell(spell);
+                              const canAdd = !already && allowed;
+
+                              return (
+                                <div
+                                  key={spell.id}
+                                  onMouseEnter={() => setHoverCatalogSpell(spell)}
+                                  className="flex items-start justify-between gap-2 rounded-md border border-[#1a2a1a] bg-black/40 p-2 hover:border-[#00ff66]/35"
+                                >
+                                  <div className="min-w-0">
+                                    <p className="truncate text-[12px] font-black uppercase text-gray-200">{spell.nome}</p>
+                                    <p className="text-[10px] uppercase text-[#8a9a8a]">{spell.escola} • {spell.tempo_conjuracao} • {spell.alcance}</p>
+                                  </div>
+                                  <button
+                                    onClick={() => addSpell(spell)}
+                                    disabled={!canAdd}
+                                    className={`shrink-0 rounded border px-2 py-1 text-[10px] font-black uppercase ${canAdd ? "border-[#00ff66]/30 text-[#00ff66] hover:bg-[#00ff66]/10" : "border-[#1a2a1a] text-[#4a5a4a]"}`}
+                                  >
+                                    {already ? "ok" : allowed ? <Plus size={12} /> : "lvl"}
+                                  </button>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </>
             )}
