@@ -854,7 +854,7 @@ export default function TelaDeMesa() {
 
       <FichaModal
         isOpen={showFicha}
-        onClose={() => setShowFicha(false)}npm run build
+        onClose={() => setShowFicha(false)}
         characterId={fichaCharacterId}
         campaignId={campaignId}
        onRollDice={async (formula: string, isSecret: boolean) => {
@@ -862,7 +862,7 @@ export default function TelaDeMesa() {
     return await rollDiceFunc(formula, isSecret, "normal");
   }
   return null;
-}}
+}}""
       />
 
       <SpellModal
