@@ -240,43 +240,33 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
         const { label, modifier } = rollPopup;
         setRollPopup(null);
 
-        const rawResult = await onRollDice('d20', false, mode);
-        if (rawResult === null) return;
+        // 1. Aguarda a animação do dado terminar
+        const result = await onRollDice('d20', false, mode);
+        if (!result) return;
 
-        // Tipagem segura para extrair o valor final e o array de dados (se houver)
-        const resultObj = typeof rawResult === 'object' && rawResult !== null
-            ? (rawResult as { finalValue: number; values?: number[]; rollMode?: string })
-            : null;
-
-        const finalValue = resultObj ? Number(resultObj.finalValue) : Number(rawResult);
-        const total = finalValue + modifier;
+        // Tipagem para extrair os valores do objeto retornado pelo DiceRoller
+        const res = result as { finalValue: number; values: number[]; diceType: string };
+        const total = res.finalValue + modifier;
         const modStr = modifier >= 0 ? `+${modifier}` : `${modifier}`;
 
         let textPublico = '';
-
-        // Se for rolagem normal, ou se a função não retornar os 2 valores
-        if (mode === 'normal' || !resultObj || !resultObj.values || resultObj.values.length < 2) {
+        if (mode === 'normal' || res.values.length < 2) {
             textPublico = `rolou ${label} (d20${modStr}): **${total}**`;
         } else {
-            // Lógica detalhada para mostrar os dois dados, as somas e destacar o vencedor
-            const v1 = resultObj.values[0];
-            const v2 = resultObj.values[1];
-
+            const v1 = res.values[0];
+            const v2 = res.values[1];
             const isV1Chosen = mode === 'advantage' ? v1 >= v2 : v1 <= v2;
-
             const res1 = v1 + modifier;
             const res2 = v2 + modifier;
-
-            // Aplica negrito apenas na conta inteira do dado que foi o escolhido
             const str1 = isV1Chosen ? `**${v1}${modStr}=${res1}**` : `${v1}${modStr}=${res1}`;
             const str2 = !isV1Chosen ? `**${v2}${modStr}=${res2}**` : `${v2}${modStr}=${res2}`;
-
             const modoTexto = mode === 'advantage' ? 'Vantagem' : 'Desvantagem';
-            textPublico = `rolou ${label} com ${modoTexto} (d20${modStr}), dado 1: ${str1}, dado 2: ${str2}, resultado **${total}**`;
+            textPublico = `rolou ${label} (d20${modStr}) com ${modoTexto}, dado 1: ${str1}, dado 2: ${str2}, resultado **${total}**`;
         }
 
+        // 2. Salva no banco. O ChatWidget vai ouvir a inserção e mostrar na hora.
         if (currentUserId) {
-            const { data } = await supabase.from('chat_messages').insert([{
+            await supabase.from('chat_messages').insert([{
                 campaign_id: campaignId,
                 user_name: currentUserName,
                 text: textPublico,
@@ -284,10 +274,11 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
                 is_secret: false,
                 channel: 'campanha',
                 sender_id: currentUserId,
-            }]).select().single();
-            if (data && broadcastChannelRef.current) {
-                broadcastChannelRef.current.send({ type: 'broadcast', event: 'new_message', payload: data });
-            }
+                dice_type: res.diceType || 'd20',
+                roll_mode: mode,
+                roll_values: res.values,
+                final_value: total
+            }]);
         }
     };
 
@@ -565,29 +556,31 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
     <>
     {rollPopup && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 backdrop-blur-sm">
-            <div className="bg-[#0a120a] border border-[#1a2a1a] rounded-2xl p-6 w-72 shadow-[0_0_50px_rgba(0,0,0,0.95)]">
+            {/* Modal mais largo: mudou de w-72 para w-[350px] */}
+            <div className="bg-[#0a120a] border border-[#1a2a1a] rounded-2xl p-6 w-[350px] shadow-[0_0_50px_rgba(0,0,0,0.95)]">
                 <h3 className="text-[#f1e5ac] text-sm font-black uppercase tracking-widest text-center mb-1">
                     {rollPopup.label}
                 </h3>
                 <p className="text-[#4a5a4a] text-[10px] uppercase tracking-widest text-center mb-5">
                     d20 {rollPopup.modifier >= 0 ? `+${rollPopup.modifier}` : rollPopup.modifier}
                 </p>
-                <div className="grid grid-cols-3 gap-2">
+                {/* Trocado para flex e flex-1 para distribuição perfeitamente igual */}
+                <div className="flex gap-2">
                     <button onClick={() => executeRoll('disadvantage')}
-                        className="bg-red-700 hover:bg-red-600 text-white font-black text-[11px] uppercase tracking-wide py-3 px-2 rounded-xl transition-all">
-                        Desvant.
+                        className="flex-1 bg-red-700 hover:bg-red-600 text-white font-black text-[10px] sm:text-[11px] uppercase tracking-wide py-3 px-1 rounded-xl transition-all">
+                        Desvantagem
                     </button>
                     <button onClick={() => executeRoll('normal')}
-                        className="bg-[#00ff66] text-black font-black text-[11px] uppercase tracking-wide py-3 px-2 rounded-xl hover:brightness-110 transition-all">
+                        className="flex-1 bg-[#00ff66] text-black font-black text-[10px] sm:text-[11px] uppercase tracking-wide py-3 px-1 rounded-xl hover:brightness-110 transition-all">
                         Normal
                     </button>
                     <button onClick={() => executeRoll('advantage')}
-                        className="bg-green-700 hover:bg-green-600 text-white font-black text-[11px] uppercase tracking-wide py-3 px-2 rounded-xl transition-all">
+                        className="flex-1 bg-green-700 hover:bg-green-600 text-white font-black text-[10px] sm:text-[11px] uppercase tracking-wide py-3 px-1 rounded-xl transition-all">
                         Vantagem
                     </button>
                 </div>
                 <button onClick={() => setRollPopup(null)}
-                    className="w-full mt-3 text-[10px] text-[#4a5a4a] hover:text-white uppercase tracking-widest transition-colors">
+                    className="w-full mt-4 text-[10px] text-[#4a5a4a] hover:text-white uppercase tracking-widest transition-colors">
                     Cancelar
                 </button>
             </div>

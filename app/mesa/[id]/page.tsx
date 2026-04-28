@@ -858,12 +858,12 @@ export default function TelaDeMesa() {
         onClose={() => setShowFicha(false)}
         characterId={fichaCharacterId}
         campaignId={campaignId}
-       onRollDice={async (formula: string, isSecret: boolean) => {
-  if (rollDiceFunc) {
-    return await rollDiceFunc(formula, isSecret, "normal");
-  }
-  return null;
-}}
+       onRollDice={async (formula: string, isSecret: boolean, mode: 'normal' | 'advantage' | 'disadvantage' = 'normal') => {
+          if (rollDiceFunc) {
+            return await rollDiceFunc(formula, isSecret, mode);
+          }
+          return null;
+        }}
       />
 
       <SpellModal
@@ -878,12 +878,12 @@ export default function TelaDeMesa() {
         onClose={() => setShowFichaDM(false)}
         characterId={fichaCharacterIdDM}
         campaignId={campaignId}
-        onRollDice={async (formula: string, isSecret: boolean) => {
+        onRollDice={async (formula: string, isSecret: boolean, mode: 'normal' | 'advantage' | 'disadvantage' = 'normal') => {
           if (rollDiceFunc) {
-            return await rollDiceFunc(formula, isSecret, "normal");
-            }
-            return null;
-}}
+            return await rollDiceFunc(formula, isSecret, mode);
+          }
+          return null;
+        }}
         readOnly
       />
 

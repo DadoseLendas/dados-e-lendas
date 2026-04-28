@@ -19,13 +19,13 @@ interface DiceRollerProps {
 }
 
 const COLORSETS: Record<string, string> = {
-  d20: '#ef4444', // Vermelho
-  d12: '#f97316', // Laranja
-  d10: '#eab308', // Amarelo
-  d8:  '#22c55e', // Verde
-  d6:  '#3b82f6', // Azul
-  d4:  '#a855f7', // Roxo
-  d100:'#9ca3af'  // Cinza
+  d20: '#ef4444',
+  d12: '#f97316',
+  d10: '#eab308',
+  d8:  '#22c55e',
+  d6:  '#3b82f6',
+  d4:  '#a855f7',
+  d100:'#9ca3af'
 };
 
 export default function DiceRoller({ campaignId, onReady, isDM, currentUserId }: DiceRollerProps) {
@@ -40,56 +40,59 @@ export default function DiceRoller({ campaignId, onReady, isDM, currentUserId }:
   useEffect(() => { isDMRef.current = isDM; }, [isDM]);
   useEffect(() => { currentUserIdRef.current = currentUserId; }, [currentUserId]);
 
-  const triggerVisualRoll = useCallback(async (diceType: string, isSecret: boolean, values: number[], mode: RollMode) => {
-    if (!diceBoxRef.current) return null;
+  const triggerVisualRoll = useCallback(async (diceType: string, isSecret: boolean, values: number[]) => {
+    if (!diceBoxRef.current || !values || values.length === 0) return null;
 
-    const currentRollId = ++rollCounterRef.current;
+    try {
+      const currentRollId = ++rollCounterRef.current;
 
-    if (clearTimerRef.current) clearTimeout(clearTimerRef.current);
-    if (diceBoxRef.current.clearDice) diceBoxRef.current.clearDice();
-    else if (diceBoxRef.current.clear) diceBoxRef.current.clear();
+      if (clearTimerRef.current) clearTimeout(clearTimerRef.current);
+      if (diceBoxRef.current.clearDice) diceBoxRef.current.clearDice();
+      else if (diceBoxRef.current.clear) diceBoxRef.current.clear();
 
-    // 1. Configura a cor do dado
-    const baseColor = isSecret ? '#ef4444' : (COLORSETS[diceType] || '#ffffff');
-    if (diceBoxRef.current.updateConfig) {
-      await diceBoxRef.current.updateConfig({
-        theme_colorset: "custom",
-        theme_customColorset: { background: baseColor, foreground: '#ffffff', texture: 'none' }
-      });
-      await new Promise(resolve => setTimeout(resolve, 50));
-    } else if (diceBoxRef.current.config) {
-      diceBoxRef.current.config.theme_customColorset = { background: baseColor, foreground: '#ffffff', texture: 'none' };
-    }
-
-    // 2. Lança os dados com valores predeterminados
-    if (diceType === 'd100') {
-      const pairs: { ten: number; one: number }[] = values.map(val => ({
-        ten: val === 100 ? 0 : Math.floor(val / 10) * 10,
-        one: val % 10 === 0 ? 10 : val % 10,
-      }));
-
-      // Primeiro par simultâneo
-      await diceBoxRef.current.roll(`1d100@${pairs[0].ten}`);
-      await diceBoxRef.current.add(`1d10@${pairs[0].one}`); // sem delay
-
-      // Pares adicionais (vantagem/desvantagem) também sem delay entre si
-      for (let i = 1; i < pairs.length; i++) {
-        await diceBoxRef.current.add(`1d100@${pairs[i].ten}`);
-        await diceBoxRef.current.add(`1d10@${pairs[i].one}`);
+      // 1. Configura a cor do dado (agora com AWAIT e DELAY, pois não trava mais o chat!)
+      const baseColor = isSecret ? '#ef4444' : (COLORSETS[diceType] || '#ffffff');
+      
+      if (diceBoxRef.current.updateConfig) {
+        await diceBoxRef.current.updateConfig({
+          theme_colorset: "custom",
+          theme_customColorset: { background: baseColor, foreground: '#ffffff', texture: 'none' }
+        });
+        // Pequeno atraso vital para a engine 3D processar a cor nos materiais
+        await new Promise(resolve => setTimeout(resolve, 50));
+      } else if (diceBoxRef.current.config) {
+        diceBoxRef.current.config.theme_customColorset = { background: baseColor, foreground: '#ffffff', texture: 'none' };
       }
-    } else {
-      // Une as rolagens forçadas com "+" para jogar todos os dados de uma vez.
-      // Em Vantagem, por exemplo, gera: "1d20@15 + 1d20@8"
-      const rollString = values.map(v => `1${diceType}@${v}`).join(' + ');
-      await diceBoxRef.current.roll(rollString);
-    }
 
-    // 3. Limpa a mesa após 4s
-    if (currentRollId === rollCounterRef.current) {
-      clearTimerRef.current = setTimeout(() => {
-        if (diceBoxRef.current?.clearDice) diceBoxRef.current.clearDice();
-        else if (diceBoxRef.current?.clear) diceBoxRef.current.clear();
-      }, 4000);
+      // 2. Lança os dados com valores predeterminados
+      if (diceType === 'd100') {
+        const pairs = values.map(val => ({
+          ten: val === 100 ? 0 : Math.floor(val / 10) * 10,
+          one: val % 10 === 0 ? 10 : val % 10,
+        }));
+
+        await diceBoxRef.current.roll(`1d100@${pairs[0].ten}`);
+        await diceBoxRef.current.add(`1d10@${pairs[0].one}`);
+
+        for (let i = 1; i < pairs.length; i++) {
+          await diceBoxRef.current.add(`1d100@${pairs[i].ten}`);
+          await diceBoxRef.current.add(`1d10@${pairs[i].one}`);
+        }
+      } else {
+        // Formatação restaurada: ex -> "2d20@15,8" (Garante que os 2 dados apareçam)
+        const rollString = `${values.length}${diceType}@${values.join(',')}`;
+        await diceBoxRef.current.roll(rollString);
+      }
+
+      // 3. Limpa a mesa após 4s
+      if (currentRollId === rollCounterRef.current) {
+        clearTimerRef.current = setTimeout(() => {
+          if (diceBoxRef.current?.clearDice) diceBoxRef.current.clearDice();
+          else if (diceBoxRef.current?.clear) diceBoxRef.current.clear();
+        }, 4000);
+      }
+    } catch (err) {
+      console.error('[DiceRoller] Erro visual ao animar os dados:', err);
     }
   }, []);
 
@@ -124,14 +127,13 @@ export default function DiceRoller({ campaignId, onReady, isDM, currentUserId }:
 
         channel
           .on('broadcast', { event: 'roll' }, (payload: any) => {
-            const { diceType, isSecret, senderId, values, rollMode } = payload.payload;
+            const { diceType, isSecret, senderId, values } = payload.payload;
             if (senderId === currentUserIdRef.current) return;
             if (isSecret && !isDMRef.current) return;
-            triggerVisualRoll(diceType, isSecret, values, rollMode);
+            triggerVisualRoll(diceType, isSecret, values).catch(console.error);
           })
           .subscribe();
 
-        // --- LÓGICA ATUALIZADA: FÓRMULAS + VANTAGEM/DESVANTAGEM ---
         onReady(async (formula: string, isSecret: boolean, mode: RollMode = 'normal') => {
           const cleanFormula = formula.toLowerCase().replace(/\s+/g, '');
           const regex = /^(\d*)d(\d+)([+-]\d+)?$/;
@@ -147,7 +149,6 @@ export default function DiceRoller({ campaignId, onReady, isDM, currentUserId }:
             const mod = match[3] ? parseInt(match[3]) : 0;
             diceType = `d${faces}`;
 
-            // Rola os valores individuais para suportar fórmulas como 2d20, 3d6 etc.
             const rollSet = () => {
               const values: number[] = [];
               for (let i = 0; i < qtd; i++) {
@@ -169,7 +170,6 @@ export default function DiceRoller({ campaignId, onReady, isDM, currentUserId }:
 
             finalRollValue = rawChosen + mod;
           } else {
-            // Fallback (ex: se mandarem só "d20")
             const sides = parseInt(diceType.replace('d', '')) || 20;
             const v1 = Math.floor(Math.random() * sides) + 1;
             const v2 = Math.floor(Math.random() * sides) + 1;
@@ -188,14 +188,18 @@ export default function DiceRoller({ campaignId, onReady, isDM, currentUserId }:
             diceType
           };
 
-          // Disparo pro canal dos outros jogadores
           channel.send({
             type: 'broadcast',
             event: 'roll',
-            payload: { diceType, isSecret, senderId: currentUserIdRef.current, values: generatedValues, rollMode: mode },
+            payload: { diceType, isSecret, senderId: currentUserIdRef.current, values: generatedValues },
           });
 
-          await triggerVisualRoll(diceType, isSecret, generatedValues, mode);
+          try {
+            await triggerVisualRoll(diceType, isSecret, generatedValues);
+          } catch (err) {
+            console.error('[DiceRoller] Erro na animação. Enviando resultado para o chat mesmo assim.', err);
+          }
+          
           return result;
         });
 
