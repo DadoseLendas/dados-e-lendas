@@ -184,7 +184,7 @@ interface FichaModalProps {
     characterId: number | string | null;
     onUpdate?: (character: Character) => void;
     campaignId: string;
-    onRollDice: (diceType: string, isSecret: boolean) => Promise<unknown | null>;
+    onRollDice: (diceType: string, isSecret: boolean, mode: 'normal' | 'advantage' | 'disadvantage') => Promise<unknown | null>;
     readOnly?: boolean;
 }
 
@@ -242,15 +242,44 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
 
         const rawResult = await onRollDice('d20', false, mode);
         if (rawResult === null) return;
-        const finalValue = typeof rawResult === 'object' ? rawResult.finalValue : rawResult;
 
+        // Tipagem segura para extrair o valor final e o array de dados (se houver)
+        const resultObj = typeof rawResult === 'object' && rawResult !== null
+            ? (rawResult as { finalValue: number; values?: number[]; rollMode?: string })
+            : null;
+
+        const finalValue = resultObj ? Number(resultObj.finalValue) : Number(rawResult);
         const total = finalValue + modifier;
+        const modStr = modifier >= 0 ? `+${modifier}` : `${modifier}`;
+
+        let textPublico = '';
+
+        // Se for rolagem normal, ou se a função não retornar os 2 valores
+        if (mode === 'normal' || !resultObj || !resultObj.values || resultObj.values.length < 2) {
+            textPublico = `rolou ${label} (d20${modStr}): **${total}**`;
+        } else {
+            // Lógica detalhada para mostrar os dois dados, as somas e destacar o vencedor
+            const v1 = resultObj.values[0];
+            const v2 = resultObj.values[1];
+
+            const isV1Chosen = mode === 'advantage' ? v1 >= v2 : v1 <= v2;
+
+            const res1 = v1 + modifier;
+            const res2 = v2 + modifier;
+
+            // Aplica negrito apenas na conta inteira do dado que foi o escolhido
+            const str1 = isV1Chosen ? `**${v1}${modStr}=${res1}**` : `${v1}${modStr}=${res1}`;
+            const str2 = !isV1Chosen ? `**${v2}${modStr}=${res2}**` : `${v2}${modStr}=${res2}`;
+
+            const modoTexto = mode === 'advantage' ? 'Vantagem' : 'Desvantagem';
+            textPublico = `rolou ${label} com ${modoTexto} (d20${modStr}), dado 1: ${str1}, dado 2: ${str2}, resultado **${total}**`;
+        }
+
         if (currentUserId) {
-            const modStr = modifier >= 0 ? `+${modifier}` : `${modifier}`;
             const { data } = await supabase.from('chat_messages').insert([{
                 campaign_id: campaignId,
                 user_name: currentUserName,
-                text: `rolou ${label} (d20${modStr}): ${total}`,
+                text: textPublico,
                 is_roll: true,
                 is_secret: false,
                 channel: 'campanha',
@@ -286,12 +315,13 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
 
         const rawResult = await onRollDice(resolvedFormula, false, 'normal');
         if (rawResult === null) return;
-        const finalValue = typeof rawResult === 'object' ? rawResult.finalValue : rawResult;
+        const finalValue: number = typeof rawResult === 'object' && rawResult !== null 
+            ? Number((rawResult as { finalValue: number }).finalValue) 
+            : Number(rawResult);
         if (currentUserId) {
             const { data } = await supabase.from('chat_messages').insert([{
                 campaign_id: campaignId,
                 user_name: currentUserName,
-                text: `${currentUserName} rolou ${label} da arma ${itemName}: ${resolvedFormula} = ${finalValue}`,
                 text: `${currentUserName} rolou ${label} da arma ${itemName}: ${resolvedFormula} = ${finalValue}`,
                 is_roll: true,
                 is_secret: false,

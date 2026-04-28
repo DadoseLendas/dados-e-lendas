@@ -78,11 +78,10 @@ export default function DiceRoller({ campaignId, onReady, isDM, currentUserId }:
         await diceBoxRef.current.add(`1d10@${pairs[i].one}`);
       }
     } else {
-      // Normal:    "1d20@15"
-      // Vantagem:  "2d20@15,8"
-      await diceBoxRef.current.roll(
-        `${values.length}${diceType}@${values.join(',')}`
-      );
+      // Une as rolagens forçadas com "+" para jogar todos os dados de uma vez.
+      // Em Vantagem, por exemplo, gera: "1d20@15 + 1d20@8"
+      const rollString = values.map(v => `1${diceType}@${v}`).join(' + ');
+      await diceBoxRef.current.roll(rollString);
     }
 
     // 3. Limpa a mesa após 4s
