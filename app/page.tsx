@@ -8,6 +8,7 @@ import { createClient } from '@/utils/supabase/client';
 
 export default function Home() {
   const router = useRouter();
+  const supabase = createClient();
   const [abaAtiva, setAbaAtiva] = useState('home');
 
  const [fotoAtual, setFotoAtual] = useState(0);
@@ -19,6 +20,12 @@ export default function Home() {
     }, 5000); // Troca a cada 5 segundos
     return () => clearInterval(timer);
   }, [fotos.length]);
+
+  const handleStartAdventure = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    router.push(session ? '/campanhas' : '/cadastro');
+  };
+
   return (
     <main className="bg-[#050a05] text-white min-h-screen flex flex-col font-sans overflow-x-hidden">
       
@@ -57,7 +64,7 @@ export default function Home() {
             
             <div className="flex flex-col items-center gap-6">
               <button 
-                onClick={() => router.push('/cadastro')}
+                onClick={handleStartAdventure}
                 className="group border border-[#00ff66] text-[#00ff66] bg-black/40 backdrop-blur-sm px-10 py-4 hover:bg-[#00ff66] hover:text-black transition-all shadow-[0_0_20px_rgba(0,255,102,0.2)] hover:shadow-[0_0_35px_rgba(0,255,102,0.5)] uppercase tracking-[0.3em] font-bold text-sm flex items-center gap-2"
               >
                 Comece sua aventura <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform" />
