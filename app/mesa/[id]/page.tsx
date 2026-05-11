@@ -14,6 +14,7 @@ import ChatWidget from '@/app/components/ui/chat-widget';
 import CampaignBooksWidget from '@/app/components/ui/campaign-books-widget';
 import DiceRoller from '@/app/components/ui/dice-roller';
 import TokenLibraryWidget from '@/app/components/ui/token-library-widget';
+import MapEditorModal from '@/app/components/ui/map-editor-modal';
 interface Token {
   id: string;
   url: string;
@@ -24,7 +25,12 @@ interface Token {
   imgOffsetX?: number;
   imgOffsetY?: number;
   isMonster?: boolean;
+  hp?: number;
+  maxHp?: number;
+  sizeCategory?: 'Tiny' | 'Small' | 'Medium' | 'Large' | 'Huge' | 'Gargantuan';
 }
+
+// Nota: removido o mapeamento para o SpellCasterMap; mantemos tokens simples
 
 const CONDICOES_RPG = [
   { 
@@ -88,6 +94,16 @@ export default function TelaDeMesa() {
   const [showTokenLibrary, setShowTokenLibrary] = useState(false);
   const [showBooks, setShowBooks] = useState(false);
   const [mapaUrl, setMapaUrl] = useState<string | null>(null);
+  const [mapGridPx, setMapGridPx] = useState<number>(50);
+  const [mapScale, setMapScale] = useState<number>(100);
+  const [gridColor, setGridColor] = useState<string>('#ffffff');
+  const [gridOpacity, setGridOpacity] = useState<number>(0.08);
+  const [gridThickness, setGridThickness] = useState<number>(1);
+  const [gridDashed, setGridDashed] = useState<boolean>(false);
+  const [gridDashFrequency, setGridDashFrequency] = useState<number>(5);
+  const [gridDimension, setGridDimension] = useState<string>('5 ft'); // NOVO: dimensão do grid
+  const [showMapEditor, setShowMapEditor] = useState(false);
+  const [mapPreviewUrl, setMapPreviewUrl] = useState<string | null>(null);
   const [zoom, setZoom] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [isDraggingMap, setIsDraggingMap] = useState(false);
@@ -107,8 +123,44 @@ export default function TelaDeMesa() {
   // Keep tokensRef in sync with state (for use inside event handlers)
   useEffect(() => { tokensRef.current = tokens; }, [tokens]);
   
-  const gridSize = 50; 
-  const tokenSize = 42; 
+  const gridSize = mapGridPx;
+  const tokenSizeBase = Math.min(gridSize, 60); // base cap
+  const footprintForCategory = (cat?: string) => {
+    switch (cat) {
+      case 'Tiny': return 0.5; // 1/4 area -> side = 0.5
+      case 'Small': return 1;
+      case 'Medium': return 1;
+      case 'Large': return 2;
+      case 'Huge': return 3;
+      case 'Gargantuan': return 4;
+      default: return 1;
+    }
+  };
+  const mapScalePercent = mapScale / 100;
+
+  const getGridBgStyle = () => {
+    const r = parseInt(gridColor.slice(1, 3), 16);
+    const g = parseInt(gridColor.slice(3, 5), 16);
+    const b = parseInt(gridColor.slice(5, 7), 16);
+    const rgba = `rgba(${r}, ${g}, ${b}, ${gridOpacity})`;
+    
+    if (gridDashed) {
+      const dashSize = Math.max(2, gridSize / gridDashFrequency);
+      const svg = `<svg width="${gridSize}" height="${gridSize}" xmlns="http://www.w3.org/2000/svg">
+        <line x1="0" y1="0" x2="${gridSize}" y2="0" stroke="${gridColor}" stroke-width="${gridThickness}" stroke-dasharray="${dashSize},${dashSize}" opacity="${gridOpacity}"/>
+        <line x1="0" y1="0" x2="0" y2="${gridSize}" stroke="${gridColor}" stroke-width="${gridThickness}" stroke-dasharray="${dashSize},${dashSize}" opacity="${gridOpacity}"/>
+      </svg>`;
+      return {
+        backgroundImage: `url('data:image/svg+xml,${encodeURIComponent(svg)}')`,
+        backgroundSize: `${gridSize}px ${gridSize}px`
+      };
+    } else {
+      return {
+        backgroundImage: `linear-gradient(to right, ${rgba} ${gridThickness}px, transparent ${gridThickness}px), linear-gradient(to bottom, ${rgba} ${gridThickness}px, transparent ${gridThickness}px)`,
+        backgroundSize: `${gridSize}px ${gridSize}px`
+      };
+    }
+  }; 
 
   //movimento do mapa
   const handleMouseDown = (e: React.MouseEvent, tokenId?: string) => {
@@ -234,37 +286,95 @@ export default function TelaDeMesa() {
     if (tipo === 'Mapa') {
       const ext = file.name.split('.').pop() ?? 'png';
       const fileName = `maps/${campaignId}-map.${ext}`;
-      console.log('[MAPA] Iniciando upload:', fileName, 'tipo:', file.type, 'tamanho:', file.size);
+      console.log('[MAPA] Iniciando upload:', fileName);
       const { error } = await supabase.storage
         .from('campaign-assets')
         .upload(fileName, file, { contentType: file.type, upsert: true });
       if (error) {
-        console.error('[MAPA] Erro no upload:', error.message, error);
+        console.error('[MAPA] Erro no upload:', error.message);
         alert('Erro ao fazer upload do mapa: ' + error.message);
         return;
       }
       const { data: { publicUrl } } = supabase.storage.from('campaign-assets').getPublicUrl(fileName);
       const cacheBustedUrl = `${publicUrl}?t=${Date.now()}`;
-      console.log('[MAPA] publicUrl:', cacheBustedUrl);
-      setMapaUrl(cacheBustedUrl);
-      await supabase.from('campaigns').update({ map_url: cacheBustedUrl }).eq('id', campaignId);
-      realtimeChannelRef.current?.send({
-        type: 'broadcast',
-        event: 'map-change',
-        payload: { mapUrl: cacheBustedUrl },
-      });
+      setMapPreviewUrl(cacheBustedUrl);
+      setShowMapEditor(true);
+      setModalAtivo(null);
     }
     e.target.value = '';
-    setModalAtivo(null);
   };
 
-  const addTokenToMap = async (t: { name: string; url: string }) => {
+  const handleMapEditorConfirm = async (gridPx: number, mapScale: number, gridColor: string, gridOpacity: number, gridThickness: number, gridDashed: boolean, gridDashFrequency: number, gridDimension: string) => {
+    if (!mapPreviewUrl) return;
+    
+    setMapGridPx(gridPx);
+    setMapScale(mapScale);
+    setGridColor(gridColor);
+    setGridOpacity(gridOpacity);
+    setGridThickness(gridThickness);
+    setGridDashed(gridDashed);
+    setGridDashFrequency(gridDashFrequency);
+    setGridDimension(gridDimension);
+    setMapaUrl(mapPreviewUrl);
+    setShowMapEditor(false);
+    setMapPreviewUrl(null);
+    
+    // Salvar no banco com tratamento de erro
+    try {
+      console.log('[MAPA] Salvando no banco com parâmetros:', {
+        map_url: mapPreviewUrl,
+        map_grid_px: gridPx,
+        map_scale: mapScale,
+        map_grid_color: gridColor,
+        map_grid_opacity: gridOpacity,
+        map_grid_thickness: gridThickness,
+        map_grid_dashed: gridDashed,
+        map_grid_dash_frequency: gridDashFrequency,
+        map_grid_dimension: gridDimension
+      });
+
+      const { data, error } = await supabase.from('campaigns').update({ 
+        map_url: mapPreviewUrl, 
+        map_grid_px: gridPx,
+        map_scale: mapScale,
+        map_grid_color: gridColor,
+        map_grid_opacity: gridOpacity,
+        map_grid_thickness: gridThickness,
+        map_grid_dashed: gridDashed,
+        map_grid_dash_frequency: gridDashFrequency,
+        map_grid_dimension: gridDimension
+      }).eq('id', campaignId).select();
+
+      if (error) {
+        console.error('[MAPA] Erro ao salvar no banco:', error);
+        alert('⚠️ Erro ao salvar mapa: ' + error.message);
+        return;
+      }
+
+      console.log('[MAPA] Salvo com sucesso! Dados:', data);
+    } catch (err) {
+      console.error('[MAPA] Erro ao salvar:', err);
+      alert('⚠️ Erro inesperado ao salvar mapa');
+      return;
+    }
+    
+    // Broadcast do mapa para outros jogadores
+    realtimeChannelRef.current?.send({
+      type: 'broadcast',
+      event: 'map-change',
+      payload: { mapUrl: mapPreviewUrl, gridPx, mapScale, gridColor, gridOpacity, gridThickness, gridDashed, gridDashFrequency, gridDimension },
+    });
+  };
+
+  const addTokenToMap = async (t: { name: string; url: string; sizeCategory?: 'Tiny' | 'Small' | 'Medium' | 'Large' | 'Huge' | 'Gargantuan' }) => {
     const newId = crypto.randomUUID();
-    const newToken: Token = { id: newId, url: t.url, x: 0, y: 0, name: t.name, isMonster: true };
+    const defaultSize = t.sizeCategory ?? 'Medium';
+    const newToken: Token = { id: newId, url: t.url, x: 0, y: 0, name: t.name, isMonster: true, sizeCategory: defaultSize };
     setTokens(prev => [...prev, newToken]);
-    supabase.from('campaign_tokens').insert({
-      id: newId, campaign_id: campaignId, url: t.url, x: 0, y: 0, is_monster: true,
-    }).then(() => {});
+    const { data, error } = await supabase.from('campaign_tokens').insert({
+      id: newId, campaign_id: campaignId, url: t.url, x: 0, y: 0, is_monster: true, size_category: defaultSize,
+    }).select();
+    if (error) console.error('[TOKEN] Erro ao inserir token:', error);
     realtimeChannelRef.current?.send({ type: 'broadcast', event: 'token-add', payload: { token: newToken } });
   };
 
@@ -299,7 +409,15 @@ export default function TelaDeMesa() {
         });
       })
       .on('broadcast', { event: 'map-change' }, ({ payload }) => {
-        setMapaUrl(payload.mapUrl);
+        if (payload.mapUrl) setMapaUrl(payload.mapUrl);
+        if (payload.gridPx) setMapGridPx(payload.gridPx);
+        if (payload.mapScale) setMapScale(payload.mapScale);
+        if (payload.gridColor) setGridColor(payload.gridColor);
+        if (payload.gridOpacity !== undefined) setGridOpacity(payload.gridOpacity);
+        if (payload.gridThickness) setGridThickness(payload.gridThickness);
+        if (payload.gridDashed !== undefined) setGridDashed(payload.gridDashed);
+        if (payload.gridDashFrequency) setGridDashFrequency(payload.gridDashFrequency);
+        if (payload.gridDimension) setGridDimension(payload.gridDimension);
       })
       .on(
         'postgres_changes',
@@ -313,6 +431,7 @@ export default function TelaDeMesa() {
               characterId: t.character_id ?? null,
               isMonster: t.is_monster ?? false,
               imgOffsetX: 50, imgOffsetY: 50,
+              sizeCategory: t.size_category ?? 'Medium',
             }];
           });
         }
@@ -355,6 +474,7 @@ export default function TelaDeMesa() {
             imgOffsetX: (char as any).imgOffsetX ?? 50,
             imgOffsetY: (char as any).imgOffsetY ?? 50,
             isMonster: false,
+            sizeCategory: 'Medium',
           };
           setTokens(prev => [...prev, newToken]);
           await supabase.from('campaign_tokens').insert({
@@ -363,6 +483,7 @@ export default function TelaDeMesa() {
             character_id: newToken.characterId,
             url: newToken.url,
             x: 0, y: 0,
+            size_category: newToken.sizeCategory ?? 'Medium',
             is_monster: false,
           });
           realtimeChannelRef.current?.send({
@@ -417,14 +538,96 @@ export default function TelaDeMesa() {
 
       setCurrentUserId(user.id);
 
-      // Busca dm_id e map_url da campanha
-      const { data: campaign, error: campaignError } = await supabase
-        .from('campaigns')
-        .select('dm_id, map_url')
-        .eq('id', campaignId)
-        .maybeSingle();
+      // Busca dm_id, map_url e map_grid_px da campanha
+      // Nota: Tenta carregar as colunas novas, mas faz fallback se não existirem
+      let campaign: any = null;
+      let campaignError: any = null;
 
-      if ((campaign as any)?.map_url) setMapaUrl((campaign as any).map_url);
+      try {
+        // Tenta com TODAS as colunas (após migrations)
+        const result = await supabase
+          .from('campaigns')
+          .select('dm_id, map_url, map_grid_px, map_scale, map_grid_color, map_grid_opacity, map_grid_thickness, map_grid_dashed, map_grid_dash_frequency, map_grid_dimension')
+          .eq('id', campaignId)
+          .maybeSingle();
+        
+        campaign = result.data;
+        campaignError = result.error;
+
+        console.log('[MAPA] Query completa - Dados:', campaign, 'Erro:', campaignError?.message);
+
+        // Se falhar, tenta só as colunas antigas
+        if (!campaign || campaignError) {
+          console.log('[MAPA] Tentando fallback com colunas antigas...');
+          const fallbackResult = await supabase
+            .from('campaigns')
+            .select('dm_id, map_url, map_grid_px')
+            .eq('id', campaignId)
+            .maybeSingle();
+          
+          campaign = fallbackResult.data;
+          campaignError = fallbackResult.error;
+          console.log('[MAPA] Fallback - Dados:', campaign, 'Erro:', campaignError?.message);
+        }
+      } catch (err) {
+        console.error('[MAPA] Erro ao carregar campanha:', err);
+      }
+
+      // Debug: Mostra cada campo individualmente
+      if (campaign) {
+        console.log('[MAPA] Campos carregados:');
+        console.log('  map_url:', (campaign as any).map_url ? '✓' : '✗');
+        console.log('  map_grid_px:', (campaign as any).map_grid_px);
+        console.log('  map_scale:', (campaign as any).map_scale);
+        console.log('  map_grid_color:', (campaign as any).map_grid_color);
+        console.log('  map_grid_opacity:', (campaign as any).map_grid_opacity);
+        console.log('  map_grid_thickness:', (campaign as any).map_grid_thickness);
+        console.log('  map_grid_dashed:', (campaign as any).map_grid_dashed);
+        console.log('  map_grid_dash_frequency:', (campaign as any).map_grid_dash_frequency);
+        console.log('  map_grid_dimension:', (campaign as any).map_grid_dimension);
+      }
+
+      // Carrega mapa (coluna antiga, sempre existe)
+      if ((campaign as any)?.map_url) {
+        console.log('[MAPA] 🎯 Carregando mapa_url:', (campaign as any).map_url);
+        setMapaUrl((campaign as any).map_url);
+      } else {
+        console.log('[MAPA] ⚠️ map_url vazio ou nulo');
+      }
+      
+      // Carrega grid configs (colunas novas, podem não existir ainda)
+      if ((campaign as any)?.map_grid_px) {
+        console.log('[MAPA] Carregando map_grid_px:', (campaign as any).map_grid_px);
+        setMapGridPx((campaign as any).map_grid_px);
+      }
+      if ((campaign as any)?.map_scale) {
+        console.log('[MAPA] Carregando map_scale:', (campaign as any).map_scale);
+        setMapScale((campaign as any).map_scale);
+      }
+      if ((campaign as any)?.map_grid_color) {
+        console.log('[MAPA] Carregando map_grid_color:', (campaign as any).map_grid_color);
+        setGridColor((campaign as any).map_grid_color);
+      }
+      if ((campaign as any)?.map_grid_opacity) {
+        console.log('[MAPA] Carregando map_grid_opacity:', (campaign as any).map_grid_opacity);
+        setGridOpacity((campaign as any).map_grid_opacity);
+      }
+      if ((campaign as any)?.map_grid_thickness) {
+        console.log('[MAPA] Carregando map_grid_thickness:', (campaign as any).map_grid_thickness);
+        setGridThickness((campaign as any).map_grid_thickness);
+      }
+      if ((campaign as any)?.map_grid_dashed !== undefined) {
+        console.log('[MAPA] Carregando map_grid_dashed:', (campaign as any).map_grid_dashed);
+        setGridDashed((campaign as any).map_grid_dashed);
+      }
+      if ((campaign as any)?.map_grid_dash_frequency) {
+        console.log('[MAPA] Carregando map_grid_dash_frequency:', (campaign as any).map_grid_dash_frequency);
+        setGridDashFrequency((campaign as any).map_grid_dash_frequency);
+      }
+      if ((campaign as any)?.map_grid_dimension) {
+        console.log('[MAPA] Carregando map_grid_dimension:', (campaign as any).map_grid_dimension);
+        setGridDimension((campaign as any).map_grid_dimension);
+      }
 
       console.log('[DM] user.id:', user.id, '| campaignId:', campaignId);
       console.log('[DM] campaign:', campaign, '| error:', campaignError?.message);
@@ -463,10 +666,10 @@ export default function TelaDeMesa() {
         }
       }
 
-      // Carrega tokens do banco de dados
+      // Carrega tokens do banco de dados (inclui categoria de tamanho)
       const { data: dbTokens } = await supabase
         .from('campaign_tokens')
-        .select('id, url, x, y, character_id, is_monster')
+        .select('id, url, x, y, character_id, is_monster, size_category')
         .eq('campaign_id', campaignId);
 
       if (dbTokens && dbTokens.length > 0) {
@@ -500,6 +703,7 @@ export default function TelaDeMesa() {
             imgOffsetX: charData?.imgOffsetX ?? 50,
             imgOffsetY: charData?.imgOffsetY ?? 50,
             isMonster: t.is_monster ?? false,
+            sizeCategory: t.size_category ?? 'Medium',
           };
         }));
 
@@ -533,6 +737,7 @@ export default function TelaDeMesa() {
                 x: i * gridSize * 2,
                 y: 0,
                 isMonster: false,
+                sizeCategory: 'Medium',
               }));
               setTokens(prev => [...prev, ...newTokens]);
               await supabase.from('campaign_tokens').insert(
@@ -543,6 +748,7 @@ export default function TelaDeMesa() {
                   url: t.url,
                   x: t.x,
                   y: t.y,
+                  size_category: t.sizeCategory ?? 'Medium',
                   is_monster: false,
                 }))
               );
@@ -575,6 +781,7 @@ export default function TelaDeMesa() {
               x: i * gridSize * 2,
               y: 0,
               isMonster: false,
+              sizeCategory: 'Medium',
             }));
             setTokens(initialTokens);
             // Persiste tokens iniciais no banco (apenas colunas que existem)
@@ -586,6 +793,7 @@ export default function TelaDeMesa() {
                 url: t.url,
                 x: t.x,
                 y: t.y,
+                size_category: t.sizeCategory ?? 'Medium',
                 is_monster: false,
               }))
             );
@@ -672,6 +880,8 @@ export default function TelaDeMesa() {
                 <MapIcon size={22} />
               </button>
 
+              
+
               <button
                 onClick={() => setShowTokenLibrary(true)}
                 className="p-2 text-white/30 hover:text-[#00ff66] hover:drop-shadow-[0_0_8px_#00ff66] transition-all duration-300"
@@ -747,62 +957,64 @@ export default function TelaDeMesa() {
               
               <div 
                 className="absolute inset-0 pointer-events-none" 
-                style={{ 
-                  backgroundImage: `linear-gradient(to right, rgba(255, 255, 255, 0.08) 1px, transparent 1px), linear-gradient(to bottom, rgba(255, 255, 255, 0.08) 1px, transparent 1px)`, 
-                  backgroundSize: `${gridSize}px ${gridSize}px` 
-                }} 
+                style={getGridBgStyle()}
               />
 
-              {tokens.map(token => (
-                <div
-                  key={token.id}
-                  onMouseDown={(e) => handleMouseDown(e, token.id)}
-                  style={{
-                    transform: `translate(${token.x}px, ${token.y}px)`,
-                    position: 'absolute',
-                    top: mapaUrl ? '0' : '50%',
-                    left: mapaUrl ? '0' : '50%',
-                    marginTop: mapaUrl ? '0' : `-${gridSize/2}px`,
-                    marginLeft: mapaUrl ? '0' : `-${gridSize/2}px`,
-                    width: `${gridSize}px`,
-                    zIndex: tokenSelecionado === token.id ? 100 : 10,
-                  }}
-                  className="flex flex-col items-center cursor-move group"
-                >
-                  <div 
-                    style={{ width: `${tokenSize}px`, height: `${tokenSize}px` }}
-                    className={`relative overflow-hidden transition-all duration-200 ${token.characterId ? 'rounded-full border-2 bg-neutral-900' : ''} ${
-                      token.characterId
-                        ? tokenSelecionado === token.id
-                          ? 'border-[#00ff66] shadow-[0_0_20px_#00ff66] scale-110'
-                          : 'border-white/60 group-hover:border-[#00ff66] group-hover:shadow-[0_0_15px_rgba(0,255,102,0.4)]'
-                        : tokenSelecionado === token.id
-                          ? 'scale-110'
-                          : ''
-                    }`}
+              {tokens.map(token => {
+                const footprint = footprintForCategory(token.sizeCategory);
+                const displaySize = gridSize * footprint;
+                return (
+                  <div
+                    key={token.id}
+                    onMouseDown={(e) => handleMouseDown(e, token.id)}
+                    style={{
+                      transform: `translate(${token.x}px, ${token.y}px)`,
+                      position: 'absolute',
+                      top: mapaUrl ? '0' : '50%',
+                      left: mapaUrl ? '0' : '50%',
+                      marginTop: mapaUrl ? '0' : `-${(displaySize)/2}px`,
+                      marginLeft: mapaUrl ? '0' : `-${(displaySize)/2}px`,
+                      width: `${displaySize}px`,
+                      height: `${displaySize}px`,
+                      zIndex: tokenSelecionado === token.id ? 100 : 10,
+                    }}
+                    className="flex flex-col items-center cursor-move group"
                   >
-                    {token.url ? (
-                      <img
-                        src={token.url}
-                        alt={token.name ?? ''}
-                        draggable={false}
-                        style={{ objectPosition: `${token.imgOffsetX ?? 50}% ${token.imgOffsetY ?? 50}%` }}
-                        className="w-full h-full object-cover select-none pointer-events-none"
-                        onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-neutral-800 flex items-center justify-center">
-                        <span className="text-white/20 text-lg">?</span>
-                      </div>
+                    <div 
+                      style={{ width: '100%', height: '100%' }}
+                      className={`relative overflow-hidden transition-all duration-200 ${token.characterId ? 'rounded-full border-2 bg-neutral-900' : ''} ${
+                        token.characterId
+                          ? tokenSelecionado === token.id
+                            ? 'border-[#00ff66] shadow-[0_0_20px_#00ff66] scale-110'
+                            : 'border-white/60 group-hover:border-[#00ff66] group-hover:shadow-[0_0_15px_rgba(0,255,102,0.4)]'
+                          : tokenSelecionado === token.id
+                            ? 'scale-110'
+                            : ''
+                      }`}
+                    >
+                      {token.url ? (
+                        <img
+                          src={token.url}
+                          alt={token.name ?? ''}
+                          draggable={false}
+                          style={{ objectPosition: `${token.imgOffsetX ?? 50}% ${token.imgOffsetY ?? 50}%` }}
+                          className="w-full h-full object-cover select-none pointer-events-none"
+                          onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-neutral-800 flex items-center justify-center">
+                          <span className="text-white/20 text-lg">?</span>
+                        </div>
+                      )}
+                    </div>
+                    {token.characterId && token.name && (
+                      <span className="mt-1 text-[8px] font-bold text-white/80 bg-black/60 px-1.5 py-0.5 rounded-full whitespace-nowrap max-w-[80px] truncate text-center leading-tight">
+                        {token.name}
+                      </span>
                     )}
                   </div>
-                  {token.characterId && token.name && (
-                    <span className="mt-1 text-[8px] font-bold text-white/80 bg-black/60 px-1.5 py-0.5 rounded-full whitespace-nowrap max-w-[80px] truncate text-center leading-tight">
-                      {token.name}
-                    </span>
-                  )}
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </main>
@@ -824,15 +1036,15 @@ export default function TelaDeMesa() {
         onReady={(func) => setRollDiceFunc(() => func)} 
       />
       
-      {/* Modal de mapa */}
-      {modalAtivo && (
+      {/* Modal para upload de mapa (simples) */}
+      {modalAtivo === 'Mapa' && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 backdrop-blur-sm p-6">
           <div className="bg-[#0a0a0a] border border-[#00ff66]/20 p-10 rounded-[24px] w-full max-w-md relative shadow-[0_0_50px_rgba(0,255,102,0.1)]">
             <button onClick={() => setModalAtivo(null)} className="absolute top-6 right-6 text-white/40 hover:text-[#00ff66] transition-colors">
               <X size={20}/>
             </button>
             <h2 className="text-white text-2xl font-bold mb-10 uppercase tracking-[0.2em] text-center drop-shadow-[0_0_8px_rgba(255,255,255,0.3)]">
-              Alterar Mapa
+              Carregar Mapa
             </h2>
             <div className="flex flex-col gap-8">
               <label className="flex flex-col items-center justify-center gap-6 p-12 border-2 border-dashed border-white/5 rounded-3xl cursor-pointer hover:bg-[#00ff66]/[0.02] hover:border-[#00ff66]/30 group transition-all duration-500">
@@ -842,16 +1054,22 @@ export default function TelaDeMesa() {
                 <span className="text-white font-bold text-[11px] uppercase tracking-widest opacity-80">Arraste ou clique</span>
                 <input type="file" className="hidden" accept="image/*" onChange={(e) => handleFileUpload(e, 'Mapa')} />
               </label>
-              <button
-                onClick={() => setModalAtivo(null)}
-                className="w-full py-4 bg-[#00ff66] text-black font-black text-[12px] uppercase tracking-[0.15em] rounded-xl hover:brightness-110 hover:shadow-[0_0_30px_rgba(0,255,102,0.4)] transition-all duration-300 active:scale-[0.98]"
-              >
-                Confirmar Seleção
-              </button>
             </div>
           </div>
         </div>
       )}
+
+      {/* Editor de Mapa (modal grande com preview e controles) */}
+      <MapEditorModal
+        isOpen={showMapEditor}
+        mapUrl={mapPreviewUrl || ''}
+        campaignId={campaignId}
+        onConfirm={handleMapEditorConfirm}
+        onCancel={() => {
+          setShowMapEditor(false);
+          setMapPreviewUrl(null);
+        }}
+      />
 
       <FichaModal
         isOpen={showFicha}
