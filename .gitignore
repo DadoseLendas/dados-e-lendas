@@ -35,8 +35,14 @@ yarn-error.log*
 
 # local spell import assets
 splells1.json
+splells1_enriched.json
 scripts/convert-spells.mjs
 scripts/converte-spells.mjs
+scripts/convert-and-upload.mjs
+scripts/enrich-spells.ts
+scripts/migrate-spell-schema.sql
+utils/spell-database.ts
+utils/spell-examples.ts
 
 # vercel
 .vercel

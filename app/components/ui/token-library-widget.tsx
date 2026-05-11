@@ -6,12 +6,13 @@ interface GalleryToken {
   name: string;
   url: string;
   category: string;
+  size_category?: 'Tiny' | 'Small' | 'Medium' | 'Large' | 'Huge' | 'Gargantuan';
 }
 
 interface TokenLibraryWidgetProps {
   isOpen: boolean;
   onToggle: () => void;
-  onAddToken: (token: { name: string; url: string }) => void;
+  onAddToken: (token: { name: string; url: string; sizeCategory?: 'Tiny' | 'Small' | 'Medium' | 'Large' | 'Huge' | 'Gargantuan' }) => void;
   onUpload: (file: File) => void;
 }
 
@@ -124,7 +125,7 @@ export default function TokenLibraryWidget({ isOpen, onToggle, onAddToken, onUpl
                     {tokensInCategory.map((t, i) => (
                       <button
                         key={i}
-                        onClick={() => { onAddToken(t); handleClose(); }}
+                        onClick={() => { onAddToken({ name: t.name, url: t.url, sizeCategory: t.size_category }); handleClose(); }}
                         title={t.name}
                         className="flex flex-col items-center gap-1 group"
                       >
