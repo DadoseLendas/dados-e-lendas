@@ -101,9 +101,14 @@ export default function TelaDeMesa() {
   const [gridThickness, setGridThickness] = useState<number>(1);
   const [gridDashed, setGridDashed] = useState<boolean>(false);
   const [gridDashFrequency, setGridDashFrequency] = useState<number>(5);
-  const [gridDimension, setGridDimension] = useState<string>('5 ft'); // NOVO: dimensão do grid
+  const [gridDimension, setGridDimension] = useState<string>('5 pes'); // NOVO: dimensão do grid
   const [showMapEditor, setShowMapEditor] = useState(false);
   const [mapPreviewUrl, setMapPreviewUrl] = useState<string | null>(null);
+  const [showRuler, setShowRuler] = useState(false);
+  const [rulerStart, setRulerStart] = useState<{ x: number; y: number } | null>(null);
+  const [rulerEnd, setRulerEnd] = useState<{ x: number; y: number } | null>(null);
+  const [rulerLocked, setRulerLocked] = useState(false);
+  const [isRulerDragging, setIsRulerDragging] = useState(false);
   const [zoom, setZoom] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [isDraggingMap, setIsDraggingMap] = useState(false);
@@ -112,6 +117,7 @@ export default function TelaDeMesa() {
   const [tokens, setTokens] = useState<Token[]>([]);
   const [tokenSelecionado, setTokenSelecionado] = useState<string | null>(null);
   const [isDraggingToken, setIsDraggingToken] = useState(false);
+  const mapContentRef = useRef<HTMLDivElement | null>(null);
 
   // Realtime refs
   const tokensRef = useRef<Token[]>([]);
@@ -125,6 +131,16 @@ export default function TelaDeMesa() {
   
   const gridSize = mapGridPx;
   const tokenSizeBase = Math.min(gridSize, 60); // base cap
+  const gridDistanceInfo = useMemo(() => {
+    const match = gridDimension.trim().match(/^([\d.,]+)\s*(.*)$/);
+    const value = match ? Number.parseFloat(match[1].replace(',', '.')) : 5;
+    const rawUnit = (match?.[2]?.trim() || 'pes').toLowerCase();
+    const unit = rawUnit === 'ft' || rawUnit === 'feet' ? 'pes' : rawUnit === 'metro' || rawUnit === 'metros' ? 'm' : rawUnit;
+    return {
+      value: Number.isFinite(value) && value > 0 ? value : 5,
+      unit,
+    };
+  }, [gridDimension]);
   const footprintForCategory = (cat?: string) => {
     switch (cat) {
       case 'Tiny': return 0.5; // 1/4 area -> side = 0.5
@@ -137,6 +153,44 @@ export default function TelaDeMesa() {
     }
   };
   const mapScalePercent = mapScale / 100;
+  const rulerIsActive = Boolean(rulerStart);
+  const getLocalPointFromMouse = (clientX: number, clientY: number) => {
+    const rect = mapContentRef.current?.getBoundingClientRect();
+    if (!rect) return null;
+
+    const x = (clientX - rect.left) / zoom;
+    const y = (clientY - rect.top) / zoom;
+
+    if (x < 0 || y < 0 || x > rect.width / zoom || y > rect.height / zoom) {
+      return null;
+    }
+
+    return { x, y };
+  };
+  const getRulerDistance = () => {
+    if (!rulerStart || !rulerEnd) return null;
+    const dx = rulerEnd.x - rulerStart.x;
+    const dy = rulerEnd.y - rulerStart.y;
+    const pixelDistance = Math.sqrt(dx * dx + dy * dy);
+    const squares = pixelDistance / gridSize;
+    const baseDistance = squares * gridDistanceInfo.value;
+    const meters = gridDistanceInfo.unit === 'm' ? baseDistance : baseDistance * 0.3048;
+    const feet = gridDistanceInfo.unit === 'm' ? baseDistance * 3.28084 : baseDistance;
+    return { pixelDistance, squares, baseDistance, meters, feet };
+  };
+  const broadcastRulerState = (payload: {
+    showRuler: boolean;
+    rulerStart: { x: number; y: number } | null;
+    rulerEnd: { x: number; y: number } | null;
+    rulerLocked: boolean;
+    isRulerDragging: boolean;
+  }) => {
+    realtimeChannelRef.current?.send({
+      type: 'broadcast',
+      event: 'ruler-change',
+      payload,
+    });
+  };
 
   const getGridBgStyle = () => {
     const r = parseInt(gridColor.slice(1, 3), 16);
@@ -171,6 +225,22 @@ export default function TelaDeMesa() {
       const token = tokensRef.current.find(t => t.id === tokenId);
       if (token) draggingPosRef.current = { x: token.x, y: token.y };
       e.stopPropagation();
+    } else if (showRuler && !rulerLocked && e.button === 0) {
+      const point = getLocalPointFromMouse(e.clientX, e.clientY);
+      if (!point) return;
+      setRulerStart(point);
+      setRulerEnd(point);
+      setIsRulerDragging(true);
+      setRulerLocked(false);
+      setIsDraggingMap(false);
+      broadcastRulerState({
+        showRuler: true,
+        rulerStart: point,
+        rulerEnd: point,
+        rulerLocked: false,
+        isRulerDragging: true,
+      });
+      e.preventDefault();
     } else if (e.button === 1) { 
       setIsDraggingMap(true);
       e.preventDefault();
@@ -196,6 +266,18 @@ export default function TelaDeMesa() {
           type: 'broadcast',
           event: 'token-move',
           payload: { tokenId: tokenSelecionado, x, y },
+        });
+      }
+    } else if (showRuler && rulerStart && isRulerDragging && !rulerLocked) {
+      const point = getLocalPointFromMouse(e.clientX, e.clientY);
+      if (point) {
+        setRulerEnd(point);
+        broadcastRulerState({
+          showRuler: true,
+          rulerStart,
+          rulerEnd: point,
+          rulerLocked: false,
+          isRulerDragging: true,
         });
       }
     }
@@ -237,6 +319,17 @@ export default function TelaDeMesa() {
           .eq('campaign_id', campaignId)
           .then(() => {});
       }
+    }
+    if (isRulerDragging && rulerStart) {
+      setRulerLocked(true);
+      setIsRulerDragging(false);
+      broadcastRulerState({
+        showRuler: true,
+        rulerStart,
+        rulerEnd: rulerEnd ?? rulerStart,
+        rulerLocked: true,
+        isRulerDragging: false,
+      });
     }
     setIsDraggingMap(false);
     setIsDraggingToken(false);
@@ -418,6 +511,13 @@ export default function TelaDeMesa() {
         if (payload.gridDashed !== undefined) setGridDashed(payload.gridDashed);
         if (payload.gridDashFrequency) setGridDashFrequency(payload.gridDashFrequency);
         if (payload.gridDimension) setGridDimension(payload.gridDimension);
+      })
+      .on('broadcast', { event: 'ruler-change' }, ({ payload }) => {
+        setShowRuler(Boolean(payload?.showRuler));
+        setRulerStart(payload?.rulerStart ?? null);
+        setRulerEnd(payload?.rulerEnd ?? null);
+        setRulerLocked(Boolean(payload?.rulerLocked));
+        setIsRulerDragging(Boolean(payload?.isRulerDragging));
       })
       .on(
         'postgres_changes',
@@ -938,6 +1038,42 @@ export default function TelaDeMesa() {
             setZoom(prev => Math.min(Math.max(0.1, prev + delta), 5));
           }}
         >
+          <div className="absolute right-6 top-6 z-40 flex items-center gap-2 rounded-2xl border border-white/10 bg-black/70 px-3 py-2 backdrop-blur-md shadow-[0_0_24px_rgba(0,0,0,0.5)]">
+            <button
+              type="button"
+              onClick={() => {
+                setShowRuler((prev) => !prev);
+              }}
+              className={`rounded-lg px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.18em] transition-all ${showRuler ? 'bg-[#00ff66] text-black' : 'bg-white/5 text-white/70 hover:bg-white/10 hover:text-[#00ff66]'}`}
+            >
+              Régua
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setRulerStart(null);
+                setRulerEnd(null);
+                setRulerLocked(false);
+                setIsRulerDragging(false);
+                broadcastRulerState({
+                  showRuler: false,
+                  rulerStart: null,
+                  rulerEnd: null,
+                  rulerLocked: false,
+                  isRulerDragging: false,
+                });
+              }}
+              className="rounded-lg border border-white/10 px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.18em] text-white/50 hover:border-[#00ff66]/40 hover:text-[#00ff66]"
+            >
+              Limpar
+            </button>
+            {getRulerDistance() && (
+              <div className="ml-2 rounded-lg border border-[#00ff66]/20 bg-[#00ff66]/10 px-3 py-1.5 text-[11px] font-bold text-[#d7ffd6]">
+                {getRulerDistance()!.meters.toFixed(1)} metros • {getRulerDistance()!.feet.toFixed(1)} pés
+              </div>
+            )}
+          </div>
+
           <div 
             className="absolute inset-0 flex items-center justify-center pointer-events-none"
             style={{ 
@@ -945,7 +1081,7 @@ export default function TelaDeMesa() {
               transition: (isDraggingMap || isDraggingToken) ? 'none' : 'transform 0.1s ease-out'
             }}
           >
-            <div className="relative pointer-events-auto">
+            <div ref={mapContentRef} className="relative pointer-events-auto">
               {!mapaUrl ? (
                 <div className="w-[1000px] h-[800px] flex flex-col items-center justify-center gap-4 text-white/10">
                   <MapIcon size={64} strokeWidth={1} />
@@ -954,6 +1090,36 @@ export default function TelaDeMesa() {
               ) : (
                 <img src={mapaUrl} className="max-w-none block opacity-80 shadow-2xl" alt="Map" />
               )}
+
+              {rulerStart && rulerEnd && (() => {
+                const dx = rulerEnd.x - rulerStart.x;
+                const dy = rulerEnd.y - rulerStart.y;
+                const length = Math.sqrt(dx * dx + dy * dy);
+                const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+                const distance = getRulerDistance();
+                const midX = (rulerStart.x + rulerEnd.x) / 2;
+                const midY = (rulerStart.y + rulerEnd.y) / 2;
+
+                return (
+                  <>
+                    <div
+                      className="absolute left-0 top-0 pointer-events-none"
+                      style={{
+                        transform: `translate(${rulerStart.x}px, ${rulerStart.y}px) rotate(${angle}deg)`,
+                        transformOrigin: '0 0',
+                      }}
+                    >
+                      <div className="h-[3px] rounded-full bg-[#00ff66] shadow-[0_0_12px_rgba(0,255,102,0.8)]" style={{ width: `${length}px` }} />
+                    </div>
+                    <div
+                      className="absolute pointer-events-none rounded-full border border-[#00ff66]/30 bg-black/80 px-2 py-1 text-[10px] font-bold text-[#00ff66] shadow-[0_0_16px_rgba(0,0,0,0.5)]"
+                      style={{ left: midX, top: midY, transform: 'translate(-50%, -50%)' }}
+                    >
+                      {distance ? `${distance.meters.toFixed(1)} m • ${distance.feet.toFixed(1)} pés` : ''}
+                    </div>
+                  </>
+                );
+              })()}
               
               <div 
                 className="absolute inset-0 pointer-events-none" 

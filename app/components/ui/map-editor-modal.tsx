@@ -25,7 +25,7 @@ export default function MapEditorModal({
   const [gridThickness, setGridThickness] = useState<number>(1);
   const [gridDashed, setGridDashed] = useState<boolean>(false);
   const [gridDashFrequency, setGridDashFrequency] = useState<number>(5);
-  const [gridDimension, setGridDimension] = useState<string>('5 ft'); // NOVO
+  const [gridDimension, setGridDimension] = useState<string>('5 pes'); // NOVO
   const [isLoading, setIsLoading] = useState(false);
 
   const handleConfirm = async () => {
@@ -247,29 +247,29 @@ export default function MapEditorModal({
                 type="text"
                 value={gridDimension}
                 onChange={(e) => setGridDimension(e.target.value)}
-                placeholder="ex: 5 ft, 10 m, 1.5 m"
+                placeholder="ex: 5 pes, 10 m, 1.5 m"
                 className="w-full bg-[#050505] border border-white/5 rounded-lg py-2 px-3 text-white text-sm"
               />
               <div className="grid grid-cols-2 gap-2">
                 <button
-                  onClick={() => setGridDimension('5 ft')}
+                  onClick={() => setGridDimension('5 pes')}
                   className={`px-3 py-2 rounded-lg text-[10px] font-bold transition-all ${
-                    gridDimension === '5 ft'
+                    gridDimension === '5 pes'
                       ? 'bg-[#00ff66] text-black'
                       : 'bg-white/5 border border-white/10 text-white/70 hover:border-[#00ff66]/30'
                   }`}
                 >
-                  5 ft
+                  5 pes
                 </button>
                 <button
-                  onClick={() => setGridDimension('10 ft')}
+                  onClick={() => setGridDimension('10 pes')}
                   className={`px-3 py-2 rounded-lg text-[10px] font-bold transition-all ${
-                    gridDimension === '10 ft'
+                    gridDimension === '10 pes'
                       ? 'bg-[#00ff66] text-black'
                       : 'bg-white/5 border border-white/10 text-white/70 hover:border-[#00ff66]/30'
                   }`}
                 >
-                  10 ft
+                  10 pes
                 </button>
                 <button
                   onClick={() => setGridDimension('1,5 m')}
