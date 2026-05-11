@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/utils/supabase/client";
-import { ArrowLeft, ChevronDown, ChevronRight, Plus, Save, Trash2, X } from "lucide-react";
+import { SpellExecution } from "@/utils/spell-executor";
+import { ArrowLeft, ChevronDown, ChevronRight, Plus, Save, Trash2, X, Zap } from "lucide-react";
 
 type CharacterSpell = {
   id: number;
@@ -58,6 +59,7 @@ interface SpellModalProps {
   isOpen: boolean;
   onClose: () => void;
   characterId: number | string | null;
+  onLaunchSpell?: (spell: SpellExecution) => void;
 }
 
 const getMaxSpellLevelForCharacter = (characterLevel: number) => {
@@ -73,7 +75,28 @@ const getMaxSpellLevelForCharacter = (characterLevel: number) => {
   return 0;
 };
 
-export default function SpellModal({ isOpen, onClose, characterId }: SpellModalProps) {
+const buildSpellExecution = (spell: SpellCatalogItem, casterLevel = 1): SpellExecution => ({
+  spellName: spell.nome,
+  danoRolagem: spell.dano || null,
+  areaRaio: undefined,
+  areaFormato: spell.formato || undefined,
+  areaTexto: spell.area || null,
+  tipoAlvo: spell.tipo_alvo || undefined,
+  salvacao: spell.salvacao || undefined,
+  alcanceTexto: spell.alcance || null,
+  categoriaMagia: spell.categoria_magia || null,
+  efeitoPrincipal: spell.efeito_principal || null,
+  beneficioConcedido: spell.beneficio_concedido || null,
+  restricaoConcedida: spell.restricao_concedida || null,
+  descricao: spell.descricao,
+  cdSalvacao: spell.cd_salvacao ?? null,
+  tipoDano: spell.tipo_dano || null,
+  tipoAtaque: spell.tipo_ataque || null,
+  ehConcentracao: spell.eh_concentracao ?? false,
+  casterLevel,
+});
+
+export default function SpellModal({ isOpen, onClose, characterId, onLaunchSpell }: SpellModalProps) {
   const supabase = createClient();
 
   const [character, setCharacter] = useState<CharacterLite | null>(null);
@@ -511,6 +534,18 @@ export default function SpellModal({ isOpen, onClose, characterId }: SpellModalP
               <div className={`${descriptionMaxHeightClass} overflow-y-auto rounded-lg border border-[#1a2a1a] bg-black/30 p-3`}>
                 <p className="text-[15px] font-black uppercase tracking-wider text-[#f1e5ac]">{descriptionSpell.nome}</p>
                 <p className="mt-1 text-[12px] uppercase text-[#8a9a8a]">Circulo {descriptionSpell.nivel_magia} • {descriptionSpell.escola}</p>
+
+                {onLaunchSpell && !isAdding && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onLaunchSpell(buildSpellExecution(descriptionSpell, character?.level ?? 1));
+                    }}
+                    className="mt-3 inline-flex items-center gap-2 rounded-md border border-[#00ff66]/30 bg-[#00ff66]/10 px-3 py-2 text-[11px] font-black uppercase tracking-[0.18em] text-[#00ff66] hover:bg-[#00ff66]/20"
+                  >
+                    <Zap className="h-3.5 w-3.5" /> Lançar magia
+                  </button>
+                )}
 
                 <div className="mt-3 grid grid-cols-2 gap-2 text-[12px] uppercase text-[#9ea8a0]">
                   <p><span className="text-[#00ff66] font-black">Tempo:</span> {descriptionSpell.tempo_conjuracao}</p>

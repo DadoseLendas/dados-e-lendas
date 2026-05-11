@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { 
   UserRound, Users, Home, BookOpen, Map as MapIcon, 
@@ -10,16 +10,19 @@ import { GiSpellBook } from 'react-icons/gi';
 import { createClient } from '@/utils/supabase/client';
 import FichaModal from '@/app/components/ui/ficha-modal';
 import SpellModal from '@/app/components/ui/spell-modal';
+import SpellCaster from '@/app/components/ui/spell-caster';
 import ChatWidget from '@/app/components/ui/chat-widget'; 
 import CampaignBooksWidget from '@/app/components/ui/campaign-books-widget';
 import DiceRoller from '@/app/components/ui/dice-roller';
 import TokenLibraryWidget from '@/app/components/ui/token-library-widget';
 import MapEditorModal from '@/app/components/ui/map-editor-modal';
+import { EffectResult, SpellExecution } from '@/utils/spell-executor';
 interface Token {
   id: string;
   url: string;
   x: number;
   y: number;
+  rotation?: number;
   name?: string;
   characterId?: number | null;
   imgOffsetX?: number;
@@ -29,9 +32,7 @@ interface Token {
   maxHp?: number;
   sizeCategory?: 'Tiny' | 'Small' | 'Medium' | 'Large' | 'Huge' | 'Gargantuan';
 }
-
 // Nota: removido o mapeamento para o SpellCasterMap; mantemos tokens simples
-
 const CONDICOES_RPG = [
   { 
   nome: "Confuso", 
@@ -112,6 +113,7 @@ export default function TelaDeMesa() {
   const [zoom, setZoom] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [isDraggingMap, setIsDraggingMap] = useState(false);
+  const [activeSpellCast, setActiveSpellCast] = useState<SpellExecution | null>(null);
 
   //tokens
   const [tokens, setTokens] = useState<Token[]>([]);
@@ -177,6 +179,10 @@ export default function TelaDeMesa() {
     const meters = gridDistanceInfo.unit === 'm' ? baseDistance : baseDistance * 0.3048;
     const feet = gridDistanceInfo.unit === 'm' ? baseDistance * 3.28084 : baseDistance;
     return { pixelDistance, squares, baseDistance, meters, feet };
+  };
+  const normalizeRotation = (value: number) => {
+    const normalized = value % 360;
+    return normalized < 0 ? normalized + 360 : normalized;
   };
   const broadcastRulerState = (payload: {
     showRuler: boolean;
@@ -339,8 +345,27 @@ export default function TelaDeMesa() {
   useEffect(() => {
     const handleKeyDown = async (e: KeyboardEvent) => {
       if (!tokenSelecionado) return;
+      const id = tokenSelecionado;
+      const token = tokensRef.current.find(t => t.id === id);
+      if (!token) return;
+
+      if (e.key.toLowerCase() === 'q' || e.key.toLowerCase() === 'e') {
+        if (!token.isMonster) return;
+        e.preventDefault();
+        const step = e.key.toLowerCase() === 'q' ? -15 : 15;
+        const newRotation = normalizeRotation((token.rotation ?? 0) + step);
+        setTokens(prev => prev.map(t => t.id === id ? { ...t, rotation: newRotation } : t));
+        realtimeChannelRef.current?.send({
+          type: 'broadcast',
+          event: 'token-rotate',
+          payload: { tokenId: id, rotation: newRotation },
+        });
+        supabase.from('campaign_tokens').update({ rotation: newRotation })
+          .eq('id', id).eq('campaign_id', campaignId).then(() => {});
+        return;
+      }
+
       if (e.key === 'Delete' || e.key === 'Backspace') {
-        const id = tokenSelecionado;
         setTokens(prev => prev.filter(t => t.id !== id));
         setTokenSelecionado(null);
         supabase.from('campaign_tokens').delete().eq('id', id).then(() => {});
@@ -357,9 +382,6 @@ export default function TelaDeMesa() {
         case 'd': dx = gridSize; break;
         default: return;
       }
-      const id = tokenSelecionado;
-      const token = tokensRef.current.find(t => t.id === id);
-      if (!token) return;
       const newX = token.x + dx;
       const newY = token.y + dy;
       setTokens(prev => prev.map(t => t.id === id ? { ...t, x: newX, y: newY } : t));
@@ -462,7 +484,7 @@ export default function TelaDeMesa() {
   const addTokenToMap = async (t: { name: string; url: string; sizeCategory?: 'Tiny' | 'Small' | 'Medium' | 'Large' | 'Huge' | 'Gargantuan' }) => {
     const newId = crypto.randomUUID();
     const defaultSize = t.sizeCategory ?? 'Medium';
-    const newToken: Token = { id: newId, url: t.url, x: 0, y: 0, name: t.name, isMonster: true, sizeCategory: defaultSize };
+    const newToken: Token = { id: newId, url: t.url, x: 0, y: 0, rotation: 0, name: t.name, isMonster: true, sizeCategory: defaultSize };
     setTokens(prev => [...prev, newToken]);
     const { data, error } = await supabase.from('campaign_tokens').insert({
       id: newId, campaign_id: campaignId, url: t.url, x: 0, y: 0, is_monster: true, size_category: defaultSize,
@@ -489,7 +511,12 @@ export default function TelaDeMesa() {
       .channel(`mesa-tokens-${campaignId}`)
       .on('broadcast', { event: 'token-move' }, ({ payload }) => {
         setTokens(prev => prev.map(t =>
-          t.id === payload.tokenId ? { ...t, x: payload.x, y: payload.y } : t
+          t.id === payload.tokenId ? { ...t, x: payload.x, y: payload.y, rotation: payload.rotation ?? t.rotation ?? 0 } : t
+        ));
+      })
+      .on('broadcast', { event: 'token-rotate' }, ({ payload }) => {
+        setTokens(prev => prev.map(t =>
+          t.id === payload.tokenId ? { ...t, rotation: normalizeRotation(payload.rotation ?? 0) } : t
         ));
       })
       .on('broadcast', { event: 'token-delete' }, ({ payload }) => {
@@ -528,6 +555,7 @@ export default function TelaDeMesa() {
             if (prev.find(tk => tk.id === t.id)) return prev;
             return [...prev, {
               id: t.id, url: t.url || '', x: t.x, y: t.y,
+              rotation: t.rotation ?? 0,
               characterId: t.character_id ?? null,
               isMonster: t.is_monster ?? false,
               imgOffsetX: 50, imgOffsetY: 50,
@@ -569,6 +597,7 @@ export default function TelaDeMesa() {
             id: newId,
             url: (char as any).img || '',
             x: 0, y: 0,
+            rotation: 0,
             name: (char as any).name,
             characterId: (char as any).id,
             imgOffsetX: (char as any).imgOffsetX ?? 50,
@@ -629,6 +658,45 @@ export default function TelaDeMesa() {
   
   // Função de rolagem que virá do componente DiceRoller
   const [rollDiceFunc, setRollDiceFunc] = useState<((formula: string, isSecret: boolean, mode: 'normal' | 'advantage' | 'disadvantage') => Promise<any | null>) | null>(null);
+
+  const casterToken = useMemo(() => {
+    const ownToken = tokens.find((token) => String(token.characterId) === String(fichaCharacterId));
+    if (ownToken) return ownToken;
+    if (tokenSelecionado) {
+      const selected = tokens.find((token) => token.id === tokenSelecionado);
+      if (selected) return selected;
+    }
+    return tokens[0] ?? null;
+  }, [fichaCharacterId, tokenSelecionado, tokens]);
+
+  const spellCasterTokens = useMemo(() => {
+    return tokens.map((token) => ({
+      id: token.id,
+      x: token.x,
+      y: token.y,
+      raio: gridSize * footprintForCategory(token.sizeCategory) * 0.5,
+      nome: token.name || token.id,
+      pvAtuais: token.hp,
+      pvMax: token.maxHp,
+    }));
+  }, [gridSize, tokens]);
+
+  const handleSpellLaunch = (spell: SpellExecution) => {
+    setActiveSpellCast(spell);
+    setShowSpellModal(false);
+  };
+
+  const handleSpellCast = useCallback((results: EffectResult[]) => {
+    setTokens((prev) => prev.map((token) => {
+      const result = results.find((item) => item.tokenId === token.id);
+      if (!result) return token;
+
+      const currentHp = token.hp ?? token.maxHp ?? 0;
+      const maxHp = token.maxHp ?? currentHp;
+      const nextHp = Math.max(0, Math.min(maxHp, currentHp - result.danoRecebido));
+      return { ...token, hp: nextHp, maxHp };
+    }));
+  }, []);
 
   // Busca role do usuário e personagem vinculado
   useEffect(() => {
@@ -767,10 +835,21 @@ export default function TelaDeMesa() {
       }
 
       // Carrega tokens do banco de dados (inclui categoria de tamanho)
-      const { data: dbTokens } = await supabase
+      let dbTokens: any[] | null = null;
+      const { data: dbTokensWithRotation, error: dbTokensWithRotationError } = await supabase
         .from('campaign_tokens')
-        .select('id, url, x, y, character_id, is_monster, size_category')
+        .select('id, url, x, y, rotation, character_id, is_monster, size_category')
         .eq('campaign_id', campaignId);
+
+      if (dbTokensWithRotationError) {
+        const { data: dbTokensFallback } = await supabase
+          .from('campaign_tokens')
+          .select('id, url, x, y, character_id, is_monster, size_category')
+          .eq('campaign_id', campaignId);
+        dbTokens = dbTokensFallback;
+      } else {
+        dbTokens = dbTokensWithRotation;
+      }
 
       if (dbTokens && dbTokens.length > 0) {
         // Para tokens com personagem, busca dados visuais na tabela characters
@@ -798,6 +877,7 @@ export default function TelaDeMesa() {
             url: charData ? charData.img : (t.url || ''),
             x: t.x,
             y: t.y,
+            rotation: t.rotation ?? 0,
             characterId: t.character_id ?? null,
             name: charData?.name,
             imgOffsetX: charData?.imgOffsetX ?? 50,
@@ -836,6 +916,7 @@ export default function TelaDeMesa() {
                 imgOffsetY: c.imgOffsetY ?? 50,
                 x: i * gridSize * 2,
                 y: 0,
+                rotation: 0,
                 isMonster: false,
                 sizeCategory: 'Medium',
               }));
@@ -880,6 +961,7 @@ export default function TelaDeMesa() {
               imgOffsetY: c.imgOffsetY ?? 50,
               x: i * gridSize * 2,
               y: 0,
+              rotation: 0,
               isMonster: false,
               sizeCategory: 'Medium',
             }));
@@ -1147,7 +1229,12 @@ export default function TelaDeMesa() {
                     className="flex flex-col items-center cursor-move group"
                   >
                     <div 
-                      style={{ width: '100%', height: '100%' }}
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        transform: token.isMonster ? `rotate(${token.rotation ?? 0}deg)` : 'none',
+                        transformOrigin: '50% 50%',
+                      }}
                       className={`relative overflow-hidden transition-all duration-200 ${token.characterId ? 'rounded-full border-2 bg-neutral-900' : ''} ${
                         token.characterId
                           ? tokenSelecionado === token.id
@@ -1181,6 +1268,21 @@ export default function TelaDeMesa() {
                   </div>
                 );
               })}
+
+              <SpellCaster
+                isOpen={Boolean(activeSpellCast)}
+                spell={activeSpellCast}
+                campaignId={campaignId}
+                tokens={spellCasterTokens}
+                casterPoint={casterToken ? { x: casterToken.x, y: casterToken.y } : null}
+                gridSize={gridSize}
+                gridValue={gridDistanceInfo.value}
+                gridUnit={gridDistanceInfo.unit === 'm' ? 'm' : 'pes'}
+                casterLevel={casterToken?.characterId ? 1 : 1}
+                casterModificador={3}
+                onClose={() => setActiveSpellCast(null)}
+                onSpellCast={handleSpellCast}
+              />
             </div>
           </div>
         </main>
@@ -1254,6 +1356,7 @@ export default function TelaDeMesa() {
         isOpen={showSpellModal}
         onClose={() => setShowSpellModal(false)}
         characterId={fichaCharacterId}
+        onLaunchSpell={handleSpellLaunch}
       />
 
       {/* Ficha de jogador — visualização do Mestre */}

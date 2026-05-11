@@ -4,10 +4,20 @@
 export interface SpellExecution {
   spellName: string;
   danoRolagem?: string | null; // ex: "3d6", "2d8+3"
-  areaRaio?: number; // em pés
+  areaRaio?: number; // em pixels na mesa
   areaFormato?: string; // esfera, cone, linha
+  areaTexto?: string | null;
   tipoAlvo?: string; // criatura, objeto, espaço
   salvacao?: string; // Destreza, Vontade, etc
+  alcanceTexto?: string | null;
+  categoriaMagia?: string | null;
+  efeitoPrincipal?: string | null;
+  beneficioConcedido?: string | null;
+  restricaoConcedida?: string | null;
+  descricao?: string | null;
+  cdSalvacao?: number | string | null;
+  tipoDano?: string | null;
+  tipoAtaque?: string | null;
   tempoExplosao?: number; // ms até explodir
   posicao?: { x: number; y: number }; // na mesa
   casterLevel?: number; // nível do lançador
@@ -55,6 +65,44 @@ export function parsearDano(danoPorMagia: string | null | undefined): {
     lados: parseInt(match[2]),
     modificador: parseInt(match[3] || "0"),
   };
+}
+
+export function parseDistanciaTexto(
+  texto: string | null | undefined,
+  unidadeMapa: 'm' | 'pes'
+): number | null {
+  if (!texto) return null;
+
+  const normalizado = texto.trim().toLowerCase();
+  if (!normalizado) return null;
+
+  if (/(^|\s)(toque|touch)(\s|$)/.test(normalizado)) {
+    return unidadeMapa === 'm' ? 1.5 : 5;
+  }
+
+  if (/(^|\s)(pessoal|self)(\s|$)/.test(normalizado)) {
+    return 0;
+  }
+
+  const match = normalizado.match(/([\d.,]+)\s*(m|metro|metros|pes|pés|ft|feet)?/i);
+  if (!match) return null;
+
+  const valor = Number.parseFloat(match[1].replace(',', '.'));
+  if (!Number.isFinite(valor)) return null;
+
+  const unidade = (match[2] || unidadeMapa).toLowerCase();
+  if (unidadeMapa === 'm') {
+    if (unidade === 'pes' || unidade === 'pés' || unidade === 'ft' || unidade === 'feet') {
+      return valor * 0.3048;
+    }
+    return valor;
+  }
+
+  if (unidade === 'm' || unidade === 'metro' || unidade === 'metros') {
+    return valor * 3.28084;
+  }
+
+  return valor;
 }
 
 // Rola dado de dano
@@ -127,11 +175,13 @@ export function aplicarEfeitoMagia(
   );
   if (!tokensPosicao) return resultados;
 
-  const raioExplosao = calcularRaioExplosao(
-    spell.casterLevel || 0,
-    spell.areaFormato || "esfera",
-    casterModificador
-  );
+  const raioExplosao = spell.areaRaio && spell.areaRaio > 0
+    ? spell.areaRaio
+    : calcularRaioExplosao(
+        spell.casterLevel || 0,
+        spell.areaFormato || "esfera",
+        casterModificador
+      );
 
   const atingidos = detectarTokensNaArea(tokenPosicoes, spell.posicao!, raioExplosao);
 
