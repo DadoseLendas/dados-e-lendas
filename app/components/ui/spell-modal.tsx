@@ -30,6 +30,28 @@ type SpellCatalogItem = {
   material?: string | null;
   descricao: string;
   escala_por_nivel?: string | null;
+  dano?: string | null;
+  area?: string | null;
+  formato?: string | null;
+  efeito?: string | null;
+  rolagem?: string | null;
+  tipo_alvo?: string | null;
+  salvacao?: string | null;
+  eh_concentracao?: boolean;
+  requisitos_rituais?: boolean;
+  classes_disponivel?: string | string[] | null;
+  categoria_magia?: string | null;
+  efeito_principal?: string | null;
+  beneficio_concedido?: string | null;
+  restricao_concedida?: string | null;
+  transforma_em?: string | null;
+  movimento_concedido?: string | null;
+  protecao_concedida?: string | null;
+  condicoes_aplicadas?: string | string[] | null;
+  palavras_chave?: string | string[] | null;
+  cd_salvacao?: string | number | null;
+  tipo_dano?: string | null;
+  tipo_ataque?: string | null;
 };
 
 interface SpellModalProps {
@@ -83,7 +105,7 @@ export default function SpellModal({ isOpen, onClose, characterId }: SpellModalP
         supabase.from("characters").select("id, name, level, spells").eq("id", characterId).single(),
         supabase
           .from("spell_catalog")
-          .select("id, slug, nome, escola, nivel_magia, tempo_conjuracao, alcance, componentes, duracao, material, descricao, escala_por_nivel")
+          .select("id, slug, nome, escola, nivel_magia, tempo_conjuracao, alcance, componentes, duracao, material, descricao, escala_por_nivel, dano, area, formato, efeito, rolagem, tipo_alvo, salvacao, eh_concentracao, requisitos_rituais, classes_disponivel, categoria_magia, efeito_principal, beneficio_concedido, restricao_concedida, transforma_em, movimento_concedido, protecao_concedida, condicoes_aplicadas, palavras_chave, cd_salvacao, tipo_dano, tipo_ataque")
           .order("nivel_magia", { ascending: true })
           .order("nome", { ascending: true }),
       ]);
@@ -157,6 +179,15 @@ export default function SpellModal({ isOpen, onClose, characterId }: SpellModalP
       material: null,
       descricao: "Descricao detalhada nao encontrada no catalogo de magias.",
       escala_por_nivel: null,
+      dano: null,
+      area: null,
+      formato: null,
+      efeito: null,
+      rolagem: null,
+      tipo_alvo: null,
+      salvacao: null,
+      eh_concentracao: false,
+      requisitos_rituais: false,
     } as SpellCatalogItem;
   }, [selectedSpellName, catalogByName, character?.spells]);
 
@@ -497,6 +528,54 @@ export default function SpellModal({ isOpen, onClose, characterId }: SpellModalP
                 <div className="mt-3 rounded-lg border border-[#1a2a1a] bg-black/35 p-2.5">
                   <p className="text-[14px] leading-6 text-gray-200 whitespace-pre-line">{descriptionSpell.descricao}</p>
                 </div>
+
+                {descriptionSpell.dano && (
+                  <p className="mt-3 text-[12px] uppercase text-[#9ea8a0]">
+                    <span className="text-[#ff6b6b] font-black">🔥 Dano:</span> {descriptionSpell.dano}
+                  </p>
+                )}
+
+                {descriptionSpell.area && (
+                  <p className="mt-2 text-[12px] uppercase text-[#9ea8a0]">
+                    <span className="text-[#00ff66] font-black">📐 Área:</span> {descriptionSpell.area}
+                  </p>
+                )}
+
+                {descriptionSpell.salvacao && (
+                  <p className="mt-2 text-[12px] uppercase text-[#9ea8a0]">
+                    <span className="text-[#00ff66] font-black">💾 Salvação:</span> {descriptionSpell.salvacao}
+                  </p>
+                )}
+
+                {descriptionSpell.eh_concentracao && (
+                  <p className="mt-2 text-[12px] uppercase text-[#ffd700] font-black">
+                    ⚡ Requer Concentração
+                  </p>
+                )}
+
+                {descriptionSpell.categoria_magia && (
+                  <p className="mt-2 text-[12px] uppercase text-[#9ea8a0]">
+                    <span className="text-[#00ff66] font-black">📂 Categoria:</span> {descriptionSpell.categoria_magia}
+                  </p>
+                )}
+
+                {descriptionSpell.classes_disponivel && (
+                  <p className="mt-2 text-[12px] uppercase text-[#9ea8a0]">
+                    <span className="text-[#00ff66] font-black">🎭 Classes:</span> {typeof descriptionSpell.classes_disponivel === 'string' ? descriptionSpell.classes_disponivel : Array.isArray(descriptionSpell.classes_disponivel) ? descriptionSpell.classes_disponivel.join(', ') : String(descriptionSpell.classes_disponivel)}
+                  </p>
+                )}
+
+                {descriptionSpell.cd_salvacao && (
+                  <p className="mt-2 text-[12px] uppercase text-[#9ea8a0]">
+                    <span className="text-[#00ff66] font-black">🛡️ CD Salvação:</span> {descriptionSpell.cd_salvacao}
+                  </p>
+                )}
+
+                {descriptionSpell.condicoes_aplicadas && (
+                  <p className="mt-2 text-[12px] uppercase text-[#9ea8a0]">
+                    <span className="text-[#00ff66] font-black">🔗 Condições:</span> {typeof descriptionSpell.condicoes_aplicadas === 'string' ? descriptionSpell.condicoes_aplicadas : Array.isArray(descriptionSpell.condicoes_aplicadas) ? descriptionSpell.condicoes_aplicadas.join(', ') : String(descriptionSpell.condicoes_aplicadas)}
+                  </p>
+                )}
 
                 {descriptionSpell.escala_por_nivel && (
                   <div className="mt-4 rounded-lg border border-[#00ff66]/20 bg-[#00ff66]/5 p-3">
