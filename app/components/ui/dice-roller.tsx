@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useMemo } from 'react';
 import { createClient } from '@/utils/supabase/client';
 
 export type RollMode = 'normal' | 'advantage' | 'disadvantage';
@@ -33,7 +33,7 @@ export default function DiceRoller({ campaignId, onReady, isDM, currentUserId }:
   const diceBoxRef     = useRef<any>(null);
   const clearTimerRef  = useRef<NodeJS.Timeout | null>(null);
   const rollCounterRef = useRef(0);
-  const supabase       = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
   const isDMRef = useRef(isDM);
   const currentUserIdRef = useRef(currentUserId);
@@ -100,6 +100,9 @@ export default function DiceRoller({ campaignId, onReady, isDM, currentUserId }:
     if (initializedRef.current) return;
     initializedRef.current = true;
 
+    // Declaração do canal fora da função async para o useEffect ter acesso a ele
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+
     const initDice = async () => {
       try {
         const { default: DiceBox } = await import('@3d-dice/dice-box-threejs');
@@ -121,7 +124,7 @@ export default function DiceRoller({ campaignId, onReady, isDM, currentUserId }:
         await box.initialize();
         diceBoxRef.current = box;
 
-        const channel = supabase.channel(`dice_rolls_${campaignId}`, {
+        channel = supabase.channel(`dice_rolls_${campaignId}`, {
           config: { broadcast: { ack: false } }
         });
 
@@ -188,10 +191,10 @@ export default function DiceRoller({ campaignId, onReady, isDM, currentUserId }:
             diceType
           };
 
-          channel.send({
-            type: 'broadcast',
-            event: 'roll',
-            payload: { diceType, isSecret, senderId: currentUserIdRef.current, values: generatedValues },
+          channel?.send({
+                type: 'broadcast',
+                event: 'roll',
+                payload: { diceType, isSecret, senderId: currentUserIdRef.current, values: generatedValues },
           });
 
           try {
@@ -203,13 +206,18 @@ export default function DiceRoller({ campaignId, onReady, isDM, currentUserId }:
           return result;
         });
 
-        return () => { supabase.removeChannel(channel); };
       } catch (e) {
         console.error('[DiceRoller] Falha na inicialização:', e);
       }
     };
 
     initDice();
+  // O cleanup agora pertence ao useEffect, não à função async
+    return () => { 
+      if (channel) {
+        supabase.removeChannel(channel); 
+      }
+    };
   }, [campaignId, onReady, triggerVisualRoll, supabase]);
 
   return (

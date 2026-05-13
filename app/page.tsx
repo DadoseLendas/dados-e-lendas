@@ -23,7 +23,7 @@ export default function Home() {
 
   const handleStartAdventure = async () => {
     const { data: { session } } = await supabase.auth.getSession();
-    router.push(session ? '/campanhas' : '/cadastro');
+    router.push(session ? '/campanhas' : '/login');
   };
 
   return (

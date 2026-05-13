@@ -1,8 +1,8 @@
 'use client';
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import {
-    ArrowLeft, Shield, Zap, ShieldAlert, Sparkles, Box, Save, Trash2, Pencil, Sword, ShieldHalf, FlaskConical, Backpack, Wand2
+    ArrowLeft, Shield, Zap, ShieldAlert, Sparkles, Box, Save, Trash2, Pencil, Sword, ShieldHalf, FlaskConical, Backpack, Wand2, Eye, EyeOff
 } from 'lucide-react';
 
 // ─── Dados estáticos (espelho de personagens/page.tsx) ────────────────────────
@@ -198,7 +198,7 @@ const categoriaIcons: Record<ItemCategoria, React.ReactNode> = {
 
 // ─── Componente principal ─────────────────────────────────────────────────────
 export default function FichaModal({ isOpen, onClose, characterId, onUpdate, campaignId, onRollDice, readOnly = false }: FichaModalProps) {
-    const supabase = createClient();
+    const supabase = useMemo(() => createClient(), []);
     const [draft, setDraft] = useState<Character | null>(null);
     const [initialChar, setInitialChar] = useState<Character | null>(null);
     const [loading, setLoading] = useState(false);
@@ -209,7 +209,7 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
     const [currentUserName, setCurrentUserName] = useState('Aventureiro');
     const [currentUserId, setCurrentUserId] = useState<string | null>(null);
     const [expandedItemId, setExpandedItemId] = useState<number | null>(null);
-    const [rollPopup, setRollPopup] = useState<{ label: string; modifier: number } | null>(null);
+    const [rollPopup, setRollPopup] = useState<{ label: string; modifier: number; isSecret: boolean } | null>(null);
     const broadcastChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
     useEffect(() => {
@@ -221,7 +221,7 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
         };
         fetchUser();
     }, [supabase]);
-
+    /*
     useEffect(() => {
         if (!campaignId || campaignId === '00000000-0000-0000-0000-000000000000') return;
         const ch = supabase.channel(`chat_room_${campaignId}`);
@@ -229,19 +229,21 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
         broadcastChannelRef.current = ch;
         return () => { supabase.removeChannel(ch); };
     }, [campaignId, supabase]);
-
+    */
     // ── Rolagem de dados ────────────────────────────────────────────────────
     const rollD20 = (label: string, modifier: number) => {
-        setRollPopup({ label, modifier });
-    };
+            setRollPopup({ label, modifier, isSecret: false });
+        };
 
-    const executeRoll = async (mode: 'normal' | 'advantage' | 'disadvantage') => {
+        const executeRoll = async (mode: 'normal' | 'advantage' | 'disadvantage') => {
         if (!rollPopup) return;
-        const { label, modifier } = rollPopup;
+        
+        // Extraindo o isSecret do estado atual
+        const { label, modifier, isSecret } = rollPopup;
         setRollPopup(null);
 
-        // 1. Aguarda a animação do dado terminar
-        const result = await onRollDice('d20', false, mode);
+        // 1. Aguarda a animação do dado terminar, passando a configuração secreta
+        const result = await onRollDice('d20', isSecret, mode);
         if (!result) return;
 
         // Tipagem para extrair os valores do objeto retornado pelo DiceRoller
@@ -264,14 +266,14 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
             textPublico = `rolou ${label} (d20${modStr}) com ${modoTexto}, dado 1: ${str1}, dado 2: ${str2}, resultado **${total}**`;
         }
 
-        // 2. Salva no banco. O ChatWidget vai ouvir a inserção e mostrar na hora.
+        // 2. Salva no banco. O ChatWidget vai ouvir a inserção e mostrar no chat em realtime.
         if (currentUserId) {
             await supabase.from('chat_messages').insert([{
                 campaign_id: campaignId,
                 user_name: currentUserName,
                 text: textPublico,
                 is_roll: true,
-                is_secret: false,
+                is_secret: isSecret, //Valor dinâmico baseado na escolha do usuário
                 channel: 'campanha',
                 sender_id: currentUserId,
                 dice_type: res.diceType || 'd20',
@@ -310,7 +312,7 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
             ? Number((rawResult as { finalValue: number }).finalValue) 
             : Number(rawResult);
         if (currentUserId) {
-            const { data } = await supabase.from('chat_messages').insert([{
+            await supabase.from('chat_messages').insert([{
                 campaign_id: campaignId,
                 user_name: currentUserName,
                 text: `${currentUserName} rolou ${label} da arma ${itemName}: ${resolvedFormula} = ${finalValue}`,
@@ -318,10 +320,7 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
                 is_secret: false,
                 channel: 'campanha',
                 sender_id: currentUserId,
-            }]).select().single();
-            if (data && broadcastChannelRef.current) {
-                broadcastChannelRef.current.send({ type: 'broadcast', event: 'new_message', payload: data });
-            }
+            }]);
         }
     };
 
@@ -556,15 +555,41 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
     <>
     {rollPopup && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 backdrop-blur-sm">
-            {/* Modal mais largo: mudou de w-72 para w-[350px] */}
             <div className="bg-[#0a120a] border border-[#1a2a1a] rounded-2xl p-6 w-[350px] shadow-[0_0_50px_rgba(0,0,0,0.95)]">
-                <h3 className="text-[#f1e5ac] text-sm font-black uppercase tracking-widest text-center mb-1">
-                    {rollPopup.label}
-                </h3>
-                <p className="text-[#4a5a4a] text-[10px] uppercase tracking-widest text-center mb-5">
+                
+                {/* Header com Título e Botão de Rolagem Secreta */}
+                <div className="flex justify-between items-center mb-1">
+                    <div className="w-8"></div> {/* Spacer para manter o título centralizado */}
+                    
+                    <h3 className="text-[#f1e5ac] text-sm font-black uppercase tracking-widest text-center">
+                        {rollPopup.label}
+                    </h3>
+                    
+                    <button
+                        onClick={() => setRollPopup(prev => prev ? { ...prev, isSecret: !prev.isSecret } : null)}
+                        className={`p-1.5 rounded-lg border transition-colors flex items-center justify-center
+                            ${rollPopup.isSecret
+                                ? 'bg-red-900/30 border-red-500 text-red-500 shadow-[0_0_10px_rgba(239,68,68,0.3)]'
+                                : 'bg-transparent border-[#1a2a1a] text-[#4a5a4a] hover:border-[#00ff66] hover:text-[#00ff66]'}`}
+                        title={rollPopup.isSecret ? 'Desativar rolagem secreta' : 'Ativar rolagem secreta'}
+                    >
+                        {rollPopup.isSecret ? <EyeOff size={14} /> : <Eye size={14} />}
+                    </button>
+                </div>
+
+                <p className="text-[#4a5a4a] text-[10px] uppercase tracking-widest text-center mb-1">
                     d20 {rollPopup.modifier >= 0 ? `+${rollPopup.modifier}` : rollPopup.modifier}
                 </p>
-                {/* Trocado para flex e flex-1 para distribuição perfeitamente igual */}
+
+                {/* Feedback visual animado garantindo que está secreto */}
+                <div className="h-4 mb-4 flex items-center justify-center">
+                    {rollPopup.isSecret && (
+                        <p className="text-[9px] font-bold tracking-widest text-red-400/80 uppercase flex items-center gap-1 animate-pulse">
+                            <EyeOff size={10} /> Apenas o Mestre verá
+                        </p>
+                    )}
+                </div>
+
                 <div className="flex gap-2">
                     <button onClick={() => executeRoll('disadvantage')}
                         className="flex-1 bg-red-700 hover:bg-red-600 text-white font-black text-[10px] sm:text-[11px] uppercase tracking-wide py-3 px-1 rounded-xl transition-all">
@@ -579,6 +604,7 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
                         Vantagem
                     </button>
                 </div>
+                
                 <button onClick={() => setRollPopup(null)}
                     className="w-full mt-4 text-[10px] text-[#4a5a4a] hover:text-white uppercase tracking-widest transition-colors">
                     Cancelar

@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import {
   Send, Dices, MessageSquare, Eye, EyeOff, Clock,
   ChevronDown, Shield, Scroll
@@ -64,7 +64,7 @@ const getDiceColor = (diceType?: string | null) =>
 // ---------------------------------------------------------------------------
 
 export default function ChatWidget({ campaignId, isDiceReady, onRollDice }: ChatWidgetProps) {
-  const supabase    = createClient();
+  const supabase = useMemo(() => createClient(), []);
   const chatEndRef  = useRef<HTMLDivElement>(null);
 
   const [messages,      setMessages]      = useState<Message[]>([]);
