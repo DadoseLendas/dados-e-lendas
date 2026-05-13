@@ -1211,6 +1211,7 @@ export default function TelaDeMesa() {
               {tokens.map(token => {
                 const footprint = footprintForCategory(token.sizeCategory);
                 const displaySize = gridSize * footprint;
+                const labelHeight = token.characterId && token.name ? 18 : 0;
                 return (
                   <div
                     key={token.id}
@@ -1223,19 +1224,20 @@ export default function TelaDeMesa() {
                       marginTop: mapaUrl ? '0' : `-${(displaySize)/2}px`,
                       marginLeft: mapaUrl ? '0' : `-${(displaySize)/2}px`,
                       width: `${displaySize}px`,
-                      height: `${displaySize}px`,
+                      height: `${displaySize + labelHeight}px`,
                       zIndex: tokenSelecionado === token.id ? 100 : 10,
                     }}
-                    className="flex flex-col items-center cursor-move group"
+                    className="flex flex-col items-center cursor-move group overflow-visible"
                   >
                     <div 
                       style={{
-                        width: '100%',
-                        height: '100%',
+                        width: `${displaySize}px`,
+                        height: `${displaySize}px`,
+                        flex: '0 0 auto',
                         transform: token.isMonster ? `rotate(${token.rotation ?? 0}deg)` : 'none',
                         transformOrigin: '50% 50%',
                       }}
-                      className={`relative overflow-hidden transition-all duration-200 ${token.characterId ? 'rounded-full border-2 bg-neutral-900' : ''} ${
+                      className={`relative shrink-0 overflow-hidden transition-all duration-200 ${token.characterId ? 'rounded-full border-2 bg-neutral-900' : ''} ${
                         token.characterId
                           ? tokenSelecionado === token.id
                             ? 'border-[#00ff66] shadow-[0_0_20px_#00ff66] scale-110'
@@ -1261,7 +1263,7 @@ export default function TelaDeMesa() {
                       )}
                     </div>
                     {token.characterId && token.name && (
-                      <span className="mt-1 text-[8px] font-bold text-white/80 bg-black/60 px-1.5 py-0.5 rounded-full whitespace-nowrap max-w-[80px] truncate text-center leading-tight">
+                      <span className="mt-1 text-[8px] font-bold text-white/80 bg-black/60 px-1.5 py-0.5 rounded-full whitespace-nowrap max-w-[80px] truncate text-center leading-tight flex-none">
                         {token.name}
                       </span>
                     )}
