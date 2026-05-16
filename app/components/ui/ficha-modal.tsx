@@ -846,10 +846,10 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
                                         </div>
                                     </div>
 
-                                    {/* Magias & Habilidades */}
+                                    {/* Habilidades */}
                                     <div className="bg-[#050a05] border border-[#1a2a1a] p-3 rounded-xl">
                                         <h3 className="text-[#f1e5ac] text-[13px] font-black uppercase mb-3 flex items-center gap-2">
-                                            <Sparkles size={12} /> Magias &amp; Habilidades
+                                            <Sparkles size={12} /> Habilidades
                                         </h3>
                                         <div className="max-h-[140px] overflow-y-auto space-y-1.5 pr-1 mb-2">
                                             {RACE_DATA[draft.race]?.traits.split(', ').map((trait) => (

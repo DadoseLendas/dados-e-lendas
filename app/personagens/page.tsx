@@ -160,7 +160,7 @@ export default function PersonagensPage() {
   const [tempOffsetY, setTempOffsetY] = useState(50);
   const [showFramingSliders, setShowFramingSliders] = useState(false);
 
-  const [newSpellName, setNewSpellName] = useState('');
+  const [newAbilityName, setNewAbilityName] = useState('');
   const [newItem, setNewItem] = useState<InventoryFormState>(EMPTY_INVENTORY_FORM);
   const [editingInventoryId, setEditingInventoryId] = useState<number | null>(null);
   const [expandedItemId, setExpandedItemId] = useState<number | null>(null);
@@ -766,10 +766,10 @@ export default function PersonagensPage() {
               </div>
             </div>
 
-            {/* Magias e Habilidades */}
+            {/* Habilidades */}
             <div className="bg-[#050a05] border border-[#1a2a1a] p-5 rounded-xl">
               <h3 className="text-[#f1e5ac] text-[14px] font-black uppercase mb-4 flex items-center gap-2">
-                <Sparkles size={14} /> Magias & Habilidades
+                <Sparkles size={14} /> Habilidades
               </h3>
               <div className="max-h-[200px] overflow-y-auto space-y-2 mb-4 pr-2">
 
@@ -784,20 +784,15 @@ export default function PersonagensPage() {
                   </div>
                 ))}
 
-                {/* Separador só se tiver raça E spells */}
-                {raceInfo?.traits && activeCharacter.spells?.length > 0 && (
-                  <div className="border-t border-[#1a2a1a] my-2" />
-                )}
-
-                {/* Spells/Habilidades manuais */}
-                {activeCharacter.spells?.map((spell: any) => (
+                {/* Habilidades manuais */}
+                {activeCharacter.spells?.map((ability: any) => (
                   <div
-                    key={spell.id}
+                    key={ability.id}
                     className="bg-black/60 p-2 rounded border border-[#1a2a1a] flex justify-between items-center group"
                   >
-                    <span className="text-[14px] uppercase font-bold text-gray-300">{spell.name}</span>
+                    <span className="text-[14px] uppercase font-bold text-gray-300">{ability.name}</span>
                     <button
-                      onClick={() => updateCharacter('spells', activeCharacter.spells.filter((s: { id: number }) => s.id !== spell.id))}
+                      onClick={() => updateCharacter('spells', activeCharacter.spells.filter((s: { id: number }) => s.id !== ability.id))}
                       className="text-red-900 group-hover:text-red-500"
                     >
                       <Trash2 size={12} />
@@ -807,16 +802,16 @@ export default function PersonagensPage() {
               </div>
               <div className="flex gap-2">
                 <input
-                  value={newSpellName}
-                  onChange={(e) => setNewSpellName(e.target.value)}
+                  value={newAbilityName}
+                  onChange={(e) => setNewAbilityName(e.target.value)}
                   placeholder="Nova habilidade..."
                   className="flex-1 bg-black border border-[#1a2a1a] rounded p-2 text-base text-white"
                 />
                 <button
                   onClick={() => {
-                    if (!newSpellName) return;
-                    updateCharacter('spells', [...activeCharacter.spells, { id: Date.now(), name: newSpellName }]);
-                    setNewSpellName('');
+                    if (!newAbilityName) return;
+                    updateCharacter('spells', [...activeCharacter.spells, { id: Date.now(), name: newAbilityName }]);
+                    setNewAbilityName('');
                   }}
                   className="bg-[#00ff66] text-black px-3 rounded text-lg"
                 >

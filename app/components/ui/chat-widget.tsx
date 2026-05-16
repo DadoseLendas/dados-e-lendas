@@ -59,6 +59,56 @@ const DICE_COLORS: Record<string, { text: string; border: string; bg: string }> 
 const getDiceColor = (diceType?: string | null) =>
   DICE_COLORS[diceType ?? ''] ?? DICE_COLORS['d20'];
 
+// --- Parser / Rolador de fórmulas simples ---
+const rollOnce = (sides: number) => Math.floor(Math.random() * sides) + 1;
+
+type RollResult = { values: number[]; finalValue: number };
+
+/**
+ * Parse formulas like `2d6+1d4+3` or `d20+5` and roll them.
+ * Returns individual roll values (order preserved) and the total.
+ */
+const parseAndRoll = (formula: string, mode: 'normal' | 'advantage' | 'disadvantage' = 'normal'): RollResult | null => {
+  if (!formula) return null;
+  // normalize
+  const f = formula.trim().toLowerCase();
+
+  // advantage/disadvantage applies only to a single d20 roll semantics
+  const advRequested = mode !== 'normal' && /(^|\s)\d*d20(\s|$)/i.test(f);
+  if (advRequested) {
+    // perform two d20 rolls and choose
+    const v1 = rollOnce(20);
+    const v2 = rollOnce(20);
+    const chosen = mode === 'advantage' ? Math.max(v1, v2) : Math.min(v1, v2);
+    return { values: [v1, v2], finalValue: chosen };
+  }
+
+  // tokenize: matches terms like +2, -1, 3d6, d20
+  const tokens = f.match(/([+-]?\d*d\d+)|([+-]?\d+)/gi);
+  if (!tokens) return null;
+
+  const details: number[] = [];
+  let total = 0;
+  for (const t of tokens) {
+    if (/d/i.test(t)) {
+      const m = t.match(/([+-]?)(\d*)d(\d+)/i)!;
+      const sign = m[1] === '-' ? -1 : 1;
+      const count = Number(m[2] || '1');
+      const sides = Number(m[3]);
+      for (let i = 0; i < count; i++) {
+        const v = rollOnce(sides);
+        details.push(sign * v);
+        total += sign * v;
+      }
+    } else {
+      const v = Number(t);
+      details.push(v);
+      total += v;
+    }
+  }
+  return { values: details, finalValue: total };
+};
+
 // ---------------------------------------------------------------------------
 // Componente
 // ---------------------------------------------------------------------------
@@ -268,6 +318,81 @@ export default function ChatWidget({ campaignId, isDiceReady, onRollDice }: Chat
 
     const textToSend = inputText;
     setInputText('');
+    // Detect /roll commands: `/roll 2d6+3 [adv|dis]` or `/r ...`
+    const cmd = textToSend.trim();
+    const rollMatch = cmd.match(/^\/(?:roll|r)\s+(.+)$/i);
+    if (rollMatch) {
+      const rest = rollMatch[1].trim();
+      const parts = rest.split(/\s+/);
+      const formula = parts[0] || 'd20';
+      const explicit = parts[1];
+      let effectiveMode: 'normal' | 'advantage' | 'disadvantage' = rollMode;
+      if (explicit) {
+        if (/^adv(?:antage)?$/i.test(explicit)) effectiveMode = 'advantage';
+        else if (/^dis(?:advantage)?|^dis$/i.test(explicit)) effectiveMode = 'disadvantage';
+      }
+
+      // Prefer visual/centralized roller when provided by parent (DiceRoller)
+      let result: any | null = null;
+      try {
+        result = await onRollDice(formula, isSecretRoll, effectiveMode);
+      } catch (err) {
+        console.debug('onRollDice failed or not connected, falling back to local parser', err);
+        result = null;
+      }
+
+      if (!result) {
+        result = parseAndRoll(formula, effectiveMode);
+      }
+      if (!result) return;
+
+      let textPublico = '';
+      if (effectiveMode !== 'normal' && result.values.length === 2) {
+        const v1 = result.values[0];
+        const v2 = result.values[1];
+        const isV1Chosen = effectiveMode === 'advantage' ? v1 >= v2 : v1 <= v2;
+        const v1Str = isV1Chosen ? `**${v1}**` : `${v1}`;
+        const v2Str = !isV1Chosen ? `**${v2}**` : `${v2}`;
+        const modoTexto = effectiveMode === 'advantage' ? 'Vantagem' : 'Desvantagem';
+        textPublico = `rolou ${formula} com ${modoTexto} → [${v1Str}, ${v2Str}] = **${result.finalValue}**`;
+      } else {
+        textPublico = `rolou ${formula} → [${result.values.join(', ')}] = **${result.finalValue}**`;
+      }
+
+      const textSecreto = `(SECRETO) ${textPublico}`;
+
+      // determine base dice type for styling (first dN occurrence)
+      const diceMatch = formula.toLowerCase().match(/d\d+/);
+      const diceTypeForUI = diceMatch ? diceMatch[0] : 'd20';
+
+      const { data } = await supabase.from('chat_messages').insert([{
+        campaign_id: campaignId,
+        user_name:   displayName,
+        text:        textPublico,
+        is_roll:     true,
+        is_secret:   isSecretRoll,
+        channel:     'campanha',
+        sender_id:   currentUser.id,
+        receiver_id: null,
+        dice_type:   diceTypeForUI,
+        roll_mode:   effectiveMode,
+        roll_values: result.values,
+        final_value: result.finalValue
+      }]).select().single();
+
+      if (data) {
+        const localMsg: Message = { ...data, text: isSecretRoll ? textSecreto : textPublico };
+        channelRef.current?.send({ type: 'broadcast', event: 'new_message', payload: localMsg });
+        setMessages((prev) => {
+          if (prev.find((m) => m.id === localMsg.id)) return prev;
+          return [...prev, localMsg];
+        });
+      }
+
+      // reset UI roll mode
+      setRollMode('normal');
+      return;
+    }
 
     const { data } = await supabase.from('chat_messages').insert([{
       campaign_id: campaignId,
