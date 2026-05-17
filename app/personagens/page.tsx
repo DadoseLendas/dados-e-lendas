@@ -842,7 +842,7 @@ export default function PersonagensPage() {
                 <button
                   onClick={() => {
                     if (!newAbilityName) return;
-                    updateCharacter('spells', [...activeCharacter.spells, { id: Date.now(), name: newAbilityName }]);
+                    updateCharacter('spells', [...activeCharacter.spells, { id: Date.now(), name: newAbilityName, level: '0' }]);
                     setNewAbilityName('');
                   }}
                   className="bg-[#00ff66] text-black px-3 rounded text-lg"
@@ -892,7 +892,13 @@ export default function PersonagensPage() {
           <CharacterGrimorioPanel
             characterId={activeCharacter.id}
             onSaved={async (spells) => {
-              setActiveCharacter((prev) => prev ? { ...prev, spells } : prev);
+              const normalizedSpells = spells.map((spell, index) => ({
+                id: typeof spell.id === 'number' ? spell.id : Number(spell.id ?? index + 1),
+                name: spell.name ?? 'Sem nome',
+                level: spell.level ?? '0',
+              }));
+
+              setActiveCharacter((prev) => prev ? { ...prev, spells: normalizedSpells } : prev);
               await fetchCharacters();
             }}
           />
