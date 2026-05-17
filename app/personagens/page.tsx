@@ -5,8 +5,9 @@ import { createClient } from '@/utils/supabase/client';
 import Navbar from '@/app/components/ui/navbar';
 import Footer from '@/app/components/ui/footer';
 import Card from '@/app/components/ui/card';
+import SpellModal from '@/app/components/ui/spell-modal';
 import type { JSX } from 'react';
-import { Plus, ArrowLeft, ShieldAlert, Sparkles, Trash2, Save, Shield, Zap, Box, Sword, FlaskConical, Backpack, Pencil } from 'lucide-react';
+import { Plus, ArrowLeft, ShieldAlert, Sparkles, Trash2, Save, Shield, Zap, BookOpen, Backpack, Sword, FlaskConical, Pencil } from 'lucide-react';
 
 
 // --- DADOS DE RAÇAS (Adicionado) ---
@@ -164,6 +165,8 @@ export default function PersonagensPage() {
   const [newItem, setNewItem] = useState<InventoryFormState>(EMPTY_INVENTORY_FORM);
   const [editingInventoryId, setEditingInventoryId] = useState<number | null>(null);
   const [expandedItemId, setExpandedItemId] = useState<number | null>(null);
+  const [sheetView, setSheetView] = useState<'grimorio' | 'inventario'>('grimorio');
+  const [isSpellModalOpen, setIsSpellModalOpen] = useState(false);
   const [abaAtiva, setAbaAtiva] = useState<string>('personagens');
 
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -223,7 +226,7 @@ export default function PersonagensPage() {
       owner_id: user?.id
     };
 
-    let saveError: Error | any = null;
+    let saveError: { message?: string } | null = null;
     for (let attempt = 0; attempt < 5; attempt++) {
       const { error } = await supabase.from('characters').upsert(payload);
       if (!error) { saveError = null; break; }
@@ -237,7 +240,7 @@ export default function PersonagensPage() {
       break;
     }
 
-    if (saveError) alert("Erro ao salvar: " + saveError.message);
+    if (saveError) alert("Erro ao salvar: " + (saveError.message ?? 'Erro desconhecido'));
     else await fetchCharacters();
     setLoadingAction(false);
   };
@@ -258,7 +261,7 @@ export default function PersonagensPage() {
 
     const insertPayload: Record<string, unknown> = { ...newChar };
     let data: Character | null = null;
-    let createError: Error | any = null;
+    let createError: { message?: string } | null = null;
 
     for (let attempt = 0; attempt < 5; attempt++) {
       const result = await supabase.from('characters').insert([insertPayload]).select('*').single();
@@ -273,7 +276,7 @@ export default function PersonagensPage() {
       break;
     }
 
-    if (createError) alert('Erro ao criar: ' + createError.message);
+    if (createError) alert('Erro ao criar: ' + (createError.message ?? 'Erro desconhecido'));
     if (data) { setCharacters((prev) => [...prev, data]); setActiveCharacter(data); }
     else await fetchCharacters();
   };
@@ -534,6 +537,49 @@ export default function PersonagensPage() {
           </button>
         </div>
 
+        <div className="mb-4 bg-[#050a05] border border-[#1a2a1a] rounded-2xl p-3 shadow-[inset_0_0_0_1px_rgba(0,255,102,0.08)]">
+          <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+            <div className="grid grid-cols-2 gap-2 w-full md:max-w-md">
+              <button
+                type="button"
+                onClick={() => setSheetView('grimorio')}
+                className={`relative flex items-center justify-center gap-2 rounded-t-xl rounded-b-md border px-3 py-2.5 text-[12px] font-black uppercase tracking-[0.18em] transition-all ${sheetView === 'grimorio'
+                  ? 'bg-[#00ff66]/20 border-[#00ff66]/70 text-[#00ff66] shadow-[0_0_18px_rgba(0,255,102,0.25)] -translate-y-[1px]'
+                  : 'bg-black/40 border-[#1a2a1a] text-[#4a5a4a] hover:border-[#00ff66]/40 hover:text-[#9ac7a9]'}`}
+              >
+                <BookOpen size={14} /> Grimório
+                {sheetView === 'grimorio' && <span className="absolute -bottom-1 left-3 right-3 h-[2px] bg-[#00ff66] rounded-full" />}
+              </button>
+              <button
+                type="button"
+                onClick={() => setSheetView('inventario')}
+                className={`relative flex items-center justify-center gap-2 rounded-t-xl rounded-b-md border px-3 py-2.5 text-[12px] font-black uppercase tracking-[0.18em] transition-all ${sheetView === 'inventario'
+                  ? 'bg-[#00ff66]/20 border-[#00ff66]/70 text-[#00ff66] shadow-[0_0_18px_rgba(0,255,102,0.25)] -translate-y-[1px]'
+                  : 'bg-black/40 border-[#1a2a1a] text-[#4a5a4a] hover:border-[#00ff66]/40 hover:text-[#9ac7a9]'}`}
+              >
+                <Backpack size={14} /> Inventário
+                {sheetView === 'inventario' && <span className="absolute -bottom-1 left-3 right-3 h-[2px] bg-[#00ff66] rounded-full" />}
+              </button>
+            </div>
+
+            <div className="w-full md:w-auto">
+              {sheetView === 'grimorio' ? (
+            <button
+              type="button"
+                  onClick={() => setIsSpellModalOpen(true)}
+                  className="w-full md:w-auto bg-[#00ff66] text-black px-4 py-2.5 rounded-lg text-[12px] font-black uppercase tracking-[0.16em] hover:brightness-110 transition-all"
+            >
+                  Abrir Grimório
+            </button>
+              ) : (
+                <div className="w-full md:w-auto border border-[#1a2a1a] rounded-lg px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.16em] text-[#4a5a4a] text-center">
+                  Inventário
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* COLUNA 1 - col-span-4 */}
           <div className="lg:col-span-4 space-y-4">
@@ -766,14 +812,12 @@ export default function PersonagensPage() {
               </div>
             </div>
 
-            {/* Habilidades */}
+            {/* Habilidades (principal) */}
             <div className="bg-[#050a05] border border-[#1a2a1a] p-5 rounded-xl">
               <h3 className="text-[#f1e5ac] text-[14px] font-black uppercase mb-4 flex items-center gap-2">
                 <Sparkles size={14} /> Habilidades
               </h3>
               <div className="max-h-[200px] overflow-y-auto space-y-2 mb-4 pr-2">
-
-                {/* Habilidades da Raça — automáticas, não deletáveis */}
                 {raceInfo?.traits && raceInfo.traits.split(', ').map((trait) => (
                   <div
                     key={trait}
@@ -784,8 +828,7 @@ export default function PersonagensPage() {
                   </div>
                 ))}
 
-                {/* Habilidades manuais */}
-                {activeCharacter.spells?.map((ability: any) => (
+                {activeCharacter.spells?.map((ability: { id: number; name: string }) => (
                   <div
                     key={ability.id}
                     className="bg-black/60 p-2 rounded border border-[#1a2a1a] flex justify-between items-center group"
@@ -820,255 +863,6 @@ export default function PersonagensPage() {
               </div>
             </div>
 
-            {/* Inventário */}
-            <div className="bg-[#050a05] border border-[#1a2a1a] p-3 rounded-xl">
-              <h3 className="text-[#00ff66] text-[13px] font-black uppercase mb-2 flex items-center gap-2">
-                <Box size={12} /> Inventário
-              </h3>
-
-              {activeCharacter.inventory?.length ? activeCharacter.inventory.map((item) => {
-                const isExpanded = expandedItemId === item.id;
-                const itemCategoria = item.categoria || 'item';
-                return (
-                  <div key={item.id} className="bg-black/40 p-2 rounded border border-[#1a2a1a] mb-2 last:mb-0">
-                    <div className="flex justify-between items-center flex-wrap gap-2">
-                      <div
-                        className="flex-1 min-w-0 cursor-pointer hover:bg-white/5 rounded px-1 py-1 transition-colors"
-                        onClick={() => setExpandedItemId(isExpanded ? null : item.id)}
-                      >
-                        <div className="flex items-center gap-2">
-                          {categoriaIcons[itemCategoria]}
-                          <span className="block text-[14px] font-black uppercase text-gray-200 truncate">
-                            {item.nome || item.name || 'Item sem nome'}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-1.5 mt-0.5">
-                          <span className="text-[11px] uppercase text-gray-500 ml-5">
-                            {item.tipo || item.categoria || 'Item'}
-                          </span>
-                          {item.categoria === 'consumivel' && item.quantidade !== undefined && (
-                            <span className="bg-purple-900/40 border border-purple-800/40 text-purple-300 px-1.5 rounded text-[10px] font-black">
-                              ×{item.quantidade}
-                            </span>
-                          )}
-                          {item.categoria === 'armadura' && item.caBase !== undefined && (
-                            <span className="bg-blue-900/40 border border-blue-800/40 text-blue-300 px-1.5 rounded text-[10px] font-black">
-                              CA {item.caBase}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      <button
-                        onClick={() => setExpandedItemId(isExpanded ? null : item.id)}
-                        className="text-[#4a5a4a] hover:text-[#00ff66] transition-colors p-1 shrink-0"
-                      >
-                        {isExpanded ? '▲' : '▼'}
-                      </button>
-                    </div>
-
-                    <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isExpanded ? 'max-h-96 mt-2' : 'max-h-0'}`}>
-                      <div className="space-y-2 border-t border-[#1a2a1a] pt-2">
-                        {item.atributo && (
-                          <div className="flex flex-wrap gap-2">
-                            <span className="bg-[#f1e5ac]/10 border border-[#f1e5ac]/20 text-[#f1e5ac] px-2 py-1 rounded text-[11px] font-black uppercase tracking-wider">
-                              {weaponAttributeLabels[item.atributo]}
-                            </span>
-                          </div>
-                        )}
-                        {item.ataque && (
-                          <div className="flex flex-wrap gap-2">
-                            <span className="bg-[#00ff66]/10 border border-[#00ff66]/20 text-[#00ff66] px-2 py-1 rounded text-[11px] font-black uppercase tracking-wider">
-                              ATK: {item.ataque}
-                            </span>
-                          </div>
-                        )}
-                        {item.dano && (
-                          <div className="flex flex-wrap gap-2">
-                            <span className="bg-red-900/30 border border-red-800/40 text-red-300 px-2 py-1 rounded text-[11px] font-black uppercase tracking-wider">
-                              DANO: {item.dano}
-                            </span>
-                          </div>
-                        )}
-                        {item.categoria === 'armadura' && (item.tipoArmadura || item.caBase !== undefined) && (
-                          <div className="flex flex-wrap gap-2">
-                            {item.tipoArmadura && (
-                              <span className="bg-blue-900/30 border border-blue-800/40 text-blue-300 px-2 py-1 rounded text-[11px] font-black uppercase">
-                                {item.tipoArmadura}
-                              </span>
-                            )}
-                            {item.caBase !== undefined && (
-                              <span className="bg-blue-900/30 border border-blue-800/40 text-blue-300 px-2 py-1 rounded text-[11px] font-black uppercase">
-                                CA base: {item.caBase}
-                              </span>
-                            )}
-                          </div>
-                        )}
-                        {item.categoria === 'consumivel' && item.efeito && (
-                          <div className="flex flex-wrap gap-2">
-                            <span className="bg-purple-900/30 border border-purple-800/40 text-purple-300 px-2 py-1 rounded text-[11px] font-black">
-                              Efeito: {item.efeito}
-                            </span>
-                          </div>
-                        )}
-                        {item.desc && (
-                          <p className="text-[12px] text-gray-400 leading-relaxed">{item.desc}</p>
-                        )}
-                        <div className="flex justify-end gap-3 pt-1">
-                          <button
-                            onClick={() => startEditingInventoryItem(item)}
-                            className="flex items-center gap-1 text-[#00ff66] text-[12px] font-bold uppercase hover:text-white transition-colors"
-                          >
-                            <Pencil size={12} /> Editar
-                          </button>
-                          <button
-                            onClick={() => removeInventoryItem(item.id)}
-                            className="flex items-center gap-1 text-red-500/70 text-[12px] font-bold uppercase hover:text-red-400 transition-colors"
-                          >
-                            <Trash2 size={12} /> Excluir
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                );
-              }) : (
-                <p className="text-[13px] text-[#4a5a4a] py-1 text-center">Inventário vazio.</p>
-              )}
-
-              <div className="space-y-2 border-t border-[#1a2a1a] pt-3 mt-3">
-                <div className="grid grid-cols-4 gap-1">
-                  {(Object.keys(CATEGORIA_LABELS) as ItemCategoria[]).map((categoria) => (
-                    <button
-                      key={categoria}
-                      onClick={() => setNewItem((prev) => ({ ...prev, categoria }))}
-                      className={`text-[10px] font-black uppercase py-1.5 rounded border transition-all ${newItem.categoria === categoria
-                        ? 'bg-[#00ff66]/20 border-[#00ff66]/60 text-[#00ff66]'
-                        : 'bg-black/40 border-[#1a2a1a] text-[#4a5a4a] hover:border-[#00ff66]/30 hover:text-[#8a9a8a]'
-                        }`}
-                    >
-                      {CATEGORIA_LABELS[categoria]}
-                    </button>
-                  ))}
-                </div>
-
-                <input
-                  className="w-full bg-black/40 border border-[#1a2a1a] px-2 py-1 text-[14px] rounded text-white outline-none focus:border-[#00ff66]/50 transition-colors"
-                  placeholder={
-                    newItem.categoria === 'arma' ? 'Nome da arma' :
-                      newItem.categoria === 'armadura' ? 'Nome da armadura' :
-                        newItem.categoria === 'consumivel' ? 'Nome do consumível' :
-                          'Nome do item'
-                  }
-                  value={newItem.nome}
-                  onChange={(e) => setNewItem((prev) => ({ ...prev, nome: e.target.value }))}
-                />
-
-                {newItem.categoria === 'arma' && (
-                  <>
-                    <select
-                      className="w-full bg-[#050a05] border border-[#1a2a1a] px-2 py-1 text-[14px] rounded text-white outline-none focus:border-[#00ff66]/50 transition-colors cursor-pointer"
-                      value={newItem.atributo}
-                      onChange={(e) => setNewItem((prev) => ({ ...prev, atributo: e.target.value as WeaponAttribute }))}
-                    >
-                      <option value="">Sem atributo</option>
-                      {WEAPON_ATTRIBUTE_OPTIONS.map((opt) => (
-                        <option key={opt} value={opt}>{weaponAttributeLabels[opt]}</option>
-                      ))}
-                    </select>
-                    <div className="grid grid-cols-2 gap-2">
-                      <input
-                        className="w-full bg-black/40 border border-[#1a2a1a] px-2 py-1 text-[14px] rounded text-white outline-none focus:border-[#00ff66]/50 transition-colors"
-                        placeholder="ATK (ex: 1d20+3)"
-                        value={newItem.ataque}
-                        onChange={(e) => setNewItem((prev) => ({ ...prev, ataque: e.target.value }))}
-                      />
-                      <input
-                        className="w-full bg-black/40 border border-[#1a2a1a] px-2 py-1 text-[14px] rounded text-white outline-none focus:border-[#00ff66]/50 transition-colors"
-                        placeholder="DANO (ex: 1d8+3)"
-                        value={newItem.dano}
-                        onChange={(e) => setNewItem((prev) => ({ ...prev, dano: e.target.value }))}
-                      />
-                    </div>
-                  </>
-                )}
-
-                {newItem.categoria === 'armadura' && (
-                  <div className="grid grid-cols-2 gap-2">
-                    <select
-                      className="w-full bg-[#050a05] border border-[#1a2a1a] px-2 py-1 text-[14px] rounded text-white outline-none focus:border-[#00ff66]/50 transition-colors cursor-pointer"
-                      value={newItem.tipoArmadura}
-                      onChange={(e) => setNewItem((prev) => ({ ...prev, tipoArmadura: e.target.value }))}
-                    >
-                      <option value="">Tipo de armadura</option>
-                      {TIPO_ARMADURA_OPTIONS.map((opt) => (
-                        <option key={opt.value} value={opt.value}>{opt.label}</option>
-                      ))}
-                    </select>
-                    <input
-                      type="number"
-                      min={0}
-                      className="w-full bg-black/40 border border-[#1a2a1a] px-2 py-1 text-[14px] rounded text-[#00ff66] font-bold text-center outline-none focus:border-[#00ff66]/50 transition-colors"
-                      placeholder="CA base"
-                      value={newItem.caBase}
-                      onChange={(e) => setNewItem((prev) => ({ ...prev, caBase: e.target.value }))}
-                    />
-                  </div>
-                )}
-
-                {newItem.categoria === 'consumivel' && (
-                  <div className="grid grid-cols-2 gap-2">
-                    <input
-                      type="number"
-                      min={1}
-                      className="w-full bg-black/40 border border-[#1a2a1a] px-2 py-1 text-[14px] rounded text-[#00ff66] font-bold text-center outline-none focus:border-[#00ff66]/50 transition-colors"
-                      placeholder="Qtd"
-                      value={newItem.quantidade}
-                      onChange={(e) => setNewItem((prev) => ({ ...prev, quantidade: e.target.value }))}
-                    />
-                    <input
-                      className="w-full bg-black/40 border border-[#1a2a1a] px-2 py-1 text-[14px] rounded text-white outline-none focus:border-[#00ff66]/50 transition-colors"
-                      placeholder="Efeito (ex: Cura 2d4+2)"
-                      value={newItem.efeito}
-                      onChange={(e) => setNewItem((prev) => ({ ...prev, efeito: e.target.value }))}
-                    />
-                  </div>
-                )}
-
-                {newItem.categoria === 'item' && (
-                  <input
-                    className="w-full bg-black/40 border border-[#1a2a1a] px-2 py-1 text-[14px] rounded text-white outline-none focus:border-[#00ff66]/50 transition-colors"
-                    placeholder="Subtipo (ex: Ferramenta, Chave, Joia...)"
-                    value={newItem.tipo}
-                    onChange={(e) => setNewItem((prev) => ({ ...prev, tipo: e.target.value }))}
-                  />
-                )}
-
-                <textarea
-                  className="w-full bg-black/40 border border-[#1a2a1a] px-2 py-1 text-[14px] rounded text-white outline-none focus:border-[#00ff66]/50 transition-colors h-14 resize-none"
-                  placeholder="Descrição (opcional)"
-                  value={newItem.desc}
-                  onChange={(e) => setNewItem((prev) => ({ ...prev, desc: e.target.value }))}
-                />
-
-                <div className="flex gap-2">
-                  <button
-                    onClick={saveInventoryItem}
-                    className="flex-1 bg-[#00ff66]/10 border border-[#00ff66]/20 text-[#00ff66] px-2 py-1.5 rounded hover:bg-[#00ff66]/20 transition-colors text-[12px] font-black uppercase"
-                  >
-                    {editingInventoryId !== null ? 'Salvar edição' : 'Adicionar'}
-                  </button>
-                  {editingInventoryId !== null && (
-                    <button
-                      onClick={resetInventoryForm}
-                      className="bg-black/40 border border-[#1a2a1a] text-[#4a5a4a] px-2 rounded hover:border-[#00ff66]/40 transition-colors text-[12px] font-black uppercase"
-                    >
-                      Cancelar
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
           </div>
             {/* COLUNA 3 - col-span-3 — PERÍCIAS */}
             <div className="lg:col-span-3">
@@ -1183,6 +977,15 @@ export default function PersonagensPage() {
               </div>
             </div>
           )}
+
+          <SpellModal
+            isOpen={isSpellModalOpen}
+            onClose={async () => {
+              setIsSpellModalOpen(false);
+              await fetchCharacters();
+            }}
+            characterId={activeCharacter.id}
+          />
         </div>
         );
   };
