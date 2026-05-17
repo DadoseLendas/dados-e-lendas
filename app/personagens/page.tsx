@@ -5,9 +5,9 @@ import { createClient } from '@/utils/supabase/client';
 import Navbar from '@/app/components/ui/navbar';
 import Footer from '@/app/components/ui/footer';
 import Card from '@/app/components/ui/card';
-import SpellModal from '@/app/components/ui/spell-modal';
+import CharacterGrimorioPanel from '@/app/components/ui/grimorio_ficha';
 import type { JSX } from 'react';
-import { Plus, ArrowLeft, ShieldAlert, Sparkles, Trash2, Save, Shield, Zap, BookOpen, Backpack, Sword, FlaskConical, Pencil } from 'lucide-react';
+import { Plus, ArrowLeft, ShieldAlert, Sparkles, Trash2, Save, Shield, Zap, BookOpen, Backpack, ScrollText, Sword, FlaskConical, Pencil } from 'lucide-react';
 
 
 // --- DADOS DE RAÇAS (Adicionado) ---
@@ -165,8 +165,7 @@ export default function PersonagensPage() {
   const [newItem, setNewItem] = useState<InventoryFormState>(EMPTY_INVENTORY_FORM);
   const [editingInventoryId, setEditingInventoryId] = useState<number | null>(null);
   const [expandedItemId, setExpandedItemId] = useState<number | null>(null);
-  const [sheetView, setSheetView] = useState<'grimorio' | 'inventario'>('grimorio');
-  const [isSpellModalOpen, setIsSpellModalOpen] = useState(false);
+  const [sheetView, setSheetView] = useState<'ficha' | 'grimorio' | 'inventario'>('ficha');
   const [abaAtiva, setAbaAtiva] = useState<string>('personagens');
 
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -537,49 +536,39 @@ export default function PersonagensPage() {
           </button>
         </div>
 
-        <div className="mb-4 bg-[#050a05] border border-[#1a2a1a] rounded-2xl p-3 shadow-[inset_0_0_0_1px_rgba(0,255,102,0.08)]">
-          <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-            <div className="grid grid-cols-2 gap-2 w-full md:max-w-md">
+        <div className="mb-4 bg-[#050a05] border border-[#1a2a1a] rounded-xl p-2">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <button
+              type="button"
+              onClick={() => setSheetView('ficha')}
+              className={`flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-[12px] font-black uppercase tracking-widest transition-all ${sheetView === 'ficha'
+                ? 'bg-[#00ff66]/18 border-[#00ff66]/60 text-[#00ff66]'
+                : 'bg-black/40 border-[#1a2a1a] text-[#4a5a4a] hover:border-[#00ff66]/30 hover:text-[#8a9a8a]'}`}
+            >
+              <ScrollText size={14} /> Ficha
+            </button>
               <button
                 type="button"
                 onClick={() => setSheetView('grimorio')}
-                className={`relative flex items-center justify-center gap-2 rounded-t-xl rounded-b-md border px-3 py-2.5 text-[12px] font-black uppercase tracking-[0.18em] transition-all ${sheetView === 'grimorio'
-                  ? 'bg-[#00ff66]/20 border-[#00ff66]/70 text-[#00ff66] shadow-[0_0_18px_rgba(0,255,102,0.25)] -translate-y-[1px]'
-                  : 'bg-black/40 border-[#1a2a1a] text-[#4a5a4a] hover:border-[#00ff66]/40 hover:text-[#9ac7a9]'}`}
+                className={`flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-[12px] font-black uppercase tracking-widest transition-all ${sheetView === 'grimorio'
+                  ? 'bg-[#00ff66]/18 border-[#00ff66]/60 text-[#00ff66]'
+                  : 'bg-black/40 border-[#1a2a1a] text-[#4a5a4a] hover:border-[#00ff66]/30 hover:text-[#8a9a8a]'}`}
               >
                 <BookOpen size={14} /> Grimório
-                {sheetView === 'grimorio' && <span className="absolute -bottom-1 left-3 right-3 h-[2px] bg-[#00ff66] rounded-full" />}
               </button>
               <button
                 type="button"
                 onClick={() => setSheetView('inventario')}
-                className={`relative flex items-center justify-center gap-2 rounded-t-xl rounded-b-md border px-3 py-2.5 text-[12px] font-black uppercase tracking-[0.18em] transition-all ${sheetView === 'inventario'
-                  ? 'bg-[#00ff66]/20 border-[#00ff66]/70 text-[#00ff66] shadow-[0_0_18px_rgba(0,255,102,0.25)] -translate-y-[1px]'
-                  : 'bg-black/40 border-[#1a2a1a] text-[#4a5a4a] hover:border-[#00ff66]/40 hover:text-[#9ac7a9]'}`}
+                className={`flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-[12px] font-black uppercase tracking-widest transition-all ${sheetView === 'inventario'
+                  ? 'bg-[#00ff66]/18 border-[#00ff66]/60 text-[#00ff66]'
+                  : 'bg-black/40 border-[#1a2a1a] text-[#4a5a4a] hover:border-[#00ff66]/30 hover:text-[#8a9a8a]'}`}
               >
                 <Backpack size={14} /> Inventário
-                {sheetView === 'inventario' && <span className="absolute -bottom-1 left-3 right-3 h-[2px] bg-[#00ff66] rounded-full" />}
               </button>
             </div>
-
-            <div className="w-full md:w-auto">
-              {sheetView === 'grimorio' ? (
-            <button
-              type="button"
-                  onClick={() => setIsSpellModalOpen(true)}
-                  className="w-full md:w-auto bg-[#00ff66] text-black px-4 py-2.5 rounded-lg text-[12px] font-black uppercase tracking-[0.16em] hover:brightness-110 transition-all"
-            >
-                  Abrir Grimório
-            </button>
-              ) : (
-                <div className="w-full md:w-auto border border-[#1a2a1a] rounded-lg px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.16em] text-[#4a5a4a] text-center">
-                  Inventário
-                </div>
-              )}
-            </div>
-          </div>
         </div>
 
+        {sheetView === 'ficha' ? (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* COLUNA 1 - col-span-4 */}
           <div className="lg:col-span-4 space-y-4">
@@ -899,6 +888,19 @@ export default function PersonagensPage() {
               </div>
             </div>
           </div>
+        ) : sheetView === 'grimorio' ? (
+          <CharacterGrimorioPanel
+            characterId={activeCharacter.id}
+            onSaved={async (spells) => {
+              setActiveCharacter((prev) => prev ? { ...prev, spells } : prev);
+              await fetchCharacters();
+            }}
+          />
+        ) : (
+          <div className="bg-[#050a05] border border-[#1a2a1a] rounded-xl p-5">
+            <h3 className="text-[#f1e5ac] text-[14px] font-black uppercase">Inventário</h3>
+          </div>
+        )}
 
           {/* Popup unificado: trocar imagem + enquadramento */}
           {editingCharacterImg && (
@@ -978,14 +980,6 @@ export default function PersonagensPage() {
             </div>
           )}
 
-          <SpellModal
-            isOpen={isSpellModalOpen}
-            onClose={async () => {
-              setIsSpellModalOpen(false);
-              await fetchCharacters();
-            }}
-            characterId={activeCharacter.id}
-          />
         </div>
         );
   };
