@@ -5,6 +5,13 @@ import {
     ArrowLeft, Shield, Zap, ShieldAlert, Sparkles, Box, Save, Trash2, Pencil, Sword, ShieldHalf, FlaskConical, Backpack, Wand2, Eye, EyeOff
 } from 'lucide-react';
 
+'use client';
+import { useEffect, useState, useRef, useMemo } from 'react';
+import { createClient } from '@/utils/supabase/client';
+import {
+    ArrowLeft, Shield, Zap, ShieldAlert, Sparkles, Box, Save, Trash2, Pencil, Sword, ShieldHalf, FlaskConical, Backpack, Wand2, Eye, EyeOff
+} from 'lucide-react';
+
 // ─── Dados estáticos (espelho de personagens/page.tsx) ────────────────────────
 const RACE_DATA: Record<string, { stats: Record<string, number>; traits: string }> = {
     "Anão": { stats: { con: 2 }, traits: "Visão no Escuro, Resiliência Anã, Treino de Combate Anão, Proficiência com ferramentas, Talento Com Pedra" },
@@ -69,7 +76,7 @@ const weaponAttributeLabels: Record<WeaponAttribute, string> = {
     dex: 'Destreza',
 };
 
-// ─── Categorias de inventário ─────────────────────────────────────────────────
+// Categorias de inventário 
 type ItemCategoria = 'arma' | 'armadura' | 'consumivel' | 'item';
 
 const CATEGORIAS_CONFIG = {
@@ -79,7 +86,7 @@ const CATEGORIAS_CONFIG = {
     item: { label: 'Item', icon: <Backpack size={16} />, cor: 'text-amber-500' },
 };
 
-// DEFINIÇÃO ADICIONADA: mapeamento de categoria para rótulo curto (usado nos botões)
+//  categoria para rótulo curto (usado nos botões)
 const CATEGORIA_LABELS: Record<ItemCategoria, string> = {
     arma: 'Arma',
     armadura: 'Armadura',
@@ -94,14 +101,14 @@ const TIPO_ARMADURA_OPTIONS = [
     { value: 'escudo', label: 'Escudo' },
 ];
 
-// ─── Utilitários ──────────────────────────────────────────────────────────────
+// Utilitários 
 const getModifier = (value: number) => {
     const normalizedValue = Math.floor(Number(value) || 0);
     return Math.floor((normalizedValue - 10) / 2);
 };
 const fmtMod = (mod: number) => (mod >= 0 ? `+${mod}` : `${mod}`);
 
-// ─── Tipos ────────────────────────────────────────────────────────────────────
+// Tipos 
 type Character = {
     id: string | number;
     name: string;
@@ -188,7 +195,7 @@ interface FichaModalProps {
     readOnly?: boolean;
 }
 
-// ─── Ícones por categoria (movido para fora do loop) ─────────────────────────
+// Ícones por categoria (movido para fora do loop) 
 const categoriaIcons: Record<ItemCategoria, React.ReactNode> = {
     arma: <Sword size={14} className="text-[#00ff66]" />,
     armadura: <Shield size={14} className="text-[#4a9eff]" />,
@@ -196,7 +203,7 @@ const categoriaIcons: Record<ItemCategoria, React.ReactNode> = {
     item: <Box size={14} className="text-[#f1e5ac]" />,
 };
 
-// ─── Componente principal ─────────────────────────────────────────────────────
+// Componente principal 
 export default function FichaModal({ isOpen, onClose, characterId, onUpdate, campaignId, onRollDice, readOnly = false }: FichaModalProps) {
     const supabase = useMemo(() => createClient(), []);
     const [draft, setDraft] = useState<Character | null>(null);
@@ -209,6 +216,7 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
     const [currentUserName, setCurrentUserName] = useState('Aventureiro');
     const [currentUserId, setCurrentUserId] = useState<string | null>(null);
     const [expandedItemId, setExpandedItemId] = useState<number | null>(null);
+    const [showInventoryForm, setShowInventoryForm] = useState(false);
     const [rollPopup, setRollPopup] = useState<{ label: string; modifier: number; isSecret: boolean } | null>(null);
     const broadcastChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
@@ -230,7 +238,7 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
         return () => { supabase.removeChannel(ch); };
     }, [campaignId, supabase]);
     */
-    // ── Rolagem de dados ────────────────────────────────────────────────────
+    //  Rolagem de dados 
     const rollD20 = (label: string, modifier: number) => {
             setRollPopup({ label, modifier, isSecret: false });
         };
@@ -868,265 +876,8 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
                                         </div>
                                     </div>
 
-                                    {/* ── INVENTÁRIO ───────────────────── */}
-                                    <div className="bg-[#050a05] border border-[#1a2a1a] p-3 rounded-xl">
-                                        <h3 className="text-[#00ff66] text-[13px] font-black uppercase mb-2 flex items-center gap-2">
-                                            <Box size={12} /> Inventário
-                                        </h3>
-
-                                        {draft.inventory?.length ? draft.inventory.map((item: InventoryItem) => {
-                                            const isExpanded = expandedItemId === item.id;
-                                            const cat = item.categoria || 'item';
-                                            return (
-                                                <div key={item.id} className="bg-black/40 p-2 rounded border border-[#1a2a1a] mb-2 last:mb-0">
-                                                    <div className="flex justify-between items-center flex-wrap gap-2">
-                                                        <div
-                                                            className="flex-1 min-w-0 cursor-pointer hover:bg-white/5 rounded px-1 py-1 transition-colors"
-                                                            onClick={() => setExpandedItemId(isExpanded ? null : item.id)}
-                                                        >
-                                                            <div className="flex items-center gap-2">
-                                                                {categoriaIcons[cat]}
-                                                                <span className="block text-[14px] font-black uppercase text-gray-200 truncate">
-                                                                    {item.nome || item.name || 'Item sem nome'}
-                                                                </span>
-                                                            </div>
-                                                            <div className="flex items-center gap-1.5 mt-0.5">
-                                                                <span className="text-[11px] uppercase text-gray-500 ml-5">
-                                                                    {item.tipo || item.categoria || 'Item'}
-                                                                </span>
-                                                                {item.categoria === 'consumivel' && item.quantidade !== undefined && (
-                                                                    <span className="bg-purple-900/40 border border-purple-800/40 text-purple-300 px-1.5 rounded text-[10px] font-black">
-                                                                        ×{item.quantidade}
-                                                                    </span>
-                                                                )}
-                                                                {item.categoria === 'armadura' && item.caBase !== undefined && (
-                                                                    <span className="bg-blue-900/40 border border-blue-800/40 text-blue-300 px-1.5 rounded text-[10px] font-black">
-                                                                        CA {item.caBase}
-                                                                    </span>
-                                                                )}
-                                                            </div>
-                                                        </div>
-
-                                                        <div className="flex gap-1 shrink-0">
-                                                            {item.ataque && (
-                                                                <button
-                                                                    onClick={() => rollWeaponFormula(item.nome || item.name || 'arma', item.ataque ?? '', 'ataque', item.atributo)}
-                                                                    className="bg-[#f1e5ac]/10 border border-[#f1e5ac]/20 text-[#f1e5ac] px-2 py-1 rounded text-[11px] font-black uppercase tracking-wider hover:bg-[#f1e5ac]/20 transition-colors"
-                                                                >
-                                                                    ATK
-                                                                </button>
-                                                            )}
-                                                            {item.dano && (
-                                                                <button
-                                                                    onClick={() => rollWeaponFormula(item.nome || item.name || 'arma', item.dano ?? '', 'dano', item.atributo)}
-                                                                    className="bg-[#1a0a0a] border border-red-900/20 text-red-400 px-2 py-1 rounded text-[11px] font-black uppercase tracking-wider hover:bg-red-600 hover:text-white transition-colors"
-                                                                >
-                                                                    DANO
-                                                                </button>
-                                                            )}
-                                                        </div>
-
-                                                        <button
-                                                            onClick={() => setExpandedItemId(isExpanded ? null : item.id)}
-                                                            className="text-[#4a5a4a] hover:text-[#00ff66] transition-colors p-1 shrink-0"
-                                                        >
-                                                            {isExpanded ? '▲' : '▼'}
-                                                        </button>
-                                                    </div>
-
-                                                    {/* Conteúdo expandido */}
-                                                    <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isExpanded ? 'max-h-96 mt-2' : 'max-h-0'}`}>
-                                                        <div className="space-y-2 border-t border-[#1a2a1a] pt-2">
-                                                            {item.atributo && (
-                                                                <div className="flex flex-wrap gap-2">
-                                                                    <span className="bg-[#f1e5ac]/10 border border-[#f1e5ac]/20 text-[#f1e5ac] px-2 py-1 rounded text-[11px] font-black uppercase tracking-wider">
-                                                                        {weaponAttributeLabels[item.atributo]}
-                                                                    </span>
-                                                                </div>
-                                                            )}
-                                                            {item.categoria === 'armadura' && (item.tipoArmadura || item.caBase !== undefined) && (
-                                                                <div className="flex flex-wrap gap-2">
-                                                                    {item.tipoArmadura && (
-                                                                        <span className="bg-blue-900/30 border border-blue-800/40 text-blue-300 px-2 py-1 rounded text-[11px] font-black uppercase">
-                                                                            {item.tipoArmadura}
-                                                                        </span>
-                                                                    )}
-                                                                    {item.caBase !== undefined && (
-                                                                        <span className="bg-blue-900/30 border border-blue-800/40 text-blue-300 px-2 py-1 rounded text-[11px] font-black uppercase">
-                                                                            CA base: {item.caBase}
-                                                                        </span>
-                                                                    )}
-                                                                </div>
-                                                            )}
-                                                            {item.categoria === 'consumivel' && item.efeito && (
-                                                                <div className="flex flex-wrap gap-2">
-                                                                    <span className="bg-purple-900/30 border border-purple-800/40 text-purple-300 px-2 py-1 rounded text-[11px] font-black">
-                                                                        Efeito: {item.efeito}
-                                                                    </span>
-                                                                </div>
-                                                            )}
-                                                            {item.desc && (
-                                                                <p className="text-[12px] text-gray-400 leading-relaxed">{item.desc}</p>
-                                                            )}
-                                                            <div className="flex justify-end gap-3 pt-1">
-                                                                <button
-                                                                    onClick={() => editInventoryItem(item)}
-                                                                    className="flex items-center gap-1 text-[#00ff66] text-[12px] font-bold uppercase hover:text-white transition-colors"
-                                                                >
-                                                                    <Pencil size={12} /> Editar
-                                                                </button>
-                                                                <button
-                                                                    onClick={() => removeInventoryItem(item.id)}
-                                                                    className="flex items-center gap-1 text-red-500/70 text-[12px] font-bold uppercase hover:text-red-400 transition-colors"
-                                                                >
-                                                                    <Trash2 size={12} /> Excluir
-                                                                </button>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            );
-                                        }) : (
-                                            <p className="text-[13px] text-[#4a5a4a] py-1 text-center">Inventário vazio.</p>
-                                        )}
-                                    </div>
-
-                                    {/* ── Formulário de adição/edição ── */}
-                                    <div className="space-y-2 border-t border-[#1a2a1a] pt-3">
-                                        <div className="grid grid-cols-4 gap-1">
-                                            {(Object.keys(CATEGORIA_LABELS) as ItemCategoria[]).map((cat) => (
-                                                <button
-                                                    key={cat}
-                                                    onClick={() => setNewInventoryItem(prev => ({ ...prev, categoria: cat }))}
-                                                    className={`text-[10px] font-black uppercase py-1.5 rounded border transition-all ${newInventoryItem.categoria === cat
-                                                        ? 'bg-[#00ff66]/20 border-[#00ff66]/60 text-[#00ff66]'
-                                                        : 'bg-black/40 border-[#1a2a1a] text-[#4a5a4a] hover:border-[#00ff66]/30 hover:text-[#8a9a8a]'
-                                                        }`}
-                                                >
-                                                    {CATEGORIA_LABELS[cat]}
-                                                </button>
-                                            ))}
-                                        </div>
-
-                                        <input
-                                            className={inputCls}
-                                            placeholder={
-                                                newInventoryItem.categoria === 'arma' ? 'Nome da arma' :
-                                                    newInventoryItem.categoria === 'armadura' ? 'Nome da armadura' :
-                                                        newInventoryItem.categoria === 'consumivel' ? 'Nome do consumível' :
-                                                            'Nome do item'
-                                            }
-                                            value={newInventoryItem.nome}
-                                            onChange={(e) => setNewInventoryItem(prev => ({ ...prev, nome: e.target.value }))}
-                                        />
-
-                                        {newInventoryItem.categoria === 'arma' && (
-                                            <>
-                                                <select
-                                                    className={selectCls}
-                                                    value={newInventoryItem.atributo}
-                                                    onChange={(e) => setNewInventoryItem(prev => ({ ...prev, atributo: e.target.value as WeaponAttribute }))}
-                                                >
-                                                    <option value="">Sem atributo</option>
-                                                    {WEAPON_ATTRIBUTE_OPTIONS.map((opt) => (
-                                                        <option key={opt} value={opt}>{weaponAttributeLabels[opt]}</option>
-                                                    ))}
-                                                </select>
-                                                <div className="grid grid-cols-2 gap-2">
-                                                    <input
-                                                        className={inputCls}
-                                                        placeholder="ATK (ex: 1d20+3)"
-                                                        value={newInventoryItem.ataque}
-                                                        onChange={(e) => setNewInventoryItem(prev => ({ ...prev, ataque: e.target.value }))}
-                                                    />
-                                                    <input
-                                                        className={inputCls}
-                                                        placeholder="DANO (ex: 1d8+3)"
-                                                        value={newInventoryItem.dano}
-                                                        onChange={(e) => setNewInventoryItem(prev => ({ ...prev, dano: e.target.value }))}
-                                                    />
-                                                </div>
-                                            </>
-                                        )}
-
-                                        {newInventoryItem.categoria === 'armadura' && (
-                                            <div className="grid grid-cols-2 gap-2">
-                                                <select
-                                                    className={selectCls}
-                                                    value={newInventoryItem.tipoArmadura}
-                                                    onChange={(e) => setNewInventoryItem(prev => ({ ...prev, tipoArmadura: e.target.value }))}
-                                                >
-                                                    <option value="">Tipo de armadura</option>
-                                                    {TIPO_ARMADURA_OPTIONS.map((opt) => (
-                                                        <option key={opt.value} value={opt.value}>{opt.label}</option>
-                                                    ))}
-                                                </select>
-                                                <input
-                                                    type="number"
-                                                    min={0}
-                                                    className={numInputCls}
-                                                    placeholder="CA base"
-                                                    value={newInventoryItem.caBase}
-                                                    onChange={(e) => setNewInventoryItem(prev => ({ ...prev, caBase: e.target.value }))}
-                                                />
-                                            </div>
-                                        )}
-
-                                        {newInventoryItem.categoria === 'consumivel' && (
-                                            <div className="grid grid-cols-2 gap-2">
-                                                <input
-                                                    type="number"
-                                                    min={1}
-                                                    className={numInputCls}
-                                                    placeholder="Qtd"
-                                                    value={newInventoryItem.quantidade}
-                                                    onChange={(e) => setNewInventoryItem(prev => ({ ...prev, quantidade: e.target.value }))}
-                                                />
-                                                <input
-                                                    className={inputCls}
-                                                    placeholder="Efeito (ex: Cura 2d4+2)"
-                                                    value={newInventoryItem.efeito}
-                                                    onChange={(e) => setNewInventoryItem(prev => ({ ...prev, efeito: e.target.value }))}
-                                                />
-                                            </div>
-                                        )}
-
-                                        {newInventoryItem.categoria === 'item' && (
-                                            <input
-                                                className={inputCls}
-                                                placeholder="Subtipo (ex: Ferramenta, Chave, Joia...)"
-                                                value={newInventoryItem.tipo}
-                                                onChange={(e) => setNewInventoryItem(prev => ({ ...prev, tipo: e.target.value }))}
-                                            />
-                                        )}
-
-                                        <textarea
-                                            className={inputCls + ' h-14 resize-none'}
-                                            placeholder="Descrição (opcional)"
-                                            value={newInventoryItem.desc}
-                                            onChange={(e) => setNewInventoryItem(prev => ({ ...prev, desc: e.target.value }))}
-                                        />
-
-                                        <div className="flex gap-2">
-                                            <button
-                                                onClick={addInventoryItem}
-                                                className="flex-1 bg-[#00ff66]/10 border border-[#00ff66]/20 text-[#00ff66] px-2 py-1.5 rounded hover:bg-[#00ff66]/20 transition-colors text-[12px] font-black uppercase"
-                                            >
-                                                {editingInventoryId !== null ? 'Salvar edição' : 'Adicionar'}
-                                            </button>
-                                            {editingInventoryId !== null && (
-                                                <button
-                                                    onClick={resetInventoryForm}
-                                                    className="bg-black/40 border border-[#1a2a1a] text-[#4a5a4a] px-2 rounded hover:border-[#00ff66]/40 transition-colors text-[12px] font-black uppercase"
-                                                >
-                                                    Cancelar
-                                                </button>
-                                            )}
-                                        </div>
-                                    </div>
                                 </div>
                             </div>
-
                             {/* Perícias (fora das colunas, ocupando largura total) */}
                             <div className={`bg-black border border-[#1a2a1a] p-3 rounded-xl mt-5 ${readOnly ? 'pointer-events-none select-none' : ''}`}>
                                 <h3 className="text-[#f1e5ac] text-[13px] font-black uppercase mb-3 text-center">Perícias</h3>
@@ -1150,6 +901,135 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
                                             </div>
                                         );
                                     })}
+                                </div>
+                            </div>
+
+                            {/* ── INVENTÁRIO (abaixo das perícias) ─────────────────── */}
+                            <div className={`bg-[#050a05] border border-[#1a2a1a] p-3 rounded-xl mt-3 ${readOnly ? 'pointer-events-none select-none' : ''}`}>
+                                <div className="flex items-center justify-between mb-2">
+                                    <h3 className="text-[#00ff66] text-[13px] font-black uppercase flex items-center gap-2">
+                                        <Box size={12} /> Inventário
+                                    </h3>
+                                    {!readOnly && (
+                                        <button
+                                            onClick={() => { setShowInventoryForm(v => !v); if (editingInventoryId !== null) resetInventoryForm(); }}
+                                            className={`w-7 h-7 rounded-full border flex items-center justify-center text-base font-black transition-all ${showInventoryForm ? 'bg-red-900/30 border-red-500/60 text-red-400 hover:bg-red-900/50' : 'bg-[#00ff66]/10 border-[#00ff66]/40 text-[#00ff66] hover:bg-[#00ff66]/20'}`}
+                                            title={showInventoryForm ? 'Fechar formulário' : 'Adicionar item'}
+                                        >
+                                            {showInventoryForm ? '✕' : '+'}
+                                        </button>
+                                    )}
+                                </div>
+
+                                <div className="space-y-1.5">
+                                    {draft.inventory?.length ? draft.inventory.map((item: InventoryItem) => {
+                                        const isExpanded = expandedItemId === item.id;
+                                        const cat = item.categoria || 'item';
+                                        return (
+                                            <div key={item.id} className="bg-black/40 rounded-lg border border-[#1a2a1a] overflow-hidden">
+                                                <div className="flex items-center gap-2 px-2 py-1.5">
+                                                    <div className="flex-1 min-w-0 cursor-pointer" onClick={() => setExpandedItemId(isExpanded ? null : item.id)}>
+                                                        <div className="flex items-center gap-2">
+                                                            {categoriaIcons[cat]}
+                                                            <span className="text-[13px] font-black uppercase text-gray-200 truncate">{item.nome || item.name || 'Item sem nome'}</span>
+                                                        </div>
+                                                        <div className="flex items-center gap-1.5 mt-0.5">
+                                                            <span className="text-[11px] uppercase text-gray-500 ml-5">{item.tipo || item.categoria || 'Item'}</span>
+                                                            {item.categoria === 'consumivel' && item.quantidade !== undefined && (
+                                                                <span className="bg-purple-900/40 border border-purple-800/40 text-purple-300 px-1.5 rounded text-[10px] font-black">x{item.quantidade}</span>
+                                                            )}
+                                                            {item.categoria === 'armadura' && item.caBase !== undefined && (
+                                                                <span className="bg-blue-900/40 border border-blue-800/40 text-blue-300 px-1.5 rounded text-[10px] font-black">CA {item.caBase}</span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex gap-1 shrink-0">
+                                                        {item.ataque && (
+                                                            <button onClick={() => rollWeaponFormula(item.nome || item.name || 'arma', item.ataque ?? '', 'ataque', item.atributo)} className="bg-[#f1e5ac]/10 border border-[#f1e5ac]/20 text-[#f1e5ac] px-2 py-0.5 rounded text-[10px] font-black uppercase hover:bg-[#f1e5ac]/20 transition-colors">ATK</button>
+                                                        )}
+                                                        {item.dano && (
+                                                            <button onClick={() => rollWeaponFormula(item.nome || item.name || 'arma', item.dano ?? '', 'dano', item.atributo)} className="bg-[#1a0a0a] border border-red-900/20 text-red-400 px-2 py-0.5 rounded text-[10px] font-black uppercase hover:bg-red-600 hover:text-white transition-colors">DANO</button>
+                                                        )}
+                                                    </div>
+                                                    <button
+                                                        onClick={() => setExpandedItemId(isExpanded ? null : item.id)}
+                                                        className="w-6 h-6 flex items-center justify-center rounded-md border border-[#1a2a1a] text-[#4a5a4a] hover:border-[#00ff66]/40 hover:text-[#00ff66] transition-all shrink-0"
+                                                    >
+                                                        <span className={`text-[9px] transition-transform duration-200 inline-block ${isExpanded ? 'rotate-180' : 'rotate-0'}`}>&#9660;</span>
+                                                    </button>
+                                                </div>
+                                                <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isExpanded ? 'max-h-80' : 'max-h-0'}`}>
+                                                    <div className="space-y-2 border-t border-[#1a2a1a] p-2 bg-black/20">
+                                                        {item.atributo && <span className="inline-block bg-[#f1e5ac]/10 border border-[#f1e5ac]/20 text-[#f1e5ac] px-2 py-0.5 rounded text-[11px] font-black uppercase">{weaponAttributeLabels[item.atributo]}</span>}
+                                                        {item.categoria === 'armadura' && (item.tipoArmadura || item.caBase !== undefined) && (
+                                                            <div className="flex flex-wrap gap-1.5">
+                                                                {item.tipoArmadura && <span className="bg-blue-900/30 border border-blue-800/40 text-blue-300 px-2 py-0.5 rounded text-[11px] font-black uppercase">{item.tipoArmadura}</span>}
+                                                                {item.caBase !== undefined && <span className="bg-blue-900/30 border border-blue-800/40 text-blue-300 px-2 py-0.5 rounded text-[11px] font-black uppercase">CA base: {item.caBase}</span>}
+                                                            </div>
+                                                        )}
+                                                        {item.categoria === 'consumivel' && item.efeito && <span className="inline-block bg-purple-900/30 border border-purple-800/40 text-purple-300 px-2 py-0.5 rounded text-[11px] font-black">Efeito: {item.efeito}</span>}
+                                                        {item.desc && <p className="text-[12px] text-gray-400 leading-relaxed">{item.desc}</p>}
+                                                        <div className="flex justify-end gap-3 pt-1">
+                                                            <button onClick={() => { editInventoryItem(item); setShowInventoryForm(true); }} className="flex items-center gap-1 text-[#00ff66] text-[11px] font-bold uppercase hover:text-white transition-colors"><Pencil size={11} /> Editar</button>
+                                                            <button onClick={() => removeInventoryItem(item.id)} className="flex items-center gap-1 text-red-500/70 text-[11px] font-bold uppercase hover:text-red-400 transition-colors"><Trash2 size={11} /> Excluir</button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    }) : (
+                                        <p className="text-[13px] text-[#4a5a4a] py-2 text-center">Inventário vazio.</p>
+                                    )}
+                                </div>
+
+                                <div className={`overflow-hidden transition-all duration-300 ease-in-out ${showInventoryForm ? 'max-h-[600px] mt-3' : 'max-h-0'}`}>
+                                    <div className="border-t border-[#1a2a1a] pt-3 space-y-2">
+                                        <div className="grid grid-cols-4 gap-1">
+                                            {(Object.keys(CATEGORIA_LABELS) as ItemCategoria[]).map((cat) => (
+                                                <button key={cat} onClick={() => setNewInventoryItem(prev => ({ ...prev, categoria: cat }))} className={`text-[10px] font-black uppercase py-1.5 rounded border transition-all ${newInventoryItem.categoria === cat ? 'bg-[#00ff66]/20 border-[#00ff66]/60 text-[#00ff66]' : 'bg-black/40 border-[#1a2a1a] text-[#4a5a4a] hover:border-[#00ff66]/30'}`}>
+                                                    {CATEGORIA_LABELS[cat]}
+                                                </button>
+                                            ))}
+                                        </div>
+                                        <input className={inputCls} placeholder={newInventoryItem.categoria === 'arma' ? 'Nome da arma' : newInventoryItem.categoria === 'armadura' ? 'Nome da armadura' : newInventoryItem.categoria === 'consumivel' ? 'Nome do consumivel' : 'Nome do item'} value={newInventoryItem.nome} onChange={(e) => setNewInventoryItem(prev => ({ ...prev, nome: e.target.value }))} />
+                                        {newInventoryItem.categoria === 'arma' && (
+                                            <>
+                                                <select className={selectCls} value={newInventoryItem.atributo} onChange={(e) => setNewInventoryItem(prev => ({ ...prev, atributo: e.target.value as WeaponAttribute }))}>
+                                                    <option value="">Sem atributo</option>
+                                                    {WEAPON_ATTRIBUTE_OPTIONS.map((opt) => <option key={opt} value={opt}>{weaponAttributeLabels[opt]}</option>)}
+                                                </select>
+                                                <div className="grid grid-cols-2 gap-2">
+                                                    <input className={inputCls} placeholder="ATK (ex: 1d20+3)" value={newInventoryItem.ataque} onChange={(e) => setNewInventoryItem(prev => ({ ...prev, ataque: e.target.value }))} />
+                                                    <input className={inputCls} placeholder="DANO (ex: 1d8+3)" value={newInventoryItem.dano} onChange={(e) => setNewInventoryItem(prev => ({ ...prev, dano: e.target.value }))} />
+                                                </div>
+                                            </>
+                                        )}
+                                        {newInventoryItem.categoria === 'armadura' && (
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <select className={selectCls} value={newInventoryItem.tipoArmadura} onChange={(e) => setNewInventoryItem(prev => ({ ...prev, tipoArmadura: e.target.value }))}>
+                                                    <option value="">Tipo de armadura</option>
+                                                    {TIPO_ARMADURA_OPTIONS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                                                </select>
+                                                <input type="number" min={0} className={numInputCls} placeholder="CA base" value={newInventoryItem.caBase} onChange={(e) => setNewInventoryItem(prev => ({ ...prev, caBase: e.target.value }))} />
+                                            </div>
+                                        )}
+                                        {newInventoryItem.categoria === 'consumivel' && (
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <input type="number" min={1} className={numInputCls} placeholder="Qtd" value={newInventoryItem.quantidade} onChange={(e) => setNewInventoryItem(prev => ({ ...prev, quantidade: e.target.value }))} />
+                                                <input className={inputCls} placeholder="Efeito (ex: Cura 2d4+2)" value={newInventoryItem.efeito} onChange={(e) => setNewInventoryItem(prev => ({ ...prev, efeito: e.target.value }))} />
+                                            </div>
+                                        )}
+                                        {newInventoryItem.categoria === 'item' && (
+                                            <input className={inputCls} placeholder="Subtipo (ex: Ferramenta, Chave, Joia...)" value={newInventoryItem.tipo} onChange={(e) => setNewInventoryItem(prev => ({ ...prev, tipo: e.target.value }))} />
+                                        )}
+                                        <textarea className={inputCls + ' h-14 resize-none'} placeholder="Descricao (opcional)" value={newInventoryItem.desc} onChange={(e) => setNewInventoryItem(prev => ({ ...prev, desc: e.target.value }))} />
+                                        <div className="flex gap-2">
+                                            <button onClick={() => { addInventoryItem(); setShowInventoryForm(false); }} className="flex-1 bg-[#00ff66]/10 border border-[#00ff66]/20 text-[#00ff66] px-2 py-1.5 rounded hover:bg-[#00ff66]/20 transition-colors text-[12px] font-black uppercase">
+                                                {editingInventoryId !== null ? 'Salvar edicao' : 'Adicionar'}
+                                            </button>
+                                            <button onClick={() => { resetInventoryForm(); setShowInventoryForm(false); }} className="bg-black/40 border border-[#1a2a1a] text-[#4a5a4a] px-3 rounded hover:border-[#00ff66]/40 transition-colors text-[12px] font-black uppercase">Cancelar</button>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </>

@@ -70,6 +70,7 @@ type Character = {
   inventory: InventoryItem[];
   spells: { id: number; name: string; level: string }[];
   img: string;
+  currency?: { pl: number; po: number; pp: number; pc: number };
   imgOffsetX?: number;
   imgOffsetY?: number;
   is_linked?: boolean;
@@ -165,6 +166,7 @@ export default function PersonagensPage() {
   const [newItem, setNewItem] = useState<InventoryFormState>(EMPTY_INVENTORY_FORM);
   const [editingInventoryId, setEditingInventoryId] = useState<number | null>(null);
   const [expandedItemId, setExpandedItemId] = useState<number | null>(null);
+  const [showInventoryForm, setShowInventoryForm] = useState(false);
   const [sheetView, setSheetView] = useState<'ficha' | 'grimorio' | 'inventario'>('ficha');
   const [abaAtiva, setAbaAtiva] = useState<string>('personagens');
 
@@ -903,8 +905,183 @@ export default function PersonagensPage() {
             }}
           />
         ) : (
-          <div className="bg-[#050a05] border border-[#1a2a1a] rounded-xl p-5">
-            <h3 className="text-[#f1e5ac] text-[14px] font-black uppercase">Inventário</h3>
+          <div className="space-y-4">
+            {/* ── DINHEIRO ───────────────────────────────────────────── */}
+            <div className="bg-[#050a05] border border-[#1a2a1a] rounded-xl p-4">
+              <h3 className="text-[#f1e5ac] text-[13px] font-black uppercase mb-3 flex items-center gap-2">
+                <span className="text-base">🪙</span> Dinheiro
+              </h3>
+              <div className="grid grid-cols-4 gap-3">
+                {([
+                  { key: 'pl', label: 'PL', color: 'text-[#e5e4e2] border-[#e5e4e2]/30 bg-[#e5e4e2]/5', badge: 'Platina', title: '1 PL = 10 PO' },
+                  { key: 'po', label: 'PO', color: 'text-[#f1e5ac] border-[#f1e5ac]/30 bg-[#f1e5ac]/5', badge: 'Ouro', title: '1 PO = 10 PP' },
+                  { key: 'pp', label: 'PP', color: 'text-[#c0c0c0] border-[#c0c0c0]/30 bg-[#c0c0c0]/5', badge: 'Prata', title: '1 PP = 10 PC' },
+                  { key: 'pc', label: 'PC', color: 'text-[#b87333] border-[#b87333]/30 bg-[#b87333]/5', badge: 'Cobre', title: 'Menor unidade' },
+                ] as const).map(({ key, label, color, badge, title }) => (
+                  <div key={key} title={title} className={`flex flex-col items-center border rounded-xl p-3 ${color}`}>
+                    <span className="text-[10px] font-black uppercase tracking-widest mb-1 opacity-70">{badge}</span>
+                    <span className="text-lg font-black mb-1">{label}</span>
+                    <input
+                      type="number"
+                      min={0}
+                      value={activeCharacter.currency?.[key] ?? 0}
+                      onChange={(e) => updateCharacter('currency', { ...(activeCharacter.currency ?? { pl: 0, po: 0, pp: 0, pc: 0 }), [key]: Math.max(0, Number(e.target.value) || 0) })}
+                      className="w-full bg-black/40 border border-white/10 rounded-lg px-2 py-1.5 text-center text-lg font-black outline-none focus:border-[#00ff66]/40 transition-colors"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* ── INVENTÁRIO ─────────────────────────────────────────── */}
+            <div className="bg-[#050a05] border border-[#1a2a1a] rounded-xl p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-[#00ff66] text-[13px] font-black uppercase flex items-center gap-2">
+                  <Backpack size={13} /> Inventário
+                  {activeCharacter.inventory?.length > 0 && (
+                    <span className="bg-[#00ff66]/10 border border-[#00ff66]/20 text-[#00ff66] px-1.5 rounded text-[10px] font-black">{activeCharacter.inventory.length}</span>
+                  )}
+                </h3>
+                <button
+                  onClick={() => { setShowInventoryForm(v => !v); if (editingInventoryId !== null) { setNewItem(EMPTY_INVENTORY_FORM); setEditingInventoryId(null); }}}
+                  className={`w-8 h-8 rounded-full border flex items-center justify-center text-base font-black transition-all ${showInventoryForm ? 'bg-red-900/30 border-red-500/60 text-red-400 hover:bg-red-900/50' : 'bg-[#00ff66]/10 border-[#00ff66]/40 text-[#00ff66] hover:bg-[#00ff66]/20'}`}
+                  title={showInventoryForm ? 'Fechar formulário' : 'Adicionar item'}
+                >
+                  {showInventoryForm ? '✕' : '+'}
+                </button>
+              </div>
+
+              {/* Lista de itens */}
+              <div className="space-y-1.5 mb-3">
+                {activeCharacter.inventory?.length ? activeCharacter.inventory.map((item: InventoryItem) => {
+                  const isExpanded = expandedItemId === item.id;
+                  const cat = item.categoria || 'item';
+                  return (
+                    <div key={item.id} className="bg-black/40 rounded-lg border border-[#1a2a1a] overflow-hidden">
+                      <div className="flex items-center gap-2 px-3 py-2">
+                        <div className="flex-1 min-w-0 cursor-pointer" onClick={() => setExpandedItemId(isExpanded ? null : item.id)}>
+                          <div className="flex items-center gap-2">
+                            {categoriaIcons[cat]}
+                            <span className="text-[14px] font-black uppercase text-gray-200 truncate">{item.nome || item.name || 'Item sem nome'}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            <span className="text-[11px] uppercase text-gray-500 ml-5">{item.tipo || item.categoria || 'Item'}</span>
+                            {item.categoria === 'consumivel' && item.quantidade !== undefined && (
+                              <span className="bg-purple-900/40 border border-purple-800/40 text-purple-300 px-1.5 rounded text-[10px] font-black">x{item.quantidade}</span>
+                            )}
+                            {item.categoria === 'armadura' && item.caBase !== undefined && (
+                              <span className="bg-blue-900/40 border border-blue-800/40 text-blue-300 px-1.5 rounded text-[10px] font-black">CA {item.caBase}</span>
+                            )}
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => setExpandedItemId(isExpanded ? null : item.id)}
+                          className="w-6 h-6 flex items-center justify-center rounded-md border border-[#1a2a1a] text-[#4a5a4a] hover:border-[#00ff66]/40 hover:text-[#00ff66] transition-all shrink-0"
+                        >
+                          <span className={`text-[9px] transition-transform duration-200 inline-block ${isExpanded ? 'rotate-180' : 'rotate-0'}`}>▼</span>
+                        </button>
+                      </div>
+                      <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isExpanded ? 'max-h-80' : 'max-h-0'}`}>
+                        <div className="space-y-2 border-t border-[#1a2a1a] p-3 bg-black/20">
+                          {item.atributo && <span className="inline-block bg-[#f1e5ac]/10 border border-[#f1e5ac]/20 text-[#f1e5ac] px-2 py-0.5 rounded text-[11px] font-black uppercase">{weaponAttributeLabels[item.atributo]}</span>}
+                          {item.categoria === 'armadura' && (item.tipoArmadura || item.caBase !== undefined) && (
+                            <div className="flex flex-wrap gap-1.5">
+                              {item.tipoArmadura && <span className="bg-blue-900/30 border border-blue-800/40 text-blue-300 px-2 py-0.5 rounded text-[11px] font-black uppercase">{item.tipoArmadura}</span>}
+                              {item.caBase !== undefined && <span className="bg-blue-900/30 border border-blue-800/40 text-blue-300 px-2 py-0.5 rounded text-[11px] font-black uppercase">CA base: {item.caBase}</span>}
+                            </div>
+                          )}
+                          {item.categoria === 'consumivel' && item.efeito && <span className="inline-block bg-purple-900/30 border border-purple-800/40 text-purple-300 px-2 py-0.5 rounded text-[11px] font-black">Efeito: {item.efeito}</span>}
+                          {item.desc && <p className="text-[13px] text-gray-400 leading-relaxed">{item.desc}</p>}
+                          <div className="flex justify-end gap-3 pt-1">
+                            <button
+                              onClick={() => {
+                                setNewItem({ nome: item.nome || item.name || '', categoria: item.categoria || 'arma', tipo: item.tipo || '', atributo: item.atributo || '', ataque: item.ataque || '', dano: item.dano || '', caBase: item.caBase?.toString() || '', tipoArmadura: item.tipoArmadura || '', quantidade: item.quantidade?.toString() || '1', efeito: item.efeito || '', desc: item.desc || '' });
+                                setEditingInventoryId(item.id);
+                                setShowInventoryForm(true);
+                              }}
+                              className="flex items-center gap-1 text-[#00ff66] text-[12px] font-bold uppercase hover:text-white transition-colors"
+                            ><Pencil size={12} /> Editar</button>
+                            <button onClick={() => updateCharacter('inventory', activeCharacter.inventory.filter((i: InventoryItem) => i.id !== item.id))} className="flex items-center gap-1 text-red-500/70 text-[12px] font-bold uppercase hover:text-red-400 transition-colors"><Trash2 size={12} /> Excluir</button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }) : (
+                  <p className="text-[13px] text-[#4a5a4a] py-3 text-center">Inventário vazio.</p>
+                )}
+              </div>
+
+              {/* Formulário colapsável */}
+              <div className={`overflow-hidden transition-all duration-300 ease-in-out ${showInventoryForm ? 'max-h-[700px]' : 'max-h-0'}`}>
+                <div className="border-t border-[#1a2a1a] pt-4 space-y-2">
+                  <div className="grid grid-cols-4 gap-1">
+                    {(Object.keys(CATEGORIA_LABELS) as ItemCategoria[]).map((cat) => (
+                      <button key={cat} onClick={() => setNewItem(prev => ({ ...prev, categoria: cat }))} className={`text-[10px] font-black uppercase py-1.5 rounded border transition-all ${newItem.categoria === cat ? 'bg-[#00ff66]/20 border-[#00ff66]/60 text-[#00ff66]' : 'bg-black/40 border-[#1a2a1a] text-[#4a5a4a] hover:border-[#00ff66]/30'}`}>
+                        {CATEGORIA_LABELS[cat]}
+                      </button>
+                    ))}
+                  </div>
+                  <input className="w-full bg-black/40 border border-[#1a2a1a] px-2 py-1.5 text-[14px] rounded text-white outline-none focus:border-[#00ff66]/50 transition-colors" placeholder={newItem.categoria === 'arma' ? 'Nome da arma' : newItem.categoria === 'armadura' ? 'Nome da armadura' : newItem.categoria === 'consumivel' ? 'Nome do consumivel' : 'Nome do item'} value={newItem.nome} onChange={(e) => setNewItem(prev => ({ ...prev, nome: e.target.value }))} />
+                  {newItem.categoria === 'arma' && (
+                    <>
+                      <select className="w-full bg-[#050a05] border border-[#1a2a1a] px-2 py-1.5 text-[14px] rounded text-white outline-none focus:border-[#00ff66]/50 transition-colors cursor-pointer" value={newItem.atributo} onChange={(e) => setNewItem(prev => ({ ...prev, atributo: e.target.value as WeaponAttribute }))}>
+                        <option value="">Sem atributo</option>
+                        {WEAPON_ATTRIBUTE_OPTIONS.map((opt) => <option key={opt} value={opt}>{weaponAttributeLabels[opt]}</option>)}
+                      </select>
+                      <div className="grid grid-cols-2 gap-2">
+                        <input className="w-full bg-black/40 border border-[#1a2a1a] px-2 py-1.5 text-[14px] rounded text-white outline-none focus:border-[#00ff66]/50" placeholder="ATK (ex: 1d20+3)" value={newItem.ataque} onChange={(e) => setNewItem(prev => ({ ...prev, ataque: e.target.value }))} />
+                        <input className="w-full bg-black/40 border border-[#1a2a1a] px-2 py-1.5 text-[14px] rounded text-white outline-none focus:border-[#00ff66]/50" placeholder="DANO (ex: 1d8+3)" value={newItem.dano} onChange={(e) => setNewItem(prev => ({ ...prev, dano: e.target.value }))} />
+                      </div>
+                    </>
+                  )}
+                  {newItem.categoria === 'armadura' && (
+                    <div className="grid grid-cols-2 gap-2">
+                      <select className="w-full bg-[#050a05] border border-[#1a2a1a] px-2 py-1.5 text-[14px] rounded text-white outline-none cursor-pointer" value={newItem.tipoArmadura} onChange={(e) => setNewItem(prev => ({ ...prev, tipoArmadura: e.target.value }))}>
+                        <option value="">Tipo de armadura</option>
+                        {TIPO_ARMADURA_OPTIONS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                      </select>
+                      <input type="number" min={0} className="w-full bg-black/40 border border-[#1a2a1a] px-2 py-1.5 text-[14px] rounded text-[#00ff66] font-bold text-center outline-none" placeholder="CA base" value={newItem.caBase} onChange={(e) => setNewItem(prev => ({ ...prev, caBase: e.target.value }))} />
+                    </div>
+                  )}
+                  {newItem.categoria === 'consumivel' && (
+                    <div className="grid grid-cols-2 gap-2">
+                      <input type="number" min={1} className="w-full bg-black/40 border border-[#1a2a1a] px-2 py-1.5 text-[14px] rounded text-[#00ff66] font-bold text-center outline-none" placeholder="Qtd" value={newItem.quantidade} onChange={(e) => setNewItem(prev => ({ ...prev, quantidade: e.target.value }))} />
+                      <input className="w-full bg-black/40 border border-[#1a2a1a] px-2 py-1.5 text-[14px] rounded text-white outline-none" placeholder="Efeito (ex: Cura 2d4+2)" value={newItem.efeito} onChange={(e) => setNewItem(prev => ({ ...prev, efeito: e.target.value }))} />
+                    </div>
+                  )}
+                  {newItem.categoria === 'item' && (
+                    <input className="w-full bg-black/40 border border-[#1a2a1a] px-2 py-1.5 text-[14px] rounded text-white outline-none" placeholder="Subtipo (ex: Ferramenta, Chave, Joia...)" value={newItem.tipo} onChange={(e) => setNewItem(prev => ({ ...prev, tipo: e.target.value }))} />
+                  )}
+                  <textarea className="w-full bg-black/40 border border-[#1a2a1a] px-2 py-1.5 text-[14px] rounded text-white outline-none focus:border-[#00ff66]/50 h-14 resize-none transition-colors" placeholder="Descricao (opcional)" value={newItem.desc} onChange={(e) => setNewItem(prev => ({ ...prev, desc: e.target.value }))} />
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => {
+                        if (!newItem.nome.trim()) return;
+                        const base = { id: editingInventoryId ?? Date.now(), nome: newItem.nome.trim(), name: newItem.nome.trim(), categoria: newItem.categoria, desc: newItem.desc.trim() };
+                        let payload: InventoryItem;
+                        if (newItem.categoria === 'arma') payload = { ...base, tipo: 'Arma', atributo: newItem.atributo || undefined, ataque: newItem.ataque.trim(), dano: newItem.dano.trim() };
+                        else if (newItem.categoria === 'armadura') payload = { ...base, tipo: 'Armadura', tipoArmadura: newItem.tipoArmadura || undefined, caBase: newItem.caBase ? Number(newItem.caBase) : undefined };
+                        else if (newItem.categoria === 'consumivel') payload = { ...base, tipo: 'Consumivel', quantidade: newItem.quantidade ? Number(newItem.quantidade) : 1, efeito: newItem.efeito.trim() };
+                        else payload = { ...base, tipo: newItem.tipo.trim() || 'Item' };
+                        if (editingInventoryId !== null) {
+                          updateCharacter('inventory', (activeCharacter.inventory ?? []).map((i: InventoryItem) => i.id === editingInventoryId ? payload : i));
+                        } else {
+                          updateCharacter('inventory', [...(activeCharacter.inventory ?? []), payload]);
+                        }
+                        setNewItem(EMPTY_INVENTORY_FORM);
+                        setEditingInventoryId(null);
+                        setShowInventoryForm(false);
+                      }}
+                      className="flex-1 bg-[#00ff66]/10 border border-[#00ff66]/20 text-[#00ff66] px-2 py-1.5 rounded hover:bg-[#00ff66]/20 transition-colors text-[12px] font-black uppercase"
+                    >
+                      {editingInventoryId !== null ? 'Salvar edicao' : 'Adicionar'}
+                    </button>
+                    <button onClick={() => { setNewItem(EMPTY_INVENTORY_FORM); setEditingInventoryId(null); setShowInventoryForm(false); }} className="bg-black/40 border border-[#1a2a1a] text-[#4a5a4a] px-3 rounded hover:border-[#00ff66]/40 transition-colors text-[12px] font-black uppercase">Cancelar</button>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         )}
 
