@@ -5,13 +5,6 @@ import {
     ArrowLeft, Shield, Zap, ShieldAlert, Sparkles, Box, Save, Trash2, Pencil, Sword, ShieldHalf, FlaskConical, Backpack, Wand2, Eye, EyeOff
 } from 'lucide-react';
 
-'use client';
-import { useEffect, useState, useRef, useMemo } from 'react';
-import { createClient } from '@/utils/supabase/client';
-import {
-    ArrowLeft, Shield, Zap, ShieldAlert, Sparkles, Box, Save, Trash2, Pencil, Sword, ShieldHalf, FlaskConical, Backpack, Wand2, Eye, EyeOff
-} from 'lucide-react';
-
 // ─── Dados estáticos (espelho de personagens/page.tsx) ────────────────────────
 const RACE_DATA: Record<string, { stats: Record<string, number>; traits: string }> = {
     "Anão": { stats: { con: 2 }, traits: "Visão no Escuro, Resiliência Anã, Treino de Combate Anão, Proficiência com ferramentas, Talento Com Pedra" },
