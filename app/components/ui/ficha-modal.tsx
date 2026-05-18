@@ -114,6 +114,7 @@ type Character = {
     inventory: InventoryItem[];
     spells: { id: number; name: string; level?: string }[];
     img: string;
+    currency?: { pl: number; po: number; pp: number; pc: number };
     imgOffsetX?: number;
     imgOffsetY?: number;
 };
@@ -861,23 +862,46 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
                                     </div>
                                 </div>
 
-                                {/* INVENTÁRIO */}
+                               {/* INVENTÁRIO com DINHEIRO */}
                                 <div className={`bg-[#050a05] border border-[#1a2a1a] p-3 rounded-xl mt-3 ${readOnly ? 'pointer-events-none select-none' : ''}`}>
                                     <div className="flex items-center justify-between mb-2">
                                         <h3 className="text-[#00ff66] text-[13px] font-black uppercase flex items-center gap-2">
                                             <Box size={12} /> Inventário
                                         </h3>
                                         {!readOnly && (
-                                            <button
-                                                onClick={() => setShowInventoryForm(true)}
-                                                className="w-7 h-7 rounded-md bg-[#00ff66] text-black flex items-center justify-center text-base font-black transition-all hover:brightness-110 shadow-[0_0_8px_rgba(0,255,102,0.5)]"
-                                                title="Adicionar item"
-                                            >
+                                            <button onClick={() => setShowInventoryForm(true)} className="w-7 h-7 rounded-md bg-[#00ff66] text-black flex items-center justify-center text-base font-black transition-all hover:brightness-110 shadow-[0_0_8px_rgba(0,255,102,0.5)]" title="Adicionar item">
                                                 <Plus size={14} />
                                             </button>
                                         )}
                                     </div>
 
+                                    {/* DINHEIRO minimalista */}
+                                    <div className="bg-black/30 rounded-lg p-2 mb-3 border border-[#1a2a1a]">
+                                        <div className="flex items-center justify-between gap-2">
+                                            <span className="text-[10px] font-black uppercase text-[#f1e5ac] tracking-wider flex items-center gap-1">💰 Troco</span>
+                                            <div className="flex gap-3">
+                                                {[
+                                                    { key: 'pl', label: 'PL', color: 'text-[#e5e4e2]', title: 'Platina' },
+                                                    { key: 'po', label: 'PO', color: 'text-[#f1e5ac]', title: 'Ouro' },
+                                                    { key: 'pp', label: 'PP', color: 'text-[#c0c0c0]', title: 'Prata' },
+                                                    { key: 'pc', label: 'PC', color: 'text-[#b87333]', title: 'Cobre' },
+                                                ].map(({ key, label, color, title }) => (
+                                                    <div key={key} className="flex items-center gap-1" title={title}>
+                                                        <span className={`text-[11px] font-black ${color}`}>{label}</span>
+                                                        <input
+                                                            type="number"
+                                                            min={0}
+                                                            value={draft.currency?.[key as keyof typeof draft.currency] ?? 0}
+                                                            onChange={(e) => updateDraft('currency', { ...(draft.currency ?? { pl: 0, po: 0, pp: 0, pc: 0 }), [key]: Math.max(0, Number(e.target.value) || 0) })}
+                                                            className="w-12 bg-black/60 border border-[#1a2a1a] rounded px-1 py-0.5 text-[12px] text-white text-center outline-none focus:border-[#00ff66]/40"
+                                                        />
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Lista de itens */}
                                     <div className="space-y-1.5">
                                         {draft.inventory?.length ? draft.inventory.map((item: InventoryItem) => {
                                             const isExpanded = expandedItemId === item.id;
@@ -908,10 +932,7 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
                                                                 <button onClick={() => rollWeaponFormula(item.nome || item.name || 'arma', item.dano ?? '', 'dano', item.atributo)} className="bg-[#1a0a0a] border border-red-900/20 text-red-400 px-2 py-0.5 rounded text-[10px] font-black uppercase hover:bg-red-600 hover:text-white transition-colors">DANO</button>
                                                             )}
                                                         </div>
-                                                        <button
-                                                            onClick={() => setExpandedItemId(isExpanded ? null : item.id)}
-                                                            className="w-6 h-6 flex items-center justify-center rounded-md border border-[#1a2a1a] text-[#4a5a4a] hover:border-[#00ff66]/40 hover:text-[#00ff66] transition-all shrink-0"
-                                                        >
+                                                        <button onClick={() => setExpandedItemId(isExpanded ? null : item.id)} className="w-6 h-6 flex items-center justify-center rounded-md border border-[#1a2a1a] text-[#4a5a4a] hover:border-[#00ff66]/40 hover:text-[#00ff66] transition-all shrink-0">
                                                             <span className={`text-[9px] transition-transform duration-200 inline-block ${isExpanded ? 'rotate-180' : 'rotate-0'}`}>▼</span>
                                                         </button>
                                                     </div>
@@ -945,14 +966,12 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
                 </div>
             </div>
 
-            {/* MODAL DE ADICIONAR/EDITAR ITEM (POPUP) */}
+            {/* MODAL DE ADICIONAR/EDITAR ITEM */}
             {showInventoryForm && (
                 <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80" onClick={(e) => e.target === e.currentTarget && setShowInventoryForm(false)}>
                     <div className="bg-[#0a120a] border border-[#1a2a1a] rounded-2xl p-5 w-[450px] max-w-[90vw] space-y-3 shadow-[0_0_50px_rgba(0,0,0,0.9)]">
                         <div className="flex justify-between items-center border-b border-[#1a2a1a] pb-2">
-                            <h3 className="text-[#f1e5ac] text-sm font-black uppercase tracking-widest">
-                                {editingInventoryId !== null ? 'Editar Item' : 'Adicionar Item'}
-                            </h3>
+                            <h3 className="text-[#f1e5ac] text-sm font-black uppercase tracking-widest">{editingInventoryId !== null ? 'Editar Item' : 'Adicionar Item'}</h3>
                             <button onClick={() => { resetInventoryForm(); setShowInventoryForm(false); }} className="text-[#4a5a4a] hover:text-red-400 transition-colors text-lg">&times;</button>
                         </div>
 
@@ -1003,10 +1022,7 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
                         <textarea className={inputCls + ' h-14 resize-none'} placeholder="Descrição (opcional)" value={newInventoryItem.desc} onChange={(e) => setNewInventoryItem(prev => ({ ...prev, desc: e.target.value }))} />
 
                         <div className="flex gap-2">
-                            <button
-                                onClick={addInventoryItem}
-                                className="flex-1 bg-[#00ff66] text-black px-2 py-1.5 rounded hover:brightness-110 transition-colors text-[12px] font-black uppercase"
-                            >
+                            <button onClick={addInventoryItem} className="flex-1 bg-[#00ff66] text-black px-2 py-1.5 rounded hover:brightness-110 transition-colors text-[12px] font-black uppercase">
                                 {editingInventoryId !== null ? 'Salvar edição' : 'Adicionar'}
                             </button>
                             <button onClick={() => { resetInventoryForm(); setShowInventoryForm(false); }} className="bg-black/40 border border-[#1a2a1a] text-[#4a5a4a] px-4 rounded hover:border-[#00ff66]/40 transition-colors text-[12px] font-black uppercase">Cancelar</button>
