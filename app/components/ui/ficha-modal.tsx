@@ -875,10 +875,10 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
                                         )}
                                     </div>
 
-                                    {/* DINHEIRO minimalista */}
+                                    {/* DINHEIRO*/}
                                     <div className="bg-black/30 rounded-lg p-2 mb-3 border border-[#1a2a1a]">
                                         <div className="flex items-center justify-between gap-2">
-                                            <span className="text-[10px] font-black uppercase text-[#f1e5ac] tracking-wider flex items-center gap-1">💰 Troco</span>
+                                            <span className="text-[10px] font-black uppercase text-[#f1e5ac] tracking-wider flex items-center gap-1"> Dinheiro</span>
                                             <div className="flex gap-3">
                                                 {[
                                                     { key: 'pl', label: 'PL', color: 'text-[#e5e4e2]', title: 'Platina' },
