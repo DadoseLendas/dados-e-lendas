@@ -7,8 +7,7 @@ import Footer from '@/app/components/ui/footer';
 import Card from '@/app/components/ui/card';
 import CharacterGrimorioPanel from '@/app/components/ui/grimorio_ficha';
 import type { JSX } from 'react';
-import { Plus, ArrowLeft, ShieldAlert, Sparkles, Trash2, Save, Shield, Zap, BookOpen, Backpack, ScrollText, Sword, FlaskConical, Pencil } from 'lucide-react';
-
+import { Plus, ArrowLeft, ShieldAlert, Sparkles, Trash2, Save, Shield, Zap, BookOpen, Backpack, ScrollText, Sword, FlaskConical, Pencil, Coins } from 'lucide-react';
 
 // --- DADOS DE RAÇAS (Adicionado) ---
 const RACE_DATA: Record<string, { stats: Record<string, number>, traits: string, note?: string }> = {
@@ -47,7 +46,6 @@ const weaponAttributeLabels: Record<WeaponAttribute, string> = {
   str: 'Força',
   dex: 'Destreza',
 };
-
 
 type Character = {
   id: string | number;
@@ -175,7 +173,6 @@ export default function PersonagensPage() {
   const [raceModalOpen, setRaceModalOpen] = useState(false);
   const [raceModalSelections, setRaceModalSelections] = useState<Record<string, string>>({});
 
-  // --- LÓGICA DE CÁLCULO (Adicionado) ---
   const getModifier = (value: number) => {
     const normalizedValue = Math.floor(Number(value) || 0);
     return Math.floor((normalizedValue - 10) / 2);
@@ -317,6 +314,7 @@ export default function PersonagensPage() {
       efeito: item.efeito || '',
       desc: item.desc || '',
     });
+    setShowInventoryForm(true);
   };
 
   const saveInventoryItem = () => {
@@ -367,6 +365,7 @@ export default function PersonagensPage() {
 
     updateCharacter('inventory', nextInventory);
     resetInventoryForm();
+    setShowInventoryForm(false);
   };
 
   const removeInventoryItem = (id: number) => {
@@ -404,7 +403,6 @@ export default function PersonagensPage() {
     if (!activeCharacter) return null;
     const raceInfo = RACE_DATA[activeCharacter.race];
 
-    //const openCharacterImageModal = () => { setTempCharacterImg(activeCharacter.img || '/placeholder-rpg.png'); setTempOffsetX(activeCharacter.imgOffsetX ?? 50); setTempOffsetY(activeCharacter.imgOffsetY ?? 50); setEditingCharacterImg(true); };
     const handleCharacterImageFileChange = (e: ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (!file) return;
@@ -418,8 +416,6 @@ export default function PersonagensPage() {
         {/* Modal de regras de raça */}
         {raceModalOpen && (() => {
           const race = activeCharacter.race;
-
-          // Meio-Elfo: escolher +1 em 2 atributos (exceto CHA)
           if (race === 'Meio-Elfo') {
             const options = (['str', 'dex', 'con', 'int', 'wis'] as const);
             const selected = Object.values(raceModalSelections).filter(Boolean);
@@ -469,7 +465,6 @@ export default function PersonagensPage() {
             );
           }
 
-          // Humano (Variante): escolher 2 atributos para +1
           if (race === 'Humano (Variante)') {
             const options = (['str', 'dex', 'con', 'int', 'wis', 'cha'] as const);
             const selected = Object.values(raceModalSelections).filter(Boolean);
@@ -518,7 +513,6 @@ export default function PersonagensPage() {
               </div>
             );
           }
-
           return null;
         })()}
         {/* Botões de navegação */}
@@ -549,312 +543,310 @@ export default function PersonagensPage() {
             >
               <ScrollText size={14} /> Ficha
             </button>
-              <button
-                type="button"
-                onClick={() => setSheetView('grimorio')}
-                className={`flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-[12px] font-black uppercase tracking-widest transition-all ${sheetView === 'grimorio'
-                  ? 'bg-[#00ff66]/18 border-[#00ff66]/60 text-[#00ff66]'
-                  : 'bg-black/40 border-[#1a2a1a] text-[#4a5a4a] hover:border-[#00ff66]/30 hover:text-[#8a9a8a]'}`}
-              >
-                <BookOpen size={14} /> Grimório
-              </button>
-              <button
-                type="button"
-                onClick={() => setSheetView('inventario')}
-                className={`flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-[12px] font-black uppercase tracking-widest transition-all ${sheetView === 'inventario'
-                  ? 'bg-[#00ff66]/18 border-[#00ff66]/60 text-[#00ff66]'
-                  : 'bg-black/40 border-[#1a2a1a] text-[#4a5a4a] hover:border-[#00ff66]/30 hover:text-[#8a9a8a]'}`}
-              >
-                <Backpack size={14} /> Inventário
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => setSheetView('grimorio')}
+              className={`flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-[12px] font-black uppercase tracking-widest transition-all ${sheetView === 'grimorio'
+                ? 'bg-[#00ff66]/18 border-[#00ff66]/60 text-[#00ff66]'
+                : 'bg-black/40 border-[#1a2a1a] text-[#4a5a4a] hover:border-[#00ff66]/30 hover:text-[#8a9a8a]'}`}
+            >
+              <BookOpen size={14} /> Grimório
+            </button>
+            <button
+              type="button"
+              onClick={() => setSheetView('inventario')}
+              className={`flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-[12px] font-black uppercase tracking-widest transition-all ${sheetView === 'inventario'
+                ? 'bg-[#00ff66]/18 border-[#00ff66]/60 text-[#00ff66]'
+                : 'bg-black/40 border-[#1a2a1a] text-[#4a5a4a] hover:border-[#00ff66]/30 hover:text-[#8a9a8a]'}`}
+            >
+              <Backpack size={14} /> Inventário
+            </button>
+          </div>
         </div>
 
         {sheetView === 'ficha' ? (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* COLUNA 1 - col-span-4 */}
-          <div className="lg:col-span-4 space-y-4">
-            {/* Foto */}
-            <div className="bg-[#050a05] border border-[#1a2a1a] p-2 rounded-2xl flex flex-col items-center gap-1 w-fit mx-auto">
-              <div
-                className="w-52 h-52 bg-black rounded-xl bg-cover border border-[#1a2a1a] cursor-pointer relative group"
-                style={{
-                  backgroundImage: `url(${activeCharacter.img || '/placeholder.png'})`,
-                  backgroundPosition: `${activeCharacter.imgOffsetX ?? 50}% ${activeCharacter.imgOffsetY ?? 50}%`
-                }}
-                onClick={() => { setTempCharacterImg(activeCharacter.img || ''); setTempOffsetX(activeCharacter.imgOffsetX ?? 50); setTempOffsetY(activeCharacter.imgOffsetY ?? 50); setShowFramingSliders(false); setEditingCharacterImg(true); }}
-              >
-                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/50 rounded-xl">
-                  <span className="text-[12px] text-white font-black uppercase tracking-widest text-center px-2">Editar imagem</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Infos Básicas */}
-            <div className="bg-black/60 border border-[#1a2a1a] p-4 rounded-xl grid grid-cols-2 gap-3">
-              <div className="col-span-2">
-                <label className="text-[12px] text-[#4a5a4a] font-black uppercase">Nome</label>
-                <input
-                  value={activeCharacter.name}
-                  onChange={(e) => updateCharacter('name', e.target.value)}
-                  className="w-full bg-black/40 border border-[#1a2a1a] p-1.5 text-base rounded text-white text-center outline-none"
-                  placeholder="Nome do Herói"
-                />
-              </div>
-              <div className="col-span-2">
-                <label className="text-[12px] text-[#4a5a4a] font-black uppercase">Raça</label>
-                <select
-                  value={activeCharacter.race ?? ''}
-                  onChange={(e) => {
-                    const chosen = e.target.value;
-                    updateCharacter('race', chosen);
-                    if (chosen === 'Meio-Elfo' || chosen === 'Humano (Variante)') {
-                      setRaceModalSelections({});
-                      setRaceModalOpen(true);
-                    }
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {/* COLUNA 1 - col-span-4 */}
+            <div className="lg:col-span-4 space-y-4">
+              {/* Foto */}
+              <div className="bg-[#050a05] border border-[#1a2a1a] p-2 rounded-2xl flex flex-col items-center gap-1 w-fit mx-auto">
+                <div
+                  className="w-52 h-52 bg-black rounded-xl bg-cover border border-[#1a2a1a] cursor-pointer relative group"
+                  style={{
+                    backgroundImage: `url(${activeCharacter.img || '/placeholder.png'})`,
+                    backgroundPosition: `${activeCharacter.imgOffsetX ?? 50}% ${activeCharacter.imgOffsetY ?? 50}%`
                   }}
-                  className="w-full bg-black/40 border border-[#1a2a1a] p-1.5 text-base rounded text-white"
+                  onClick={() => { setTempCharacterImg(activeCharacter.img || ''); setTempOffsetX(activeCharacter.imgOffsetX ?? 50); setTempOffsetY(activeCharacter.imgOffsetY ?? 50); setShowFramingSliders(false); setEditingCharacterImg(true); }}
                 >
-                  <option value="">Selecione...</option>
-                  {Object.keys(RACE_DATA).map((race) => (
-                    <option key={race} value={race}>{race}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="col-span-2">
-                <label className="text-[12px] text-[#4a5a4a] font-black uppercase">Classe</label>
-                <select
-                  value={activeCharacter.class ?? ''}
-                  onChange={(e) => {
-                    const chosen = e.target.value;
-                    const classInfo = CLASS_DATA[chosen];
-                    if (classInfo) {
-                      const newSavingThrows = { str: false, dex: false, con: false, int: false, wis: false, cha: false };
-                      classInfo.savingThrows.forEach((s) => { newSavingThrows[s as keyof typeof newSavingThrows] = true; });
-                      const conMod = getModifier(activeCharacter.stats.con);
-                      const newHp = classInfo.hp + conMod;
-                      setActiveCharacter((prev) => prev ? {
-                        ...prev,
-                        class: chosen,
-                        savingThrows: newSavingThrows,
-                        hp_max: newHp,
-                        hp_current: newHp,
-                      } : prev);
-                    } else {
-                      updateCharacter('class', chosen);
-                    }
-                  }}
-                  className="w-full bg-black/40 border border-[#1a2a1a] p-1.5 text-base rounded text-white"
-                >
-                  <option value="">Selecione...</option>
-                  {Object.keys(CLASS_DATA).map((cls) => (
-                    <option key={cls} value={cls}>{cls}</option>
-                  ))}
-                </select>
-                {CLASS_DATA[activeCharacter.class] && (
-                  <div className="mt-1 flex justify-between text-[12px] text-[#4a5a4a] font-black uppercase px-1">
-                    <span> {CLASS_DATA[activeCharacter.class].hp} +con </span>
-                    <span> {CLASS_DATA[activeCharacter.class].primaryAttr}</span>
+                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/50 rounded-xl">
+                    <span className="text-[12px] text-white font-black uppercase tracking-widest text-center px-2">Editar imagem</span>
                   </div>
-                )}
-              </div>
-              <div>
-                <label className="text-[12px] text-[#4a5a4a] font-black uppercase">Nível</label>
-                <input
-                  type="number"
-                  min={1}
-                  max={20}
-                  value={activeCharacter.level ?? 1}
-                  onChange={(e) => updateCharacter('level', Math.min(20, Math.max(1, Number(e.target.value) || 1)))}
-                  className="w-full bg-black/40 border border-[#1a2a1a] p-1.5 text-base rounded text-[#00ff66] font-bold text-center"
-                />
-              </div>
-              <div>
-                <label className="text-[12px] text-[#4a5a4a] font-black uppercase">XP</label>
-                <input
-                  type="number"
-                  value={activeCharacter.experiencePoints ?? 0}
-                  onChange={(e) => updateCharacter('experiencePoints', Number(e.target.value) || 0)}
-                  className="w-full bg-black/40 border border-[#1a2a1a] p-1.5 text-base rounded text-[#f1e5ac] text-center"
-                />
-              </div>
-              <div>
-                <label className="text-[12px] text-[#4a5a4a] font-black uppercase">Alinhamento</label>
-                <input
-                  value={activeCharacter.alignment ?? ''}
-                  onChange={(e) => updateCharacter('alignment', e.target.value)}
-                  className="w-full bg-black/40 border border-[#1a2a1a] p-1.5 text-base rounded text-white"
-                />
-              </div>
-              <div className="col-span-2">
-                <label className="text-[12px] text-[#4a5a4a] font-black uppercase">Antecedente</label>
-                <input
-                  value={activeCharacter.background ?? ''}
-                  onChange={(e) => updateCharacter('background', e.target.value)}
-                  className="w-full bg-black/40 border border-[#1a2a1a] p-1.5 text-base rounded text-white"
-                />
-              </div>
-            </div>
-
-            {/* CA e Iniciativa */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-[#0a150a] border-2 border-[#1a2a1a] rounded-xl p-3 text-center">
-                <Shield className="mx-auto text-[#00ff66] mb-1" size={18} />
-                <input
-                  type="number"
-                  value={activeCharacter.ac ?? 10}
-                  onChange={(e) => updateCharacter('ac', Number(e.target.value) || 0)}
-                  className="w-full bg-transparent text-2xl font-black outline-none text-center"
-                />
-                <span className="text-[12px] text-[#4a5a4a] font-black uppercase">Classe de Armadura</span>
-              </div>
-              <div className="bg-[#0a150a] border-2 border-[#1a2a1a] rounded-xl p-3 text-center">
-                <Zap className="mx-auto text-[#f1e5ac] mb-1" size={18} />
-                <div className="text-2xl font-black">{getModifier(activeCharacter.stats.dex)}</div>
-                <span className="text-[12px] text-[#4a5a4a] font-black uppercase">Iniciativa</span>
-              </div>
-            </div>
-
-            {/* HP */}
-            <div className="bg-[#0a150a] border border-[#1a2a1a] rounded-xl p-4 space-y-3">
-              <HealthBar current={activeCharacter.hp_current ?? 0} max={activeCharacter.hp_max ?? 1} />
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="text-[12px] text-[#4a5a4a] font-black uppercase">HP Atual</label>
-                  <input
-                    type="number"
-                    value={activeCharacter.hp_current ?? 0}
-                    onChange={(e) => updateCharacter('hp_current', Number(e.target.value) || 0)}
-                    className="w-full bg-black/40 border border-[#1a2a1a] p-1.5 text-base rounded text-[#00ff66] font-bold text-center outline-none"
-                  />
                 </div>
-                <div>
-                  <label className="text-[12px] text-[#4a5a4a] font-black uppercase">HP Máximo</label>
+              </div>
+
+              {/* Infos Básicas */}
+              <div className="bg-black/60 border border-[#1a2a1a] p-4 rounded-xl grid grid-cols-2 gap-3">
+                <div className="col-span-2">
+                  <label className="text-[12px] text-[#4a5a4a] font-black uppercase">Nome</label>
                   <input
-                    type="number"
-                    value={activeCharacter.hp_max ?? 0}
-                    onChange={(e) => updateCharacter('hp_max', Number(e.target.value) || 0)}
+                    value={activeCharacter.name}
+                    onChange={(e) => updateCharacter('name', e.target.value)}
                     className="w-full bg-black/40 border border-[#1a2a1a] p-1.5 text-base rounded text-white text-center outline-none"
+                    placeholder="Nome do Herói"
+                  />
+                </div>
+                <div className="col-span-2">
+                  <label className="text-[12px] text-[#4a5a4a] font-black uppercase">Raça</label>
+                  <select
+                    value={activeCharacter.race ?? ''}
+                    onChange={(e) => {
+                      const chosen = e.target.value;
+                      updateCharacter('race', chosen);
+                      if (chosen === 'Meio-Elfo' || chosen === 'Humano (Variante)') {
+                        setRaceModalSelections({});
+                        setRaceModalOpen(true);
+                      }
+                    }}
+                    className="w-full bg-black/40 border border-[#1a2a1a] p-1.5 text-base rounded text-white"
+                  >
+                    <option value="">Selecione...</option>
+                    {Object.keys(RACE_DATA).map((race) => (
+                      <option key={race} value={race}>{race}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="col-span-2">
+                  <label className="text-[12px] text-[#4a5a4a] font-black uppercase">Classe</label>
+                  <select
+                    value={activeCharacter.class ?? ''}
+                    onChange={(e) => {
+                      const chosen = e.target.value;
+                      const classInfo = CLASS_DATA[chosen];
+                      if (classInfo) {
+                        const newSavingThrows = { str: false, dex: false, con: false, int: false, wis: false, cha: false };
+                        classInfo.savingThrows.forEach((s) => { newSavingThrows[s as keyof typeof newSavingThrows] = true; });
+                        const conMod = getModifier(activeCharacter.stats.con);
+                        const newHp = classInfo.hp + conMod;
+                        setActiveCharacter((prev) => prev ? {
+                          ...prev,
+                          class: chosen,
+                          savingThrows: newSavingThrows,
+                          hp_max: newHp,
+                          hp_current: newHp,
+                        } : prev);
+                      } else {
+                        updateCharacter('class', chosen);
+                      }
+                    }}
+                    className="w-full bg-black/40 border border-[#1a2a1a] p-1.5 text-base rounded text-white"
+                  >
+                    <option value="">Selecione...</option>
+                    {Object.keys(CLASS_DATA).map((cls) => (
+                      <option key={cls} value={cls}>{cls}</option>
+                    ))}
+                  </select>
+                  {CLASS_DATA[activeCharacter.class] && (
+                    <div className="mt-1 flex justify-between text-[12px] text-[#4a5a4a] font-black uppercase px-1">
+                      <span> {CLASS_DATA[activeCharacter.class].hp} +con </span>
+                      <span> {CLASS_DATA[activeCharacter.class].primaryAttr}</span>
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <label className="text-[12px] text-[#4a5a4a] font-black uppercase">Nível</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={20}
+                    value={activeCharacter.level ?? 1}
+                    onChange={(e) => updateCharacter('level', Math.min(20, Math.max(1, Number(e.target.value) || 1)))}
+                    className="w-full bg-black/40 border border-[#1a2a1a] p-1.5 text-base rounded text-[#00ff66] font-bold text-center"
+                  />
+                </div>
+                <div>
+                  <label className="text-[12px] text-[#4a5a4a] font-black uppercase">XP</label>
+                  <input
+                    type="number"
+                    value={activeCharacter.experiencePoints ?? 0}
+                    onChange={(e) => updateCharacter('experiencePoints', Number(e.target.value) || 0)}
+                    className="w-full bg-black/40 border border-[#1a2a1a] p-1.5 text-base rounded text-[#f1e5ac] text-center"
+                  />
+                </div>
+                <div>
+                  <label className="text-[12px] text-[#4a5a4a] font-black uppercase">Alinhamento</label>
+                  <input
+                    value={activeCharacter.alignment ?? ''}
+                    onChange={(e) => updateCharacter('alignment', e.target.value)}
+                    className="w-full bg-black/40 border border-[#1a2a1a] p-1.5 text-base rounded text-white"
+                  />
+                </div>
+                <div className="col-span-2">
+                  <label className="text-[12px] text-[#4a5a4a] font-black uppercase">Antecedente</label>
+                  <input
+                    value={activeCharacter.background ?? ''}
+                    onChange={(e) => updateCharacter('background', e.target.value)}
+                    className="w-full bg-black/40 border border-[#1a2a1a] p-1.5 text-base rounded text-white"
                   />
                 </div>
               </div>
-            </div>
-          </div>
 
-          {/* COLUNA 2 - col-span-5 */}
-          <div className="lg:col-span-5 space-y-4">
-            {/* Atributos */}
-            {/* Atributos */}
-            <div className="grid grid-cols-3 gap-3">
-              {(['str', 'dex', 'con', 'int', 'wis', 'cha'] as const).map((s) => {
-                const mod = getModifier(activeCharacter.stats[s]);
-                return (
-                  <div key={s} className="bg-black border border-[#1a2a1a] rounded-xl p-3 text-center">
-                    <span className="text-[13px] text-[#4a5a4a] font-black uppercase">{statLabels[s]}</span>
+              {/* CA e Iniciativa */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-[#0a150a] border-2 border-[#1a2a1a] rounded-xl p-3 text-center">
+                  <Shield className="mx-auto text-[#00ff66] mb-1" size={18} />
+                  <input
+                    type="number"
+                    value={activeCharacter.ac ?? 10}
+                    onChange={(e) => updateCharacter('ac', Number(e.target.value) || 0)}
+                    className="w-full bg-transparent text-2xl font-black outline-none text-center"
+                  />
+                  <span className="text-[12px] text-[#4a5a4a] font-black uppercase">Classe de Armadura</span>
+                </div>
+                <div className="bg-[#0a150a] border-2 border-[#1a2a1a] rounded-xl p-3 text-center">
+                  <Zap className="mx-auto text-[#f1e5ac] mb-1" size={18} />
+                  <div className="text-2xl font-black">{getModifier(activeCharacter.stats.dex)}</div>
+                  <span className="text-[12px] text-[#4a5a4a] font-black uppercase">Iniciativa</span>
+                </div>
+              </div>
+
+              {/* HP */}
+              <div className="bg-[#0a150a] border border-[#1a2a1a] rounded-xl p-4 space-y-3">
+                <HealthBar current={activeCharacter.hp_current ?? 0} max={activeCharacter.hp_max ?? 1} />
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[12px] text-[#4a5a4a] font-black uppercase">HP Atual</label>
                     <input
                       type="number"
-                      min={0}
-                      max={20}
-                      value={activeCharacter.stats[s]}
-                      onChange={(e) => {
-                        const nextValue = Math.floor(Number(e.target.value) || 0);
-                        updateCharacter('stats', { ...activeCharacter.stats, [s]: Math.min(20, Math.max(0, nextValue)) });
-                      }}
-                      className="w-full bg-transparent text-center text-xl font-black outline-none text-white"
+                      value={activeCharacter.hp_current ?? 0}
+                      onChange={(e) => updateCharacter('hp_current', Number(e.target.value) || 0)}
+                      className="w-full bg-black/40 border border-[#1a2a1a] p-1.5 text-base rounded text-[#00ff66] font-bold text-center outline-none"
                     />
-                    <div className="text-[#00ff66] text-base font-black mt-1">
-                      {mod >= 0 ? '+' : ''}{mod}
-                    </div>
                   </div>
-                );
-              })}
+                  <div>
+                    <label className="text-[12px] text-[#4a5a4a] font-black uppercase">HP Máximo</label>
+                    <input
+                      type="number"
+                      value={activeCharacter.hp_max ?? 0}
+                      onChange={(e) => updateCharacter('hp_max', Number(e.target.value) || 0)}
+                      className="w-full bg-black/40 border border-[#1a2a1a] p-1.5 text-base rounded text-white text-center outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
 
-            {/* Salvaguardas */}
-            <div className="bg-black/40 border border-[#1a2a1a] p-4 rounded-xl">
-              <h3 className="text-[13px] text-[#4a5a4a] font-black uppercase mb-3 flex items-center gap-2">
-                <ShieldAlert size={12} /> Salvaguardas
-              </h3>
-              <div className="grid grid-cols-2 gap-x-6 gap-y-2">
-                {(['str', 'dex', 'con', 'int', 'wis', 'cha'] as const).map((s) => (
-                  <div key={s} className="flex items-center justify-between border-b border-[#1a2a1a]/50 py-1">
-                    <div className="flex items-center gap-2">
+            {/* COLUNA 2 - col-span-5 */}
+            <div className="lg:col-span-5 space-y-4">
+              {/* Atributos */}
+              <div className="grid grid-cols-3 gap-3">
+                {(['str', 'dex', 'con', 'int', 'wis', 'cha'] as const).map((s) => {
+                  const mod = getModifier(activeCharacter.stats[s]);
+                  return (
+                    <div key={s} className="bg-black border border-[#1a2a1a] rounded-xl p-3 text-center">
+                      <span className="text-[13px] text-[#4a5a4a] font-black uppercase">{statLabels[s]}</span>
                       <input
-                        type="checkbox"
-                        checked={activeCharacter.savingThrows[s]}
-                        onChange={(e) =>
-                          updateCharacter('savingThrows', {
-                            ...activeCharacter.savingThrows,
-                            [s]: e.target.checked,
-                          })
-                        }
-                        className="accent-[#00ff66] w-3 h-3"
+                        type="number"
+                        min={0}
+                        max={20}
+                        value={activeCharacter.stats[s]}
+                        onChange={(e) => {
+                          const nextValue = Math.floor(Number(e.target.value) || 0);
+                          updateCharacter('stats', { ...activeCharacter.stats, [s]: Math.min(20, Math.max(0, nextValue)) });
+                        }}
+                        className="w-full bg-transparent text-center text-xl font-black outline-none text-white"
                       />
-                      <span className="text-[14px] uppercase text-gray-300">{s}</span>
+                      <div className="text-[#00ff66] text-base font-black mt-1">
+                        {mod >= 0 ? '+' : ''}{mod}
+                      </div>
                     </div>
-                    <span className="text-[14px] font-black text-[#00ff66]">
-                      {(getModifier(activeCharacter.stats[s]) +
-                        (activeCharacter.savingThrows[s] ? activeCharacter.proficiencyBonus : 0)) >= 0 ? '+' : ''}
-                      {getModifier(activeCharacter.stats[s]) +
-                        (activeCharacter.savingThrows[s] ? activeCharacter.proficiencyBonus : 0)}
-                    </span>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
-            </div>
 
-            {/* Habilidades (principal) */}
-            <div className="bg-[#050a05] border border-[#1a2a1a] p-5 rounded-xl">
-              <h3 className="text-[#f1e5ac] text-[14px] font-black uppercase mb-4 flex items-center gap-2">
-                <Sparkles size={14} /> Habilidades
-              </h3>
-              <div className="max-h-[200px] overflow-y-auto space-y-2 mb-4 pr-2">
-                {raceInfo?.traits && raceInfo.traits.split(', ').map((trait) => (
-                  <div
-                    key={trait}
-                    className="bg-[#0a1a0a] p-2 rounded border border-[#1a2a1a]/60 flex justify-between items-center"
-                  >
-                    <span className="text-[14px] uppercase font-bold text-[#4a7a4a]">{trait}</span>
-                    <span className="text-[12px] text-[#2a4a2a] font-black uppercase">Raça</span>
-                  </div>
-                ))}
+              {/* Salvaguardas */}
+              <div className="bg-black/40 border border-[#1a2a1a] p-4 rounded-xl">
+                <h3 className="text-[13px] text-[#4a5a4a] font-black uppercase mb-3 flex items-center gap-2">
+                  <ShieldAlert size={12} /> Salvaguardas
+                </h3>
+                <div className="grid grid-cols-2 gap-x-6 gap-y-2">
+                  {(['str', 'dex', 'con', 'int', 'wis', 'cha'] as const).map((s) => (
+                    <div key={s} className="flex items-center justify-between border-b border-[#1a2a1a]/50 py-1">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={activeCharacter.savingThrows[s]}
+                          onChange={(e) =>
+                            updateCharacter('savingThrows', {
+                              ...activeCharacter.savingThrows,
+                              [s]: e.target.checked,
+                            })
+                          }
+                          className="accent-[#00ff66] w-3 h-3"
+                        />
+                        <span className="text-[14px] uppercase text-gray-300">{s}</span>
+                      </div>
+                      <span className="text-[14px] font-black text-[#00ff66]">
+                        {(getModifier(activeCharacter.stats[s]) +
+                          (activeCharacter.savingThrows[s] ? activeCharacter.proficiencyBonus : 0)) >= 0 ? '+' : ''}
+                        {getModifier(activeCharacter.stats[s]) +
+                          (activeCharacter.savingThrows[s] ? activeCharacter.proficiencyBonus : 0)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
 
-                {activeCharacter.spells?.map((ability: { id: number; name: string }) => (
-                  <div
-                    key={ability.id}
-                    className="bg-black/60 p-2 rounded border border-[#1a2a1a] flex justify-between items-center group"
-                  >
-                    <span className="text-[14px] uppercase font-bold text-gray-300">{ability.name}</span>
-                    <button
-                      onClick={() => updateCharacter('spells', activeCharacter.spells.filter((s: { id: number }) => s.id !== ability.id))}
-                      className="text-red-900 group-hover:text-red-500"
+              {/* Habilidades (principal) */}
+              <div className="bg-[#050a05] border border-[#1a2a1a] p-5 rounded-xl">
+                <h3 className="text-[#f1e5ac] text-[14px] font-black uppercase mb-4 flex items-center gap-2">
+                  <Sparkles size={14} /> Habilidades
+                </h3>
+                <div className="max-h-[200px] overflow-y-auto space-y-2 mb-4 pr-2">
+                  {raceInfo?.traits && raceInfo.traits.split(', ').map((trait) => (
+                    <div
+                      key={trait}
+                      className="bg-[#0a1a0a] p-2 rounded border border-[#1a2a1a]/60 flex justify-between items-center"
                     >
-                      <Trash2 size={12} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-              <div className="flex gap-2">
-                <input
-                  value={newAbilityName}
-                  onChange={(e) => setNewAbilityName(e.target.value)}
-                  placeholder="Nova habilidade..."
-                  className="flex-1 bg-black border border-[#1a2a1a] rounded p-2 text-base text-white"
-                />
-                <button
-                  onClick={() => {
-                    if (!newAbilityName) return;
-                    updateCharacter('spells', [...activeCharacter.spells, { id: Date.now(), name: newAbilityName, level: '0' }]);
-                    setNewAbilityName('');
-                  }}
-                  className="bg-[#00ff66] text-black px-3 rounded text-lg"
-                >
-                  +
-                </button>
+                      <span className="text-[14px] uppercase font-bold text-[#4a7a4a]">{trait}</span>
+                      <span className="text-[12px] text-[#2a4a2a] font-black uppercase">Raça</span>
+                    </div>
+                  ))}
+
+                  {activeCharacter.spells?.map((ability: { id: number; name: string }) => (
+                    <div
+                      key={ability.id}
+                      className="bg-black/60 p-2 rounded border border-[#1a2a1a] flex justify-between items-center group"
+                    >
+                      <span className="text-[14px] uppercase font-bold text-gray-300">{ability.name}</span>
+                      <button
+                        onClick={() => updateCharacter('spells', activeCharacter.spells.filter((s: { id: number }) => s.id !== ability.id))}
+                        className="text-red-900 group-hover:text-red-500"
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    value={newAbilityName}
+                    onChange={(e) => setNewAbilityName(e.target.value)}
+                    placeholder="Nova habilidade..."
+                    className="flex-1 bg-black border border-[#1a2a1a] rounded p-2 text-base text-white"
+                  />
+                  <button
+                    onClick={() => {
+                      if (!newAbilityName) return;
+                      updateCharacter('spells', [...activeCharacter.spells, { id: Date.now(), name: newAbilityName, level: '0' }]);
+                      setNewAbilityName('');
+                    }}
+                    className="bg-[#00ff66] text-black px-3 rounded text-lg"
+                  >
+                    +
+                  </button>
+                </div>
               </div>
             </div>
-
-          </div>
             {/* COLUNA 3 - col-span-3 — PERÍCIAS */}
             <div className="lg:col-span-3">
               <div className="bg-black border border-[#1a2a1a] p-4 rounded-xl h-full">
@@ -899,17 +891,16 @@ export default function PersonagensPage() {
                 name: spell.name ?? 'Sem nome',
                 level: spell.level ?? '0',
               }));
-
               setActiveCharacter((prev) => prev ? { ...prev, spells: normalizedSpells } : prev);
               await fetchCharacters();
             }}
           />
         ) : (
           <div className="space-y-4">
-            {/* ── DINHEIRO ───────────────────────────────────────────── */}
+            {/* DINHEIRO */}
             <div className="bg-[#050a05] border border-[#1a2a1a] rounded-xl p-4">
               <h3 className="text-[#f1e5ac] text-[13px] font-black uppercase mb-3 flex items-center gap-2">
-                <span className="text-base">🪙</span> Dinheiro
+                <Coins size={14} className="text-[#f1e5ac]" /> Dinheiro
               </h3>
               <div className="grid grid-cols-4 gap-3">
                 {([
@@ -933,7 +924,7 @@ export default function PersonagensPage() {
               </div>
             </div>
 
-            {/* ── INVENTÁRIO ─────────────────────────────────────────── */}
+            {/* INVENTÁRIO */}
             <div className="bg-[#050a05] border border-[#1a2a1a] rounded-xl p-4">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-[#00ff66] text-[13px] font-black uppercase flex items-center gap-2">
@@ -943,16 +934,16 @@ export default function PersonagensPage() {
                   )}
                 </h3>
                 <button
-                  onClick={() => { setShowInventoryForm(v => !v); if (editingInventoryId !== null) { setNewItem(EMPTY_INVENTORY_FORM); setEditingInventoryId(null); }}}
-                  className={`w-8 h-8 rounded-full border flex items-center justify-center text-base font-black transition-all ${showInventoryForm ? 'bg-red-900/30 border-red-500/60 text-red-400 hover:bg-red-900/50' : 'bg-[#00ff66]/10 border-[#00ff66]/40 text-[#00ff66] hover:bg-[#00ff66]/20'}`}
-                  title={showInventoryForm ? 'Fechar formulário' : 'Adicionar item'}
+                  onClick={() => setShowInventoryForm(true)}
+                  className="w-7 h-7 rounded-md bg-[#00ff66] text-black flex items-center justify-center text-base font-black transition-all hover:brightness-110 shadow-[0_0_8px_rgba(0,255,102,0.5)]"
+                  title="Adicionar item"
                 >
-                  {showInventoryForm ? '✕' : '+'}
+                  <Plus size={14} />
                 </button>
               </div>
 
               {/* Lista de itens */}
-              <div className="space-y-1.5 mb-3">
+              <div className="space-y-1.5">
                 {activeCharacter.inventory?.length ? activeCharacter.inventory.map((item: InventoryItem) => {
                   const isExpanded = expandedItemId === item.id;
                   const cat = item.categoria || 'item';
@@ -993,15 +984,8 @@ export default function PersonagensPage() {
                           {item.categoria === 'consumivel' && item.efeito && <span className="inline-block bg-purple-900/30 border border-purple-800/40 text-purple-300 px-2 py-0.5 rounded text-[11px] font-black">Efeito: {item.efeito}</span>}
                           {item.desc && <p className="text-[13px] text-gray-400 leading-relaxed">{item.desc}</p>}
                           <div className="flex justify-end gap-3 pt-1">
-                            <button
-                              onClick={() => {
-                                setNewItem({ nome: item.nome || item.name || '', categoria: item.categoria || 'arma', tipo: item.tipo || '', atributo: item.atributo || '', ataque: item.ataque || '', dano: item.dano || '', caBase: item.caBase?.toString() || '', tipoArmadura: item.tipoArmadura || '', quantidade: item.quantidade?.toString() || '1', efeito: item.efeito || '', desc: item.desc || '' });
-                                setEditingInventoryId(item.id);
-                                setShowInventoryForm(true);
-                              }}
-                              className="flex items-center gap-1 text-[#00ff66] text-[12px] font-bold uppercase hover:text-white transition-colors"
-                            ><Pencil size={12} /> Editar</button>
-                            <button onClick={() => updateCharacter('inventory', activeCharacter.inventory.filter((i: InventoryItem) => i.id !== item.id))} className="flex items-center gap-1 text-red-500/70 text-[12px] font-bold uppercase hover:text-red-400 transition-colors"><Trash2 size={12} /> Excluir</button>
+                            <button onClick={() => startEditingInventoryItem(item)} className="flex items-center gap-1 text-[#00ff66] text-[12px] font-bold uppercase hover:text-white transition-colors"><Pencil size={12} /> Editar</button>
+                            <button onClick={() => removeInventoryItem(item.id)} className="flex items-center gap-1 text-red-500/70 text-[12px] font-bold uppercase hover:text-red-400 transition-colors"><Trash2 size={12} /> Excluir</button>
                           </div>
                         </div>
                       </div>
@@ -1011,225 +995,223 @@ export default function PersonagensPage() {
                   <p className="text-[13px] text-[#4a5a4a] py-3 text-center">Inventário vazio.</p>
                 )}
               </div>
+            </div>
+          </div>
+        )}
 
-              {/* Formulário colapsável */}
-              <div className={`overflow-hidden transition-all duration-300 ease-in-out ${showInventoryForm ? 'max-h-[700px]' : 'max-h-0'}`}>
-                <div className="border-t border-[#1a2a1a] pt-4 space-y-2">
-                  <div className="grid grid-cols-4 gap-1">
-                    {(Object.keys(CATEGORIA_LABELS) as ItemCategoria[]).map((cat) => (
-                      <button key={cat} onClick={() => setNewItem(prev => ({ ...prev, categoria: cat }))} className={`text-[10px] font-black uppercase py-1.5 rounded border transition-all ${newItem.categoria === cat ? 'bg-[#00ff66]/20 border-[#00ff66]/60 text-[#00ff66]' : 'bg-black/40 border-[#1a2a1a] text-[#4a5a4a] hover:border-[#00ff66]/30'}`}>
-                        {CATEGORIA_LABELS[cat]}
-                      </button>
-                    ))}
+        {/* Popup unificado: trocar imagem + enquadramento */}
+        {editingCharacterImg && (
+          <div
+            className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80"
+            onClick={(e) => e.target === e.currentTarget && setEditingCharacterImg(false)}
+          >
+            <div className="bg-[#0a120a] border border-[#1a2a1a] rounded-2xl p-6 w-96 space-y-4 shadow-[0_0_40px_rgba(0,0,0,0.8)]">
+              <h3 className="text-[#f1e5ac] text-base font-black uppercase text-center tracking-widest">Imagem do Personagem</h3>
+
+              {/* Preview */}
+              {(tempCharacterImg || activeCharacter.img) && (
+                <div
+                  className="w-full h-44 rounded-xl border border-[#1a2a1a] bg-cover"
+                  style={{
+                    backgroundImage: `url(${tempCharacterImg || activeCharacter.img})`,
+                    backgroundPosition: `${tempOffsetX}% ${tempOffsetY}%`
+                  }}
+                />
+              )}
+
+              {/* Upload */}
+              <div>
+                <label className="block text-[#4a5a4a] text-[14px] font-black uppercase tracking-widest mb-1">Ou faça upload</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleCharacterImageFileChange}
+                  className="w-full bg-black border border-[#1a2a1a] rounded-lg py-2 px-3 text-white text-base focus:outline-none focus:border-[#00ff66] file:mr-3 file:py-1 file:px-3 file:rounded file:border-0 file:text-base file:font-black file:bg-[#00ff66] file:text-black cursor-pointer"
+                />
+              </div>
+
+              {/* Botão enquadramento */}
+              <button
+                type="button"
+                onClick={() => setShowFramingSliders((v) => !v)}
+                className="w-full border border-[#1a2a1a] text-[#4a5a4a] hover:text-[#00ff66] hover:border-[#00ff66]/40 text-[14px] font-black uppercase py-2 rounded-lg transition-all flex items-center justify-center gap-2"
+              >
+                {showFramingSliders ? '▲ Ocultar enquadramento' : '▼ Ajustar enquadramento'}
+              </button>
+
+              {/* Sliders (condicional) */}
+              {showFramingSliders && (
+                <div className="space-y-3 border border-[#1a2a1a] rounded-xl p-3">
+                  <div>
+                    <label className="block text-[#4a5a4a] text-[14px] font-black uppercase tracking-widest mb-1">Horizontal ({tempOffsetX}%)</label>
+                    <input type="range" min={0} max={100} value={tempOffsetX} onChange={(e) => setTempOffsetX(Number(e.target.value))} className="w-full accent-[#00ff66] cursor-pointer" />
                   </div>
-                  <input className="w-full bg-black/40 border border-[#1a2a1a] px-2 py-1.5 text-[14px] rounded text-white outline-none focus:border-[#00ff66]/50 transition-colors" placeholder={newItem.categoria === 'arma' ? 'Nome da arma' : newItem.categoria === 'armadura' ? 'Nome da armadura' : newItem.categoria === 'consumivel' ? 'Nome do consumivel' : 'Nome do item'} value={newItem.nome} onChange={(e) => setNewItem(prev => ({ ...prev, nome: e.target.value }))} />
-                  {newItem.categoria === 'arma' && (
-                    <>
-                      <select className="w-full bg-[#050a05] border border-[#1a2a1a] px-2 py-1.5 text-[14px] rounded text-white outline-none focus:border-[#00ff66]/50 transition-colors cursor-pointer" value={newItem.atributo} onChange={(e) => setNewItem(prev => ({ ...prev, atributo: e.target.value as WeaponAttribute }))}>
-                        <option value="">Sem atributo</option>
-                        {WEAPON_ATTRIBUTE_OPTIONS.map((opt) => <option key={opt} value={opt}>{weaponAttributeLabels[opt]}</option>)}
-                      </select>
-                      <div className="grid grid-cols-2 gap-2">
-                        <input className="w-full bg-black/40 border border-[#1a2a1a] px-2 py-1.5 text-[14px] rounded text-white outline-none focus:border-[#00ff66]/50" placeholder="ATK (ex: 1d20+3)" value={newItem.ataque} onChange={(e) => setNewItem(prev => ({ ...prev, ataque: e.target.value }))} />
-                        <input className="w-full bg-black/40 border border-[#1a2a1a] px-2 py-1.5 text-[14px] rounded text-white outline-none focus:border-[#00ff66]/50" placeholder="DANO (ex: 1d8+3)" value={newItem.dano} onChange={(e) => setNewItem(prev => ({ ...prev, dano: e.target.value }))} />
-                      </div>
-                    </>
-                  )}
-                  {newItem.categoria === 'armadura' && (
-                    <div className="grid grid-cols-2 gap-2">
-                      <select className="w-full bg-[#050a05] border border-[#1a2a1a] px-2 py-1.5 text-[14px] rounded text-white outline-none cursor-pointer" value={newItem.tipoArmadura} onChange={(e) => setNewItem(prev => ({ ...prev, tipoArmadura: e.target.value }))}>
-                        <option value="">Tipo de armadura</option>
-                        {TIPO_ARMADURA_OPTIONS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
-                      </select>
-                      <input type="number" min={0} className="w-full bg-black/40 border border-[#1a2a1a] px-2 py-1.5 text-[14px] rounded text-[#00ff66] font-bold text-center outline-none" placeholder="CA base" value={newItem.caBase} onChange={(e) => setNewItem(prev => ({ ...prev, caBase: e.target.value }))} />
-                    </div>
-                  )}
-                  {newItem.categoria === 'consumivel' && (
-                    <div className="grid grid-cols-2 gap-2">
-                      <input type="number" min={1} className="w-full bg-black/40 border border-[#1a2a1a] px-2 py-1.5 text-[14px] rounded text-[#00ff66] font-bold text-center outline-none" placeholder="Qtd" value={newItem.quantidade} onChange={(e) => setNewItem(prev => ({ ...prev, quantidade: e.target.value }))} />
-                      <input className="w-full bg-black/40 border border-[#1a2a1a] px-2 py-1.5 text-[14px] rounded text-white outline-none" placeholder="Efeito (ex: Cura 2d4+2)" value={newItem.efeito} onChange={(e) => setNewItem(prev => ({ ...prev, efeito: e.target.value }))} />
-                    </div>
-                  )}
-                  {newItem.categoria === 'item' && (
-                    <input className="w-full bg-black/40 border border-[#1a2a1a] px-2 py-1.5 text-[14px] rounded text-white outline-none" placeholder="Subtipo (ex: Ferramenta, Chave, Joia...)" value={newItem.tipo} onChange={(e) => setNewItem(prev => ({ ...prev, tipo: e.target.value }))} />
-                  )}
-                  <textarea className="w-full bg-black/40 border border-[#1a2a1a] px-2 py-1.5 text-[14px] rounded text-white outline-none focus:border-[#00ff66]/50 h-14 resize-none transition-colors" placeholder="Descricao (opcional)" value={newItem.desc} onChange={(e) => setNewItem(prev => ({ ...prev, desc: e.target.value }))} />
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => {
-                        if (!newItem.nome.trim()) return;
-                        const base = { id: editingInventoryId ?? Date.now(), nome: newItem.nome.trim(), name: newItem.nome.trim(), categoria: newItem.categoria, desc: newItem.desc.trim() };
-                        let payload: InventoryItem;
-                        if (newItem.categoria === 'arma') payload = { ...base, tipo: 'Arma', atributo: newItem.atributo || undefined, ataque: newItem.ataque.trim(), dano: newItem.dano.trim() };
-                        else if (newItem.categoria === 'armadura') payload = { ...base, tipo: 'Armadura', tipoArmadura: newItem.tipoArmadura || undefined, caBase: newItem.caBase ? Number(newItem.caBase) : undefined };
-                        else if (newItem.categoria === 'consumivel') payload = { ...base, tipo: 'Consumivel', quantidade: newItem.quantidade ? Number(newItem.quantidade) : 1, efeito: newItem.efeito.trim() };
-                        else payload = { ...base, tipo: newItem.tipo.trim() || 'Item' };
-                        if (editingInventoryId !== null) {
-                          updateCharacter('inventory', (activeCharacter.inventory ?? []).map((i: InventoryItem) => i.id === editingInventoryId ? payload : i));
-                        } else {
-                          updateCharacter('inventory', [...(activeCharacter.inventory ?? []), payload]);
-                        }
-                        setNewItem(EMPTY_INVENTORY_FORM);
-                        setEditingInventoryId(null);
-                        setShowInventoryForm(false);
-                      }}
-                      className="flex-1 bg-[#00ff66]/10 border border-[#00ff66]/20 text-[#00ff66] px-2 py-1.5 rounded hover:bg-[#00ff66]/20 transition-colors text-[12px] font-black uppercase"
-                    >
-                      {editingInventoryId !== null ? 'Salvar edicao' : 'Adicionar'}
-                    </button>
-                    <button onClick={() => { setNewItem(EMPTY_INVENTORY_FORM); setEditingInventoryId(null); setShowInventoryForm(false); }} className="bg-black/40 border border-[#1a2a1a] text-[#4a5a4a] px-3 rounded hover:border-[#00ff66]/40 transition-colors text-[12px] font-black uppercase">Cancelar</button>
+                  <div>
+                    <label className="block text-[#4a5a4a] text-[14px] font-black uppercase tracking-widest mb-1">Vertical ({tempOffsetY}%)</label>
+                    <input type="range" min={0} max={100} value={tempOffsetY} onChange={(e) => setTempOffsetY(Number(e.target.value))} className="w-full accent-[#00ff66] cursor-pointer" />
                   </div>
                 </div>
+              )}
+
+              {/* Ações */}
+              <div className="flex gap-2 pt-1">
+                <button
+                  onClick={() => setEditingCharacterImg(false)}
+                  className="flex-1 border border-[#1a2a1a] text-[#4a5a4a] text-[14px] font-black uppercase py-2 rounded-lg hover:border-[#00ff66]/40 transition-all"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={async () => {
+                    const updated = { ...activeCharacter, img: tempCharacterImg || activeCharacter.img, imgOffsetX: tempOffsetX, imgOffsetY: tempOffsetY };
+                    setActiveCharacter(updated);
+                    setEditingCharacterImg(false);
+                    await saveToDatabase(updated);
+                  }}
+                  className="flex-1 bg-[#00ff66] text-black text-[14px] font-black uppercase py-2 rounded-lg hover:brightness-110 transition-all"
+                >
+                  Salvar
+                </button>
               </div>
             </div>
           </div>
         )}
 
-          {/* Popup unificado: trocar imagem + enquadramento */}
-          {editingCharacterImg && (
-            <div
-              className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80"
-              onClick={(e) => e.target === e.currentTarget && setEditingCharacterImg(false)}
-            >
-              <div className="bg-[#0a120a] border border-[#1a2a1a] rounded-2xl p-6 w-96 space-y-4 shadow-[0_0_40px_rgba(0,0,0,0.8)]">
-                <h3 className="text-[#f1e5ac] text-base font-black uppercase text-center tracking-widest">Imagem do Personagem</h3>
+        {/* MODAL DE ADICIONAR/EDITAR ITEM (POPUP) */}
+        {showInventoryForm && (
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80" onClick={(e) => e.target === e.currentTarget && setShowInventoryForm(false)}>
+            <div className="bg-[#0a120a] border border-[#1a2a1a] rounded-2xl p-5 w-[450px] max-w-[90vw] space-y-3 shadow-[0_0_50px_rgba(0,0,0,0.9)]">
+              <div className="flex justify-between items-center border-b border-[#1a2a1a] pb-2">
+                <h3 className="text-[#f1e5ac] text-sm font-black uppercase tracking-widest">
+                  {editingInventoryId !== null ? 'Editar Item' : 'Adicionar Item'}
+                </h3>
+                <button onClick={() => { resetInventoryForm(); setShowInventoryForm(false); }} className="text-[#4a5a4a] hover:text-red-400 transition-colors text-lg">&times;</button>
+              </div>
 
-                {/* Preview */}
-                {(tempCharacterImg || activeCharacter.img) && (
-                  <div
-                    className="w-full h-44 rounded-xl border border-[#1a2a1a] bg-cover"
-                    style={{
-                      backgroundImage: `url(${tempCharacterImg || activeCharacter.img})`,
-                      backgroundPosition: `${tempOffsetX}% ${tempOffsetY}%`
-                    }}
-                  />
-                )}
+              <div className="grid grid-cols-4 gap-1">
+                {(Object.keys(CATEGORIA_LABELS) as ItemCategoria[]).map((cat) => (
+                  <button key={cat} onClick={() => setNewItem(prev => ({ ...prev, categoria: cat }))} className={`text-[10px] font-black uppercase py-1.5 rounded border transition-all ${newItem.categoria === cat ? 'bg-[#00ff66]/20 border-[#00ff66]/60 text-[#00ff66]' : 'bg-black/40 border-[#1a2a1a] text-[#4a5a4a] hover:border-[#00ff66]/30'}`}>
+                    {CATEGORIA_LABELS[cat]}
+                  </button>
+                ))}
+              </div>
 
-                {/* Upload */}
-                <div>
-                  <label className="block text-[#4a5a4a] text-[14px] font-black uppercase tracking-widest mb-1">Ou faça upload</label>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleCharacterImageFileChange}
-                    className="w-full bg-black border border-[#1a2a1a] rounded-lg py-2 px-3 text-white text-base focus:outline-none focus:border-[#00ff66] file:mr-3 file:py-1 file:px-3 file:rounded file:border-0 file:text-base file:font-black file:bg-[#00ff66] file:text-black cursor-pointer"
-                  />
-                </div>
+              <input className="w-full bg-black/40 border border-[#1a2a1a] px-2 py-1.5 text-[14px] rounded text-white outline-none focus:border-[#00ff66]/50 transition-colors" placeholder={newItem.categoria === 'arma' ? 'Nome da arma' : newItem.categoria === 'armadura' ? 'Nome da armadura' : newItem.categoria === 'consumivel' ? 'Nome do consumível' : 'Nome do item'} value={newItem.nome} onChange={(e) => setNewItem(prev => ({ ...prev, nome: e.target.value }))} />
 
-                {/* Botão enquadramento */}
-                <button
-                  type="button"
-                  onClick={() => setShowFramingSliders((v) => !v)}
-                  className="w-full border border-[#1a2a1a] text-[#4a5a4a] hover:text-[#00ff66] hover:border-[#00ff66]/40 text-[14px] font-black uppercase py-2 rounded-lg transition-all flex items-center justify-center gap-2"
-                >
-                  {showFramingSliders ? '▲ Ocultar enquadramento' : '▼ Ajustar enquadramento'}
-                </button>
-
-                {/* Sliders (condicional) */}
-                {showFramingSliders && (
-                  <div className="space-y-3 border border-[#1a2a1a] rounded-xl p-3">
-                    <div>
-                      <label className="block text-[#4a5a4a] text-[14px] font-black uppercase tracking-widest mb-1">Horizontal ({tempOffsetX}%)</label>
-                      <input type="range" min={0} max={100} value={tempOffsetX} onChange={(e) => setTempOffsetX(Number(e.target.value))} className="w-full accent-[#00ff66] cursor-pointer" />
-                    </div>
-                    <div>
-                      <label className="block text-[#4a5a4a] text-[14px] font-black uppercase tracking-widest mb-1">Vertical ({tempOffsetY}%)</label>
-                      <input type="range" min={0} max={100} value={tempOffsetY} onChange={(e) => setTempOffsetY(Number(e.target.value))} className="w-full accent-[#00ff66] cursor-pointer" />
-                    </div>
+              {newItem.categoria === 'arma' && (
+                <>
+                  <select className="w-full bg-[#050a05] border border-[#1a2a1a] px-2 py-1.5 text-[14px] rounded text-white outline-none focus:border-[#00ff66]/50 transition-colors cursor-pointer" value={newItem.atributo} onChange={(e) => setNewItem(prev => ({ ...prev, atributo: e.target.value as WeaponAttribute }))}>
+                    <option value="">Sem atributo</option>
+                    {WEAPON_ATTRIBUTE_OPTIONS.map((opt) => <option key={opt} value={opt}>{weaponAttributeLabels[opt]}</option>)}
+                  </select>
+                  <div className="grid grid-cols-2 gap-2">
+                    <input className="w-full bg-black/40 border border-[#1a2a1a] px-2 py-1.5 text-[14px] rounded text-white outline-none focus:border-[#00ff66]/50" placeholder="ATK (ex: 1d20+3)" value={newItem.ataque} onChange={(e) => setNewItem(prev => ({ ...prev, ataque: e.target.value }))} />
+                    <input className="w-full bg-black/40 border border-[#1a2a1a] px-2 py-1.5 text-[14px] rounded text-white outline-none focus:border-[#00ff66]/50" placeholder="DANO (ex: 1d8+3)" value={newItem.dano} onChange={(e) => setNewItem(prev => ({ ...prev, dano: e.target.value }))} />
                   </div>
-                )}
+                </>
+              )}
 
-                {/* Ações. */}
-                <div className="flex gap-2 pt-1">
-                  <button
-                    onClick={() => setEditingCharacterImg(false)}
-                    className="flex-1 border border-[#1a2a1a] text-[#4a5a4a] text-[14px] font-black uppercase py-2 rounded-lg hover:border-[#00ff66]/40 transition-all"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    onClick={async () => {
-                      const updated = { ...activeCharacter, img: tempCharacterImg || activeCharacter.img, imgOffsetX: tempOffsetX, imgOffsetY: tempOffsetY };
-                      setActiveCharacter(updated);
-                      setEditingCharacterImg(false);
-                      await saveToDatabase(updated);
-                    }}
-                    className="flex-1 bg-[#00ff66] text-black text-[14px] font-black uppercase py-2 rounded-lg hover:brightness-110 transition-all"
-                  >
-                    Salvar
-                  </button>
+              {newItem.categoria === 'armadura' && (
+                <div className="grid grid-cols-2 gap-2">
+                  <select className="w-full bg-[#050a05] border border-[#1a2a1a] px-2 py-1.5 text-[14px] rounded text-white outline-none cursor-pointer" value={newItem.tipoArmadura} onChange={(e) => setNewItem(prev => ({ ...prev, tipoArmadura: e.target.value }))}>
+                    <option value="">Tipo de armadura</option>
+                    {TIPO_ARMADURA_OPTIONS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                  </select>
+                  <input type="number" min={0} className="w-full bg-black/40 border border-[#1a2a1a] px-2 py-1.5 text-[14px] rounded text-[#00ff66] font-bold text-center outline-none" placeholder="CA base" value={newItem.caBase} onChange={(e) => setNewItem(prev => ({ ...prev, caBase: e.target.value }))} />
                 </div>
+              )}
+
+              {newItem.categoria === 'consumivel' && (
+                <div className="grid grid-cols-2 gap-2">
+                  <input type="number" min={1} className="w-full bg-black/40 border border-[#1a2a1a] px-2 py-1.5 text-[14px] rounded text-[#00ff66] font-bold text-center outline-none" placeholder="Qtd" value={newItem.quantidade} onChange={(e) => setNewItem(prev => ({ ...prev, quantidade: e.target.value }))} />
+                  <input className="w-full bg-black/40 border border-[#1a2a1a] px-2 py-1.5 text-[14px] rounded text-white outline-none" placeholder="Efeito (ex: Cura 2d4+2)" value={newItem.efeito} onChange={(e) => setNewItem(prev => ({ ...prev, efeito: e.target.value }))} />
+                </div>
+              )}
+
+              {newItem.categoria === 'item' && (
+                <input className="w-full bg-black/40 border border-[#1a2a1a] px-2 py-1.5 text-[14px] rounded text-white outline-none" placeholder="Subtipo (ex: Ferramenta, Chave, Joia...)" value={newItem.tipo} onChange={(e) => setNewItem(prev => ({ ...prev, tipo: e.target.value }))} />
+              )}
+
+              <textarea className="w-full bg-black/40 border border-[#1a2a1a] px-2 py-1.5 text-[14px] rounded text-white outline-none focus:border-[#00ff66]/50 h-14 resize-none transition-colors" placeholder="Descrição (opcional)" value={newItem.desc} onChange={(e) => setNewItem(prev => ({ ...prev, desc: e.target.value }))} />
+
+              <div className="flex gap-2">
+                <button
+                  onClick={saveInventoryItem}
+                  className="flex-1 bg-[#00ff66] text-black px-2 py-1.5 rounded hover:brightness-110 transition-colors text-[12px] font-black uppercase"
+                >
+                  {editingInventoryId !== null ? 'Salvar edição' : 'Adicionar'}
+                </button>
+                <button onClick={() => { resetInventoryForm(); setShowInventoryForm(false); }} className="bg-black/40 border border-[#1a2a1a] text-[#4a5a4a] px-4 rounded hover:border-[#00ff66]/40 transition-colors text-[12px] font-black uppercase">Cancelar</button>
               </div>
             </div>
-          )}
-
-        </div>
-        );
+          </div>
+        )}
+      </div>
+    );
   };
 
-        if (isLoadingAuth) return <div className="min-h-screen flex items-center justify-center bg-black text-[#00ff66] font-black uppercase">Sincronizando com a Névoa...</div>;
-        if (!isAuthenticated) return <div className="min-h-screen flex items-center justify-center bg-black text-red-500 font-black">Acesso negado. Faça login.</div>;
+  if (isLoadingAuth) return <div className="min-h-screen flex items-center justify-center bg-black text-[#00ff66] font-black uppercase">Sincronizando com a Névoa...</div>;
+  if (!isAuthenticated) return <div className="min-h-screen flex items-center justify-center bg-black text-red-500 font-black">Acesso negado. Faça login.</div>;
 
-        return (
-        <>
-          <div className="min-h-screen bg-[#020502]">
-            <Navbar abaAtiva={abaAtiva} setAbaAtiva={setAbaAtiva} />
-            <div className={`${activeCharacter ? 'max-w-[1400px]' : 'max-w-[1000px]'} mx-auto py-12 px-6`}>
-              {!activeCharacter ? (
-                <div>
-                  <h2 className="text-[#f1e5ac] text-2xl font-serif mb-10 tracking-[0.2em] uppercase italic">Grimório de Heróis</h2>
-                  <div className="space-y-6">
-                    <div className="flex justify-between items-center">
-                      <h3 className="text-[#4a5a4a] text-base font-black uppercase tracking-[0.2em]">Personagens: {characters.length}</h3>
-                      <button onClick={createCharacter} className="flex items-center gap-2 bg-[#00ff66] text-black px-4 py-2 rounded-lg text-[14px] font-black uppercase hover:brightness-110 transition-all">
-                        <Plus size={14} /> Criar Novo
-                      </button>
-                    </div>
-                    {characters.length === 0 ? (
-                      <div className="text-center text-[#8a9a8a] text-base py-20 border border-dashed border-[#1a2a1a] rounded-2xl">Nenhum personagem encontrado na taverna.</div>
-                    ) : (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {characters.map((char) => (
-                          <Card
-                            key={char.id} id={char.id} title={char.name} subtitle={`${char.class} • Nível ${char.level}`}
-                            metaLeft={{ icon: 'hp', label: `${char.hp_current ?? 0}/${char.hp_max ?? 0}` }}
-                            metaRight={{ icon: 'ca', label: `${char.ac ?? 10}` }}
-                            showMetaDivider={false} metaLarge image={char.img}
-                            dropdownOpen={dropdownOpen === String(char.id)}
-                            onDropdownToggle={() => setDropdownOpen((prev) => prev === String(char.id) ? null : String(char.id))}
-                            dropdownRef={dropdownRef} onDelete={() => { setDropdownOpen(null); setConfirmDeleteId(char.id); }}
-                            onAccess={() => { setActiveCharacter(char); setDropdownOpen(null); }}
-                            accessLabel="Acessar" deleteLabel="Excluir"
-                          />
-                        ))}
-                      </div>
-                    )}
+  return (
+    <>
+      <div className="min-h-screen bg-[#020502]">
+        <Navbar abaAtiva={abaAtiva} setAbaAtiva={setAbaAtiva} />
+        <div className={`${activeCharacter ? 'max-w-[1400px]' : 'max-w-[1000px]'} mx-auto py-12 px-6`}>
+          {!activeCharacter ? (
+            <div>
+              <h2 className="text-[#f1e5ac] text-2xl font-serif mb-10 tracking-[0.2em] uppercase italic">Grimório de Heróis</h2>
+              <div className="space-y-6">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-[#4a5a4a] text-base font-black uppercase tracking-[0.2em]">Personagens: {characters.length}</h3>
+                  <button onClick={createCharacter} className="flex items-center gap-2 bg-[#00ff66] text-black px-4 py-2 rounded-lg text-[14px] font-black uppercase hover:brightness-110 transition-all">
+                    <Plus size={14} /> Criar Novo
+                  </button>
+                </div>
+                {characters.length === 0 ? (
+                  <div className="text-center text-[#8a9a8a] text-base py-20 border border-dashed border-[#1a2a1a] rounded-2xl">Nenhum personagem encontrado na taverna.</div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {characters.map((char) => (
+                      <Card
+                        key={char.id} id={char.id} title={char.name} subtitle={`${char.class} • Nível ${char.level}`}
+                        metaLeft={{ icon: 'hp', label: `${char.hp_current ?? 0}/${char.hp_max ?? 0}` }}
+                        metaRight={{ icon: 'ca', label: `${char.ac ?? 10}` }}
+                        showMetaDivider={false} metaLarge image={char.img}
+                        dropdownOpen={dropdownOpen === String(char.id)}
+                        onDropdownToggle={() => setDropdownOpen((prev) => prev === String(char.id) ? null : String(char.id))}
+                        dropdownRef={dropdownRef} onDelete={() => { setDropdownOpen(null); setConfirmDeleteId(char.id); }}
+                        onAccess={() => { setActiveCharacter(char); setDropdownOpen(null); }}
+                        accessLabel="Acessar" deleteLabel="Excluir"
+                      />
+                    ))}
                   </div>
-                </div>
-              ) : renderCharacterSheet()}
-            </div>
-            <Footer />
-
-          </div>
-
-          {confirmDeleteId !== null && (
-            <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80">
-              <div className="bg-[#0a120a] border border-[#1a2a1a] rounded-2xl p-6 w-80 flex flex-col gap-5">
-                <h3 className="text-white text-base font-black uppercase text-center tracking-widest">Excluir personagem?</h3>
-                <p className="text-[#4a5a4a] text-[14px] text-center uppercase">Esta ação não pode ser desfeita.</p>
-                <div className="flex gap-2">
-                  <button type="button" onClick={() => setConfirmDeleteId(null)}
-                    className="flex-1 border border-[#1a2a1a] text-[#4a5a4a] text-[14px] font-black uppercase py-2 rounded-lg">
-                    Cancelar
-                  </button>
-                  <button type="button" onClick={() => deleteCharacter(confirmDeleteId)}
-                    className="flex-1 bg-red-600 text-white text-[14px] font-black uppercase py-2 rounded-lg">
-                    Excluir
-                  </button>
-                </div>
+                )}
               </div>
             </div>
-          )}
-        </>
-        );
+          ) : renderCharacterSheet()}
+        </div>
+        <Footer />
+      </div>
+
+      {confirmDeleteId !== null && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80">
+          <div className="bg-[#0a120a] border border-[#1a2a1a] rounded-2xl p-6 w-80 flex flex-col gap-5">
+            <h3 className="text-white text-base font-black uppercase text-center tracking-widest">Excluir personagem?</h3>
+            <p className="text-[#4a5a4a] text-[14px] text-center uppercase">Esta ação não pode ser desfeita.</p>
+            <div className="flex gap-2">
+              <button type="button" onClick={() => setConfirmDeleteId(null)}
+                className="flex-1 border border-[#1a2a1a] text-[#4a5a4a] text-[14px] font-black uppercase py-2 rounded-lg">
+                Cancelar
+              </button>
+              <button type="button" onClick={() => deleteCharacter(confirmDeleteId)}
+                className="flex-1 bg-red-600 text-white text-[14px] font-black uppercase py-2 rounded-lg">
+                Excluir
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
 }

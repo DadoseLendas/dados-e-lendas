@@ -2,7 +2,7 @@
 import { useEffect, useState, useRef, useMemo } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import {
-    ArrowLeft, Shield, Zap, ShieldAlert, Sparkles, Box, Save, Trash2, Pencil, Sword, ShieldHalf, FlaskConical, Backpack, Wand2, Eye, EyeOff
+    ArrowLeft, Shield, Zap, ShieldAlert, Sparkles, Box, Save, Trash2, Pencil, Sword, ShieldHalf, FlaskConical, Backpack, Wand2, Eye, EyeOff, Plus
 } from 'lucide-react';
 
 // ─── Dados estáticos (espelho de personagens/page.tsx) ────────────────────────
@@ -72,14 +72,6 @@ const weaponAttributeLabels: Record<WeaponAttribute, string> = {
 // Categorias de inventário 
 type ItemCategoria = 'arma' | 'armadura' | 'consumivel' | 'item';
 
-const CATEGORIAS_CONFIG = {
-    arma: { label: 'Arma', icon: <Sword size={16} />, cor: 'text-green-500' },
-    armadura: { label: 'Armadura', icon: <Shield size={16} />, cor: 'text-blue-500' },
-    consumivel: { label: 'Consumível', icon: <FlaskConical size={16} />, cor: 'text-purple-500' },
-    item: { label: 'Item', icon: <Backpack size={16} />, cor: 'text-amber-500' },
-};
-
-//  categoria para rótulo curto (usado nos botões)
 const CATEGORIA_LABELS: Record<ItemCategoria, string> = {
     arma: 'Arma',
     armadura: 'Armadura',
@@ -132,17 +124,13 @@ type InventoryItem = {
     nome?: string;
     categoria?: ItemCategoria;
     tipo?: string;
-    // Arma
     atributo?: WeaponAttribute;
     ataque?: string;
     dano?: string;
-    // Armadura
     caBase?: number;
     tipoArmadura?: string;
-    // Consumível
     quantidade?: number;
     efeito?: string;
-    // Compartilhado
     desc?: string;
 };
 
@@ -150,17 +138,13 @@ type InventoryFormState = {
     nome: string;
     categoria: ItemCategoria;
     tipo: string;
-    // Arma
     atributo: WeaponAttribute | '';
     ataque: string;
     dano: string;
-    // Armadura
     caBase: string;
     tipoArmadura: string;
-    // Consumível
     quantidade: string;
     efeito: string;
-    // Compartilhado
     desc: string;
 };
 
@@ -188,7 +172,7 @@ interface FichaModalProps {
     readOnly?: boolean;
 }
 
-// Ícones por categoria (movido para fora do loop) 
+// Ícones por categoria
 const categoriaIcons: Record<ItemCategoria, React.ReactNode> = {
     arma: <Sword size={14} className="text-[#00ff66]" />,
     armadura: <Shield size={14} className="text-[#4a9eff]" />,
@@ -211,7 +195,6 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
     const [expandedItemId, setExpandedItemId] = useState<number | null>(null);
     const [showInventoryForm, setShowInventoryForm] = useState(false);
     const [rollPopup, setRollPopup] = useState<{ label: string; modifier: number; isSecret: boolean } | null>(null);
-    const broadcastChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
     useEffect(() => {
         const fetchUser = async () => {
@@ -222,32 +205,20 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
         };
         fetchUser();
     }, [supabase]);
-    /*
-    useEffect(() => {
-        if (!campaignId || campaignId === '00000000-0000-0000-0000-000000000000') return;
-        const ch = supabase.channel(`chat_room_${campaignId}`);
-        ch.subscribe();
-        broadcastChannelRef.current = ch;
-        return () => { supabase.removeChannel(ch); };
-    }, [campaignId, supabase]);
-    */
-    //  Rolagem de dados 
-    const rollD20 = (label: string, modifier: number) => {
-            setRollPopup({ label, modifier, isSecret: false });
-        };
 
-        const executeRoll = async (mode: 'normal' | 'advantage' | 'disadvantage') => {
+    // Rolagem de dados 
+    const rollD20 = (label: string, modifier: number) => {
+        setRollPopup({ label, modifier, isSecret: false });
+    };
+
+    const executeRoll = async (mode: 'normal' | 'advantage' | 'disadvantage') => {
         if (!rollPopup) return;
-        
-        // Extraindo o isSecret do estado atual
         const { label, modifier, isSecret } = rollPopup;
         setRollPopup(null);
 
-        // 1. Aguarda a animação do dado terminar, passando a configuração secreta
         const result = await onRollDice('d20', isSecret, mode);
         if (!result) return;
 
-        // Tipagem para extrair os valores do objeto retornado pelo DiceRoller
         const res = result as { finalValue: number; values: number[]; diceType: string };
         const total = res.finalValue + modifier;
         const modStr = modifier >= 0 ? `+${modifier}` : `${modifier}`;
@@ -267,14 +238,13 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
             textPublico = `rolou ${label} (d20${modStr}) com ${modoTexto}, dado 1: ${str1}, dado 2: ${str2}, resultado **${total}**`;
         }
 
-        // 2. Salva no banco. O ChatWidget vai ouvir a inserção e mostrar no chat em realtime.
         if (currentUserId) {
             await supabase.from('chat_messages').insert([{
                 campaign_id: campaignId,
                 user_name: currentUserName,
                 text: textPublico,
                 is_roll: true,
-                is_secret: isSecret, //Valor dinâmico baseado na escolha do usuário
+                is_secret: isSecret,
                 channel: 'campanha',
                 sender_id: currentUserId,
                 dice_type: res.diceType || 'd20',
@@ -325,7 +295,7 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
         }
     };
 
-    // ── Enquadramento ────────────────────────────────────────────────────────
+    // Enquadramento 
     const [framingOpen, setFramingOpen] = useState(false);
     const [tempOffsetX, setTempOffsetX] = useState(50);
     const [tempOffsetY, setTempOffsetY] = useState(50);
@@ -348,7 +318,7 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
         setFramingOpen(false);
     };
 
-    // ── Helpers de edição ────────────────────────────────────────────────────
+    // Helpers de edição 
     const updateDraft = (field: string, value: unknown) =>
         setDraft(prev => prev ? { ...prev, [field]: value } : prev);
 
@@ -387,6 +357,7 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
             desc: item.desc || '',
         });
         setEditingInventoryId(item.id);
+        setShowInventoryForm(true);
     };
 
     const addInventoryItem = () => {
@@ -440,6 +411,7 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
         }
 
         resetInventoryForm();
+        setShowInventoryForm(false);
     };
 
     const removeInventoryItem = (id: number) =>
@@ -448,7 +420,7 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
     const removeSpell = (id: number) =>
         setDraft(prev => prev ? { ...prev, spells: prev.spells.filter(s => s.id !== id) } : prev);
 
-    // ── Salvar no Supabase ───────────────────────────────────────────────────
+    // Salvar no Supabase 
     const saveCharacter = async () => {
         if (!draft || !initialChar) return;
         setSaving(true);
@@ -530,12 +502,12 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
 
     if (!isOpen) return null;
 
-    // ── Estilos comuns ────────────────────────────────────────────────────────
+    // Estilos comuns 
     const inputCls = "w-full bg-black/40 border border-[#1a2a1a] px-2 py-1 text-[14px] rounded text-white outline-none focus:border-[#00ff66]/50 transition-colors";
     const selectCls = "w-full bg-[#050a05] border border-[#1a2a1a] px-2 py-1 text-[14px] rounded text-white outline-none focus:border-[#00ff66]/50 transition-colors cursor-pointer";
     const numInputCls = "w-full bg-black/40 border border-[#1a2a1a] px-2 py-1 text-[14px] rounded text-[#00ff66] font-bold text-center outline-none focus:border-[#00ff66]/50 transition-colors";
 
-    // ── Barra de vida ─────────────────────────────────────────────────────────
+    // Barra de vida 
     const HealthBar = ({ current, max }: { current: number; max: number }) => {
         const pct = Math.min(Math.max(max > 0 ? (current / max) * 100 : 0, 0), 100);
         const color = pct > 50 ? 'bg-[#00ff66]' : pct > 20 ? 'bg-yellow-500' : 'bg-red-600';
@@ -552,484 +524,496 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
         );
     };
 
-    return (
-    <>
-    {rollPopup && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 backdrop-blur-sm">
-            <div className="bg-[#0a120a] border border-[#1a2a1a] rounded-2xl p-6 w-[350px] shadow-[0_0_50px_rgba(0,0,0,0.95)]">
-                
-                {/* Header com Título e Botão de Rolagem Secreta */}
-                <div className="flex justify-between items-center mb-1">
-                    <div className="w-8"></div> {/* Spacer para manter o título centralizado */}
-                    
-                    <h3 className="text-[#f1e5ac] text-sm font-black uppercase tracking-widest text-center">
-                        {rollPopup.label}
-                    </h3>
-                    
-                    <button
-                        onClick={() => setRollPopup(prev => prev ? { ...prev, isSecret: !prev.isSecret } : null)}
-                        className={`p-1.5 rounded-lg border transition-colors flex items-center justify-center
-                            ${rollPopup.isSecret
-                                ? 'bg-red-900/30 border-red-500 text-red-500 shadow-[0_0_10px_rgba(239,68,68,0.3)]'
-                                : 'bg-transparent border-[#1a2a1a] text-[#4a5a4a] hover:border-[#00ff66] hover:text-[#00ff66]'}`}
-                        title={rollPopup.isSecret ? 'Desativar rolagem secreta' : 'Ativar rolagem secreta'}
-                    >
-                        {rollPopup.isSecret ? <EyeOff size={14} /> : <Eye size={14} />}
-                    </button>
-                </div>
-
-                <p className="text-[#4a5a4a] text-[10px] uppercase tracking-widest text-center mb-1">
-                    d20 {rollPopup.modifier >= 0 ? `+${rollPopup.modifier}` : rollPopup.modifier}
-                </p>
-
-                {/* Feedback visual animado garantindo que está secreto */}
-                <div className="h-4 mb-4 flex items-center justify-center">
-                    {rollPopup.isSecret && (
-                        <p className="text-[9px] font-bold tracking-widest text-red-400/80 uppercase flex items-center gap-1 animate-pulse">
-                            <EyeOff size={10} /> Apenas o Mestre verá
+        return (
+        <>
+            {rollPopup && (
+                <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 backdrop-blur-sm">
+                    <div className="bg-[#0a120a] border border-[#1a2a1a] rounded-2xl p-6 w-[350px] shadow-[0_0_50px_rgba(0,0,0,0.95)]">
+                        <div className="flex justify-between items-center mb-1">
+                            <div className="w-8"></div>
+                            <h3 className="text-[#f1e5ac] text-sm font-black uppercase tracking-widest text-center">
+                                {rollPopup.label}
+                            </h3>
+                            <button
+                                onClick={() => setRollPopup(prev => prev ? { ...prev, isSecret: !prev.isSecret } : null)}
+                                className={`p-1.5 rounded-lg border transition-colors flex items-center justify-center
+                                    ${rollPopup.isSecret
+                                        ? 'bg-red-900/30 border-red-500 text-red-500 shadow-[0_0_10px_rgba(239,68,68,0.3)]'
+                                        : 'bg-transparent border-[#1a2a1a] text-[#4a5a4a] hover:border-[#00ff66] hover:text-[#00ff66]'}`}
+                                title={rollPopup.isSecret ? 'Desativar rolagem secreta' : 'Ativar rolagem secreta'}
+                            >
+                                {rollPopup.isSecret ? <EyeOff size={14} /> : <Eye size={14} />}
+                            </button>
+                        </div>
+                        <p className="text-[#4a5a4a] text-[10px] uppercase tracking-widest text-center mb-1">
+                            d20 {rollPopup.modifier >= 0 ? `+${rollPopup.modifier}` : rollPopup.modifier}
                         </p>
-                    )}
+                        <div className="h-4 mb-4 flex items-center justify-center">
+                            {rollPopup.isSecret && (
+                                <p className="text-[9px] font-bold tracking-widest text-red-400/80 uppercase flex items-center gap-1 animate-pulse">
+                                    <EyeOff size={10} /> Apenas o Mestre verá
+                                </p>
+                            )}
+                        </div>
+                        <div className="flex gap-2">
+                            <button onClick={() => executeRoll('disadvantage')}
+                                className="flex-1 bg-red-700 hover:bg-red-600 text-white font-black text-[10px] sm:text-[11px] uppercase tracking-wide py-3 px-1 rounded-xl transition-all">
+                                Desvantagem
+                            </button>
+                            <button onClick={() => executeRoll('normal')}
+                                className="flex-1 bg-[#00ff66] text-black font-black text-[10px] sm:text-[11px] uppercase tracking-wide py-3 px-1 rounded-xl hover:brightness-110 transition-all">
+                                Normal
+                            </button>
+                            <button onClick={() => executeRoll('advantage')}
+                                className="flex-1 bg-green-700 hover:bg-green-600 text-white font-black text-[10px] sm:text-[11px] uppercase tracking-wide py-3 px-1 rounded-xl transition-all">
+                                Vantagem
+                            </button>
+                        </div>
+                        <button onClick={() => setRollPopup(null)}
+                            className="w-full mt-4 text-[10px] text-[#4a5a4a] hover:text-white uppercase tracking-widest transition-colors">
+                            Cancelar
+                        </button>
+                    </div>
                 </div>
+            )}
+            <div
+                className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-8"
+                onClick={(e) => e.target === e.currentTarget && onClose()}
+            >
+                <div className="bg-[#020502]/95 border border-[#1a2a1a] rounded-2xl shadow-[0_0_80px_rgba(0,255,102,0.06),0_0_60px_rgba(0,0,0,0.9)] w-2/3 min-w-[480px] h-[88vh] flex flex-col overflow-hidden">
+                    <div className="flex-1 overflow-y-auto px-6 py-8">
 
-                <div className="flex gap-2">
-                    <button onClick={() => executeRoll('disadvantage')}
-                        className="flex-1 bg-red-700 hover:bg-red-600 text-white font-black text-[10px] sm:text-[11px] uppercase tracking-wide py-3 px-1 rounded-xl transition-all">
-                        Desvantagem
-                    </button>
-                    <button onClick={() => executeRoll('normal')}
-                        className="flex-1 bg-[#00ff66] text-black font-black text-[10px] sm:text-[11px] uppercase tracking-wide py-3 px-1 rounded-xl hover:brightness-110 transition-all">
-                        Normal
-                    </button>
-                    <button onClick={() => executeRoll('advantage')}
-                        className="flex-1 bg-green-700 hover:bg-green-600 text-white font-black text-[10px] sm:text-[11px] uppercase tracking-wide py-3 px-1 rounded-xl transition-all">
-                        Vantagem
-                    </button>
-                </div>
-                
-                <button onClick={() => setRollPopup(null)}
-                    className="w-full mt-4 text-[10px] text-[#4a5a4a] hover:text-white uppercase tracking-widest transition-colors">
-                    Cancelar
-                </button>
-            </div>
-        </div>
-    )}
-        <div
-            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-8"
-            onClick={(e) => e.target === e.currentTarget && onClose()}
-        >
-            <div className="bg-[#020502]/95 border border-[#1a2a1a] rounded-2xl shadow-[0_0_80px_rgba(0,255,102,0.06),0_0_60px_rgba(0,0,0,0.9)] w-2/3 min-w-[480px] h-[88vh] flex flex-col overflow-hidden">
-                <div className="flex-1 overflow-y-auto px-6 py-8">
+                        {loading && (
+                            <div className="text-center text-[#8a9a8a] text-base py-20">Carregando ficha...</div>
+                        )}
+                        {!loading && !draft && (
+                            <div className="text-center text-red-400 text-base py-20">Não foi possível carregar a ficha.</div>
+                        )}
 
-                    {loading && (
-                        <div className="text-center text-[#8a9a8a] text-base py-20">Carregando ficha...</div>
-                    )}
-                    {!loading && !draft && (
-                        <div className="text-center text-red-400 text-base py-20">Não foi possível carregar a ficha.</div>
-                    )}
-
-                    {!loading && draft && (
-                        <>
-                            {/* Barra de navegação */}
-                            <div className="flex justify-between items-center mb-6">
-                                <button
-                                    onClick={onClose}
-                                    className="flex items-center gap-2 text-[#4a5a4a] hover:text-[#00ff66] text-base font-black transition-colors"
-                                >
-                                    <ArrowLeft size={14} /> FECHAR
-                                </button>
-                                <span className="text-[#f1e5ac] text-base font-serif tracking-widest uppercase italic opacity-60">
-                                    Ficha — {draft.name}
-                                </span>
-                                {readOnly ? (
-                                    <span className="text-[14px] font-black uppercase tracking-widest text-[#4a5a4a] border border-[#1a2a1a] px-3 py-1.5 rounded-lg">
-                                        Apenas visualização
-                                    </span>
-                                ) : (
+                        {!loading && draft && (
+                            <>
+                                {/* Barra de navegação */}
+                                <div className="flex justify-between items-center mb-6">
                                     <button
-                                        onClick={saveCharacter}
-                                        disabled={saving}
-                                        className={`flex items-center gap-2 text-base font-black uppercase px-4 py-1.5 rounded-lg transition-all ${saveSuccess
-                                            ? 'bg-[#00ff66]/20 text-[#00ff66] border border-[#00ff66]/40'
-                                            : 'bg-[#00ff66] text-black hover:brightness-110'
-                                            } disabled:opacity-50`}
+                                        onClick={onClose}
+                                        className="flex items-center gap-2 text-[#4a5a4a] hover:text-[#00ff66] text-base font-black transition-colors"
                                     >
-                                        <Save size={12} />
-                                        {saving ? 'Salvando...' : saveSuccess ? 'Salvo!' : 'Salvar'}
+                                        <ArrowLeft size={14} /> FECHAR
                                     </button>
-                                )}
-                            </div>
-
-                            {/* Layout: 2 colunas */}
-                            <div className={`grid grid-cols-2 gap-5 ${readOnly ? 'pointer-events-none select-none' : ''}`}>
-
-                                {/* ── COLUNA 1 ─────────────────────────── */}
-                                <div className="space-y-3">
-
-                                    {/* Foto */}
-                                    <div className="bg-[#050a05] border border-[#1a2a1a] p-2 rounded-2xl flex flex-col items-center w-fit mx-auto">
-                                        <div
-                                            className="w-36 h-36 bg-black rounded-xl bg-cover border border-[#1a2a1a] cursor-pointer hover:brightness-110 transition-all relative group"
-                                            style={{
-                                                backgroundImage: `url(${draft.img || '/placeholder.png'})`,
-                                                backgroundPosition: `${draft.imgOffsetX ?? 50}% ${draft.imgOffsetY ?? 50}%`
-                                            }}
-                                            onClick={openFraming}
-                                        >
-                                            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/50 rounded-xl">
-                                                <span className="text-[14px] text-white font-black uppercase tracking-widest text-center px-2">Ajustar enquadramento</span>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Popup de enquadramento */}
-                                    {framingOpen && (
-                                        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80" onClick={(e) => e.target === e.currentTarget && setFramingOpen(false)}>
-                                            <div className="bg-[#0a120a] border border-[#1a2a1a] rounded-2xl p-6 w-80 space-y-5 shadow-[0_0_40px_rgba(0,0,0,0.8)]">
-                                                <h3 className="text-[#f1e5ac] text-base font-black uppercase text-center tracking-widest">Enquadramento</h3>
-                                                <div
-                                                    className="w-full h-40 rounded-xl bg-cover border border-[#1a2a1a] mx-auto"
-                                                    style={{
-                                                        backgroundImage: `url(${draft.img || '/placeholder.png'})`,
-                                                        backgroundPosition: `${tempOffsetX}% ${tempOffsetY}%`
-                                                    }}
-                                                />
-                                                <div>
-                                                    <label className="block text-[#4a5a4a] text-[14px] font-black uppercase tracking-widest mb-2">Horizontal ({tempOffsetX}%)</label>
-                                                    <input type="range" min={0} max={100} value={tempOffsetX} onChange={(e) => setTempOffsetX(Number(e.target.value))} className="w-full accent-[#00ff66] cursor-pointer" />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-[#4a5a4a] text-[14px] font-black uppercase tracking-widest mb-2">Vertical ({tempOffsetY}%)</label>
-                                                    <input type="range" min={0} max={100} value={tempOffsetY} onChange={(e) => setTempOffsetY(Number(e.target.value))} className="w-full accent-[#00ff66] cursor-pointer" />
-                                                </div>
-                                                <div className="flex gap-2">
-                                                    <button onClick={() => setFramingOpen(false)} className="flex-1 border border-[#1a2a1a] text-[#4a5a4a] text-[14px] font-black uppercase py-2 rounded-lg hover:border-[#00ff66]/40 transition-all">Cancelar</button>
-                                                    <button onClick={saveFraming} disabled={savingFrame} className="flex-1 bg-[#00ff66] text-black text-[14px] font-black uppercase py-2 rounded-lg hover:brightness-110 transition-all disabled:opacity-50">{savingFrame ? 'Salvando...' : 'Salvar'}</button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {/* Infos Básicas */}
-                                    <div className="bg-black/60 border border-[#1a2a1a] p-2 rounded-xl grid grid-cols-2 gap-1.5">
-                                        <div className="col-span-2">
-                                            <label className="text-[14px] text-[#4a5a4a] font-black uppercase">Nome</label>
-                                            <input className={inputCls + " text-center"} value={draft.name} onChange={(e) => updateDraft('name', e.target.value)} />
-                                        </div>
-                                        <div className="col-span-2">
-                                            <label className="text-[14px] text-[#4a5a4a] font-black uppercase">Raça</label>
-                                            <select className={selectCls} value={draft.race} onChange={(e) => updateDraft('race', e.target.value)}>
-                                                {Object.keys(RACE_DATA).map(r => <option key={r} value={r}>{r}</option>)}
-                                            </select>
-                                        </div>
-                                        <div className="col-span-2">
-                                            <label className="text-[14px] text-[#4a5a4a] font-black uppercase">Classe</label>
-                                            <select className={selectCls} value={draft.class} onChange={(e) => updateDraft('class', e.target.value)}>
-                                                {Object.keys(CLASS_DATA).map(c => <option key={c} value={c}>{c}</option>)}
-                                            </select>
-                                            {CLASS_DATA[draft.class] && (
-                                                <div className="mt-0.5 flex justify-between text-[14px] text-[#4a5a4a] font-black uppercase px-1">
-                                                    <span>{CLASS_DATA[draft.class].hp} +con</span>
-                                                    <span>{CLASS_DATA[draft.class].primaryAttr}</span>
-                                                </div>
-                                            )}
-                                        </div>
-                                        <div>
-                                            <label className="text-[14px] text-[#4a5a4a] font-black uppercase">Nível</label>
-                                            <input type="number" min={1} max={20} className={numInputCls} value={draft.level ?? 1} onChange={(e) => updateDraft('level', Number(e.target.value))} />
-                                        </div>
-                                        <div>
-                                            <label className="text-[14px] text-[#4a5a4a] font-black uppercase">XP</label>
-                                            <input type="number" min={0} className={inputCls + " text-[#f1e5ac] text-center"} value={draft.experiencePoints ?? 0} onChange={(e) => updateDraft('experiencePoints', Number(e.target.value))} />
-                                        </div>
-                                        <div>
-                                            <label className="text-[14px] text-[#4a5a4a] font-black uppercase">Alinhamento</label>
-                                            <input className={inputCls} value={draft.alignment || ''} onChange={(e) => updateDraft('alignment', e.target.value)} />
-                                        </div>
-                                        <div>
-                                            <label className="text-[14px] text-[#4a5a4a] font-black uppercase">Antecedente</label>
-                                            <input className={inputCls} value={draft.background || ''} onChange={(e) => updateDraft('background', e.target.value)} />
-                                        </div>
-                                        <div>
-                                            <label className="text-[14px] text-[#4a5a4a] font-black uppercase">Bônus Prof.</label>
-                                            <input type="number" min={2} max={6} className={numInputCls} value={draft.proficiencyBonus ?? 2} onChange={(e) => updateDraft('proficiencyBonus', Number(e.target.value))} />
-                                        </div>
-                                        <div className="flex items-center gap-2 col-span-2 mt-1">
-                                            <input type="checkbox" id="inspiration" checked={!!draft.inspiration} onChange={(e) => updateDraft('inspiration', e.target.checked)} className="accent-[#00ff66] w-3 h-3 cursor-pointer" />
-                                            <label htmlFor="inspiration" className="text-[13px] text-[#4a5a4a] font-black uppercase cursor-pointer">Inspiração</label>
-                                        </div>
-                                    </div>
-
-                                    {/* CA e Iniciativa */}
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <div className="bg-[#0a150a] border-2 border-[#1a2a1a] rounded-xl p-3 text-center">
-                                            <Shield className="mx-auto text-[#00ff66] mb-1" size={16} />
-                                            <input type="number" min={0} className="w-full bg-transparent text-2xl font-black text-white text-center outline-none border-b border-[#1a2a1a] focus:border-[#00ff66]/50" value={draft.ac ?? 10} onChange={(e) => updateDraft('ac', Number(e.target.value))} />
-                                            <span className="text-[14px] text-[#4a5a4a] font-black uppercase">Armadura</span>
-                                        </div>
-                                        <div className="bg-[#0a150a] border-2 border-[#1a2a1a] rounded-xl p-3 text-center">
-                                            <Zap className="mx-auto text-[#f1e5ac] mb-1" size={16} />
-                                            <div className="text-2xl font-black text-white">
-                                                {fmtMod(getModifier(draft.stats.dex))}
-                                            </div>
-                                            <span className="text-[14px] text-[#4a5a4a] font-black uppercase">Iniciativa</span>
-                                        </div>
-                                    </div>
-
-                                    {/* HP */}
-                                    <div className="bg-[#050a05] border border-[#1a2a1a] p-3 rounded-xl space-y-2">
-                                        <HealthBar current={draft.hp_current} max={draft.hp_max} />
-                                        <div className="grid grid-cols-2 gap-2">
-                                            <div>
-                                                <label className="text-[14px] text-[#4a5a4a] font-black uppercase">HP Atual</label>
-                                                <input type="number" className={numInputCls} value={draft.hp_current ?? 0} onChange={(e) => updateDraft('hp_current', Number(e.target.value))} />
-                                            </div>
-                                            <div>
-                                                <label className="text-[14px] text-[#4a5a4a] font-black uppercase">HP Máx</label>
-                                                <input type="number" className={numInputCls + " text-white"} value={draft.hp_max ?? 0} onChange={(e) => updateDraft('hp_max', Number(e.target.value))} />
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* ── COLUNA 2 ─────────────────────────── */}
-                                <div className="space-y-3">
-
-                                    {/* Atributos */}
-                                    <div className="grid grid-cols-2 gap-2">
-                                        {(['str', 'dex', 'con', 'int', 'wis', 'cha'] as const).map((s) => {
-                                            const mod = getModifier(draft.stats[s]);
-                                            return (
-                                                <div
-                                                    key={s}
-                                                    onClick={() => rollD20(statLabels[s], mod)}
-                                                    title={`Rolar ${statLabels[s]}`}
-                                                    className="bg-black border border-[#1a2a1a] rounded-xl p-2 text-center group relative cursor-pointer hover:border-[#00ff66]/40 transition-colors"
-                                                >
-                                                    <span className="text-[14px] text-[#4a5a4a] font-black uppercase">{statLabels[s]}</span>
-                                                    <input
-                                                        type="number" min={1} max={30}
-                                                        className="w-full bg-transparent text-xl font-black text-white text-center outline-none my-0.5 border-b border-[#1a2a1a] focus:border-[#00ff66]/50"
-                                                        value={draft.stats[s]}
-                                                        onClick={(e) => e.stopPropagation()}
-                                                        onChange={(e) => updateStat(s, Number(e.target.value))}
-                                                    />
-                                                    <div className="text-[#00ff66] text-[14px] font-black">{fmtMod(mod)}</div>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-
-                                    {/* Salvaguardas */}
-                                    <div className="bg-black/40 border border-[#1a2a1a] p-3 rounded-xl">
-                                        <h3 className="text-[13px] text-[#4a5a4a] font-black uppercase mb-2 flex items-center gap-2">
-                                            <ShieldAlert size={11} /> Salvaguardas
-                                        </h3>
-                                        <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-                                            {(['str', 'dex', 'con', 'int', 'wis', 'cha'] as const).map((s) => {
-                                                const proficient = draft.savingThrows?.[s];
-                                                const mod = getModifier(draft.stats[s]);
-                                                const total = mod + (proficient ? (draft.proficiencyBonus ?? 2) : 0);
-                                                return (
-                                                    <div
-                                                        key={s}
-                                                        onClick={() => rollD20(`Salv. ${statLabels[s]}`, total)}
-                                                        title={`Rolar salvaguarda de ${statLabels[s]}`}
-                                                        className="flex items-center justify-between border-b border-[#1a2a1a]/50 py-0.5 cursor-pointer hover:bg-white/5 rounded px-1 transition-colors"
-                                                    >
-                                                        <div className="flex items-center gap-1.5">
-                                                            <input type="checkbox" checked={!!proficient} onClick={(e) => e.stopPropagation()} onChange={() => toggleSavingThrow(s)} className="accent-[#00ff66] w-3 h-3 cursor-pointer" />
-                                                            <span className="text-[13px] uppercase text-gray-300">{statLabels[s]}</span>
-                                                        </div>
-                                                        <span className="text-[13px] font-black text-[#00ff66]">{fmtMod(total)}</span>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    </div>
-
-                                    {/* Habilidades */}
-                                    <div className="bg-[#050a05] border border-[#1a2a1a] p-3 rounded-xl">
-                                        <h3 className="text-[#f1e5ac] text-[13px] font-black uppercase mb-3 flex items-center gap-2">
-                                            <Sparkles size={12} /> Habilidades
-                                        </h3>
-                                        <div className="max-h-[140px] overflow-y-auto space-y-1.5 pr-1 mb-2">
-                                            {RACE_DATA[draft.race]?.traits.split(', ').map((trait) => (
-                                                <div key={trait} className="bg-[#0a1a0a] p-1.5 rounded border border-[#1a2a1a]/60 flex justify-between items-center">
-                                                    <span className="text-[13px] uppercase font-bold text-[#4a7a4a]">{trait}</span>
-                                                    <span className="text-[14px] text-[#2a4a2a] font-black uppercase">Raça</span>
-                                                </div>
-                                            ))}
-                                            {RACE_DATA[draft.race]?.traits && draft.spells?.length > 0 && <div className="border-t border-[#1a2a1a] my-1" />}
-                                            {draft.spells?.map((spell: { id: number; name: string }) => (
-                                                <div key={spell.id} className="bg-black/60 p-1.5 rounded border border-[#1a2a1a] flex justify-between items-center">
-                                                    <span className="text-[13px] uppercase font-bold text-gray-300">{spell.name}</span>
-                                                    <button onClick={() => removeSpell(spell.id)} className="text-red-500/60 hover:text-red-400 transition-colors ml-2 shrink-0"><Trash2 size={10} /></button>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-
-                                </div>
-                            </div>
-                            {/* Perícias (fora das colunas, ocupando largura total) */}
-                            <div className={`bg-black border border-[#1a2a1a] p-3 rounded-xl mt-5 ${readOnly ? 'pointer-events-none select-none' : ''}`}>
-                                <h3 className="text-[#f1e5ac] text-[13px] font-black uppercase mb-3 text-center">Perícias</h3>
-                                <div className="grid grid-cols-2 gap-1">
-                                    {Object.entries(skillsData).map(([key, info]) => {
-                                        const mod = getModifier(draft.stats[info.attr]);
-                                        const proficient = draft.skills?.[key];
-                                        const total = mod + (proficient ? (draft.proficiencyBonus ?? 2) : 0);
-                                        return (
-                                            <div
-                                                key={key}
-                                                onClick={() => rollD20(info.name, total)}
-                                                title={`Rolar ${info.name}`}
-                                                className="flex items-center justify-between bg-black/40 px-2 py-1 rounded border border-[#1a2a1a] cursor-pointer hover:border-[#00ff66]/40 transition-colors"
-                                            >
-                                                <div className="flex items-center gap-1.5 min-w-0">
-                                                    <input type="checkbox" checked={!!proficient} onClick={(e) => e.stopPropagation()} onChange={() => toggleSkill(key)} className="accent-[#00ff66] w-3 h-3 cursor-pointer shrink-0" />
-                                                    <span className="text-[13px] uppercase text-gray-300 leading-tight truncate">{info.name}</span>
-                                                </div>
-                                                <span className="text-[13px] font-black text-[#00ff66] ml-1 shrink-0">{fmtMod(total)}</span>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-
-                            {/* ── INVENTÁRIO (abaixo das perícias) ─────────────────── */}
-                            <div className={`bg-[#050a05] border border-[#1a2a1a] p-3 rounded-xl mt-3 ${readOnly ? 'pointer-events-none select-none' : ''}`}>
-                                <div className="flex items-center justify-between mb-2">
-                                    <h3 className="text-[#00ff66] text-[13px] font-black uppercase flex items-center gap-2">
-                                        <Box size={12} /> Inventário
-                                    </h3>
-                                    {!readOnly && (
+                                    <span className="text-[#f1e5ac] text-base font-serif tracking-widest uppercase italic opacity-60">
+                                        Ficha — {draft.name}
+                                    </span>
+                                    {readOnly ? (
+                                        <span className="text-[14px] font-black uppercase tracking-widest text-[#4a5a4a] border border-[#1a2a1a] px-3 py-1.5 rounded-lg">
+                                            Apenas visualização
+                                        </span>
+                                    ) : (
                                         <button
-                                            onClick={() => { setShowInventoryForm(v => !v); if (editingInventoryId !== null) resetInventoryForm(); }}
-                                            className={`w-7 h-7 rounded-full border flex items-center justify-center text-base font-black transition-all ${showInventoryForm ? 'bg-red-900/30 border-red-500/60 text-red-400 hover:bg-red-900/50' : 'bg-[#00ff66]/10 border-[#00ff66]/40 text-[#00ff66] hover:bg-[#00ff66]/20'}`}
-                                            title={showInventoryForm ? 'Fechar formulário' : 'Adicionar item'}
+                                            onClick={saveCharacter}
+                                            disabled={saving}
+                                            className={`flex items-center gap-2 text-base font-black uppercase px-4 py-1.5 rounded-lg transition-all ${saveSuccess
+                                                ? 'bg-[#00ff66]/20 text-[#00ff66] border border-[#00ff66]/40'
+                                                : 'bg-[#00ff66] text-black hover:brightness-110'
+                                                } disabled:opacity-50`}
                                         >
-                                            {showInventoryForm ? '✕' : '+'}
+                                            <Save size={12} />
+                                            {saving ? 'Salvando...' : saveSuccess ? 'Salvo!' : 'Salvar'}
                                         </button>
                                     )}
                                 </div>
 
-                                <div className="space-y-1.5">
-                                    {draft.inventory?.length ? draft.inventory.map((item: InventoryItem) => {
-                                        const isExpanded = expandedItemId === item.id;
-                                        const cat = item.categoria || 'item';
-                                        return (
-                                            <div key={item.id} className="bg-black/40 rounded-lg border border-[#1a2a1a] overflow-hidden">
-                                                <div className="flex items-center gap-2 px-2 py-1.5">
-                                                    <div className="flex-1 min-w-0 cursor-pointer" onClick={() => setExpandedItemId(isExpanded ? null : item.id)}>
-                                                        <div className="flex items-center gap-2">
-                                                            {categoriaIcons[cat]}
-                                                            <span className="text-[13px] font-black uppercase text-gray-200 truncate">{item.nome || item.name || 'Item sem nome'}</span>
-                                                        </div>
-                                                        <div className="flex items-center gap-1.5 mt-0.5">
-                                                            <span className="text-[11px] uppercase text-gray-500 ml-5">{item.tipo || item.categoria || 'Item'}</span>
-                                                            {item.categoria === 'consumivel' && item.quantidade !== undefined && (
-                                                                <span className="bg-purple-900/40 border border-purple-800/40 text-purple-300 px-1.5 rounded text-[10px] font-black">x{item.quantidade}</span>
-                                                            )}
-                                                            {item.categoria === 'armadura' && item.caBase !== undefined && (
-                                                                <span className="bg-blue-900/40 border border-blue-800/40 text-blue-300 px-1.5 rounded text-[10px] font-black">CA {item.caBase}</span>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                    <div className="flex gap-1 shrink-0">
-                                                        {item.ataque && (
-                                                            <button onClick={() => rollWeaponFormula(item.nome || item.name || 'arma', item.ataque ?? '', 'ataque', item.atributo)} className="bg-[#f1e5ac]/10 border border-[#f1e5ac]/20 text-[#f1e5ac] px-2 py-0.5 rounded text-[10px] font-black uppercase hover:bg-[#f1e5ac]/20 transition-colors">ATK</button>
-                                                        )}
-                                                        {item.dano && (
-                                                            <button onClick={() => rollWeaponFormula(item.nome || item.name || 'arma', item.dano ?? '', 'dano', item.atributo)} className="bg-[#1a0a0a] border border-red-900/20 text-red-400 px-2 py-0.5 rounded text-[10px] font-black uppercase hover:bg-red-600 hover:text-white transition-colors">DANO</button>
-                                                        )}
-                                                    </div>
-                                                    <button
-                                                        onClick={() => setExpandedItemId(isExpanded ? null : item.id)}
-                                                        className="w-6 h-6 flex items-center justify-center rounded-md border border-[#1a2a1a] text-[#4a5a4a] hover:border-[#00ff66]/40 hover:text-[#00ff66] transition-all shrink-0"
-                                                    >
-                                                        <span className={`text-[9px] transition-transform duration-200 inline-block ${isExpanded ? 'rotate-180' : 'rotate-0'}`}>&#9660;</span>
-                                                    </button>
-                                                </div>
-                                                <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isExpanded ? 'max-h-80' : 'max-h-0'}`}>
-                                                    <div className="space-y-2 border-t border-[#1a2a1a] p-2 bg-black/20">
-                                                        {item.atributo && <span className="inline-block bg-[#f1e5ac]/10 border border-[#f1e5ac]/20 text-[#f1e5ac] px-2 py-0.5 rounded text-[11px] font-black uppercase">{weaponAttributeLabels[item.atributo]}</span>}
-                                                        {item.categoria === 'armadura' && (item.tipoArmadura || item.caBase !== undefined) && (
-                                                            <div className="flex flex-wrap gap-1.5">
-                                                                {item.tipoArmadura && <span className="bg-blue-900/30 border border-blue-800/40 text-blue-300 px-2 py-0.5 rounded text-[11px] font-black uppercase">{item.tipoArmadura}</span>}
-                                                                {item.caBase !== undefined && <span className="bg-blue-900/30 border border-blue-800/40 text-blue-300 px-2 py-0.5 rounded text-[11px] font-black uppercase">CA base: {item.caBase}</span>}
-                                                            </div>
-                                                        )}
-                                                        {item.categoria === 'consumivel' && item.efeito && <span className="inline-block bg-purple-900/30 border border-purple-800/40 text-purple-300 px-2 py-0.5 rounded text-[11px] font-black">Efeito: {item.efeito}</span>}
-                                                        {item.desc && <p className="text-[12px] text-gray-400 leading-relaxed">{item.desc}</p>}
-                                                        <div className="flex justify-end gap-3 pt-1">
-                                                            <button onClick={() => { editInventoryItem(item); setShowInventoryForm(true); }} className="flex items-center gap-1 text-[#00ff66] text-[11px] font-bold uppercase hover:text-white transition-colors"><Pencil size={11} /> Editar</button>
-                                                            <button onClick={() => removeInventoryItem(item.id)} className="flex items-center gap-1 text-red-500/70 text-[11px] font-bold uppercase hover:text-red-400 transition-colors"><Trash2 size={11} /> Excluir</button>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        );
-                                    }) : (
-                                        <p className="text-[13px] text-[#4a5a4a] py-2 text-center">Inventário vazio.</p>
-                                    )}
-                                </div>
+                                {/* Layout: 2 colunas */}
+                                <div className={`grid grid-cols-2 gap-5 ${readOnly ? 'pointer-events-none select-none' : ''}`}>
 
-                                <div className={`overflow-hidden transition-all duration-300 ease-in-out ${showInventoryForm ? 'max-h-[600px] mt-3' : 'max-h-0'}`}>
-                                    <div className="border-t border-[#1a2a1a] pt-3 space-y-2">
-                                        <div className="grid grid-cols-4 gap-1">
-                                            {(Object.keys(CATEGORIA_LABELS) as ItemCategoria[]).map((cat) => (
-                                                <button key={cat} onClick={() => setNewInventoryItem(prev => ({ ...prev, categoria: cat }))} className={`text-[10px] font-black uppercase py-1.5 rounded border transition-all ${newInventoryItem.categoria === cat ? 'bg-[#00ff66]/20 border-[#00ff66]/60 text-[#00ff66]' : 'bg-black/40 border-[#1a2a1a] text-[#4a5a4a] hover:border-[#00ff66]/30'}`}>
-                                                    {CATEGORIA_LABELS[cat]}
-                                                </button>
-                                            ))}
-                                        </div>
-                                        <input className={inputCls} placeholder={newInventoryItem.categoria === 'arma' ? 'Nome da arma' : newInventoryItem.categoria === 'armadura' ? 'Nome da armadura' : newInventoryItem.categoria === 'consumivel' ? 'Nome do consumivel' : 'Nome do item'} value={newInventoryItem.nome} onChange={(e) => setNewInventoryItem(prev => ({ ...prev, nome: e.target.value }))} />
-                                        {newInventoryItem.categoria === 'arma' && (
-                                            <>
-                                                <select className={selectCls} value={newInventoryItem.atributo} onChange={(e) => setNewInventoryItem(prev => ({ ...prev, atributo: e.target.value as WeaponAttribute }))}>
-                                                    <option value="">Sem atributo</option>
-                                                    {WEAPON_ATTRIBUTE_OPTIONS.map((opt) => <option key={opt} value={opt}>{weaponAttributeLabels[opt]}</option>)}
-                                                </select>
-                                                <div className="grid grid-cols-2 gap-2">
-                                                    <input className={inputCls} placeholder="ATK (ex: 1d20+3)" value={newInventoryItem.ataque} onChange={(e) => setNewInventoryItem(prev => ({ ...prev, ataque: e.target.value }))} />
-                                                    <input className={inputCls} placeholder="DANO (ex: 1d8+3)" value={newInventoryItem.dano} onChange={(e) => setNewInventoryItem(prev => ({ ...prev, dano: e.target.value }))} />
+                                    {/* COLUNA 1 */}
+                                    <div className="space-y-3">
+
+                                        {/* Foto */}
+                                        <div className="bg-[#050a05] border border-[#1a2a1a] p-2 rounded-2xl flex flex-col items-center w-fit mx-auto">
+                                            <div
+                                                className="w-36 h-36 bg-black rounded-xl bg-cover border border-[#1a2a1a] cursor-pointer hover:brightness-110 transition-all relative group"
+                                                style={{
+                                                    backgroundImage: `url(${draft.img || '/placeholder.png'})`,
+                                                    backgroundPosition: `${draft.imgOffsetX ?? 50}% ${draft.imgOffsetY ?? 50}%`
+                                                }}
+                                                onClick={openFraming}
+                                            >
+                                                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/50 rounded-xl">
+                                                    <span className="text-[14px] text-white font-black uppercase tracking-widest text-center px-2">Ajustar enquadramento</span>
                                                 </div>
-                                            </>
+                                            </div>
+                                        </div>
+
+                                        {/* Popup de enquadramento */}
+                                        {framingOpen && (
+                                            <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80" onClick={(e) => e.target === e.currentTarget && setFramingOpen(false)}>
+                                                <div className="bg-[#0a120a] border border-[#1a2a1a] rounded-2xl p-6 w-80 space-y-5 shadow-[0_0_40px_rgba(0,0,0,0.8)]">
+                                                    <h3 className="text-[#f1e5ac] text-base font-black uppercase text-center tracking-widest">Enquadramento</h3>
+                                                    <div
+                                                        className="w-full h-40 rounded-xl bg-cover border border-[#1a2a1a] mx-auto"
+                                                        style={{
+                                                            backgroundImage: `url(${draft.img || '/placeholder.png'})`,
+                                                            backgroundPosition: `${tempOffsetX}% ${tempOffsetY}%`
+                                                        }}
+                                                    />
+                                                    <div>
+                                                        <label className="block text-[#4a5a4a] text-[14px] font-black uppercase tracking-widest mb-2">Horizontal ({tempOffsetX}%)</label>
+                                                        <input type="range" min={0} max={100} value={tempOffsetX} onChange={(e) => setTempOffsetX(Number(e.target.value))} className="w-full accent-[#00ff66] cursor-pointer" />
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-[#4a5a4a] text-[14px] font-black uppercase tracking-widest mb-2">Vertical ({tempOffsetY}%)</label>
+                                                        <input type="range" min={0} max={100} value={tempOffsetY} onChange={(e) => setTempOffsetY(Number(e.target.value))} className="w-full accent-[#00ff66] cursor-pointer" />
+                                                    </div>
+                                                    <div className="flex gap-2">
+                                                        <button onClick={() => setFramingOpen(false)} className="flex-1 border border-[#1a2a1a] text-[#4a5a4a] text-[14px] font-black uppercase py-2 rounded-lg hover:border-[#00ff66]/40 transition-all">Cancelar</button>
+                                                        <button onClick={saveFraming} disabled={savingFrame} className="flex-1 bg-[#00ff66] text-black text-[14px] font-black uppercase py-2 rounded-lg hover:brightness-110 transition-all disabled:opacity-50">{savingFrame ? 'Salvando...' : 'Salvar'}</button>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         )}
-                                        {newInventoryItem.categoria === 'armadura' && (
-                                            <div className="grid grid-cols-2 gap-2">
-                                                <select className={selectCls} value={newInventoryItem.tipoArmadura} onChange={(e) => setNewInventoryItem(prev => ({ ...prev, tipoArmadura: e.target.value }))}>
-                                                    <option value="">Tipo de armadura</option>
-                                                    {TIPO_ARMADURA_OPTIONS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+
+                                        {/* Infos Básicas */}
+                                        <div className="bg-black/60 border border-[#1a2a1a] p-2 rounded-xl grid grid-cols-2 gap-1.5">
+                                            <div className="col-span-2">
+                                                <label className="text-[14px] text-[#4a5a4a] font-black uppercase">Nome</label>
+                                                <input className={inputCls + " text-center"} value={draft.name} onChange={(e) => updateDraft('name', e.target.value)} />
+                                            </div>
+                                            <div className="col-span-2">
+                                                <label className="text-[14px] text-[#4a5a4a] font-black uppercase">Raça</label>
+                                                <select className={selectCls} value={draft.race} onChange={(e) => updateDraft('race', e.target.value)}>
+                                                    {Object.keys(RACE_DATA).map(r => <option key={r} value={r}>{r}</option>)}
                                                 </select>
-                                                <input type="number" min={0} className={numInputCls} placeholder="CA base" value={newInventoryItem.caBase} onChange={(e) => setNewInventoryItem(prev => ({ ...prev, caBase: e.target.value }))} />
                                             </div>
-                                        )}
-                                        {newInventoryItem.categoria === 'consumivel' && (
+                                            <div className="col-span-2">
+                                                <label className="text-[14px] text-[#4a5a4a] font-black uppercase">Classe</label>
+                                                <select className={selectCls} value={draft.class} onChange={(e) => updateDraft('class', e.target.value)}>
+                                                    {Object.keys(CLASS_DATA).map(c => <option key={c} value={c}>{c}</option>)}
+                                                </select>
+                                                {CLASS_DATA[draft.class] && (
+                                                    <div className="mt-0.5 flex justify-between text-[14px] text-[#4a5a4a] font-black uppercase px-1">
+                                                        <span>{CLASS_DATA[draft.class].hp} +con</span>
+                                                        <span>{CLASS_DATA[draft.class].primaryAttr}</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div>
+                                                <label className="text-[14px] text-[#4a5a4a] font-black uppercase">Nível</label>
+                                                <input type="number" min={1} max={20} className={numInputCls} value={draft.level ?? 1} onChange={(e) => updateDraft('level', Number(e.target.value))} />
+                                            </div>
+                                            <div>
+                                                <label className="text-[14px] text-[#4a5a4a] font-black uppercase">XP</label>
+                                                <input type="number" min={0} className={inputCls + " text-[#f1e5ac] text-center"} value={draft.experiencePoints ?? 0} onChange={(e) => updateDraft('experiencePoints', Number(e.target.value))} />
+                                            </div>
+                                            <div>
+                                                <label className="text-[14px] text-[#4a5a4a] font-black uppercase">Alinhamento</label>
+                                                <input className={inputCls} value={draft.alignment || ''} onChange={(e) => updateDraft('alignment', e.target.value)} />
+                                            </div>
+                                            <div>
+                                                <label className="text-[14px] text-[#4a5a4a] font-black uppercase">Antecedente</label>
+                                                <input className={inputCls} value={draft.background || ''} onChange={(e) => updateDraft('background', e.target.value)} />
+                                            </div>
+                                            <div>
+                                                <label className="text-[14px] text-[#4a5a4a] font-black uppercase">Bônus Prof.</label>
+                                                <input type="number" min={2} max={6} className={numInputCls} value={draft.proficiencyBonus ?? 2} onChange={(e) => updateDraft('proficiencyBonus', Number(e.target.value))} />
+                                            </div>
+                                            <div className="flex items-center gap-2 col-span-2 mt-1">
+                                                <input type="checkbox" id="inspiration" checked={!!draft.inspiration} onChange={(e) => updateDraft('inspiration', e.target.checked)} className="accent-[#00ff66] w-3 h-3 cursor-pointer" />
+                                                <label htmlFor="inspiration" className="text-[13px] text-[#4a5a4a] font-black uppercase cursor-pointer">Inspiração</label>
+                                            </div>
+                                        </div>
+
+                                        {/* CA e Iniciativa */}
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <div className="bg-[#0a150a] border-2 border-[#1a2a1a] rounded-xl p-3 text-center">
+                                                <Shield className="mx-auto text-[#00ff66] mb-1" size={16} />
+                                                <input type="number" min={0} className="w-full bg-transparent text-2xl font-black text-white text-center outline-none border-b border-[#1a2a1a] focus:border-[#00ff66]/50" value={draft.ac ?? 10} onChange={(e) => updateDraft('ac', Number(e.target.value))} />
+                                                <span className="text-[14px] text-[#4a5a4a] font-black uppercase">Armadura</span>
+                                            </div>
+                                            <div className="bg-[#0a150a] border-2 border-[#1a2a1a] rounded-xl p-3 text-center">
+                                                <Zap className="mx-auto text-[#f1e5ac] mb-1" size={16} />
+                                                <div className="text-2xl font-black text-white">
+                                                    {fmtMod(getModifier(draft.stats.dex))}
+                                                </div>
+                                                <span className="text-[14px] text-[#4a5a4a] font-black uppercase">Iniciativa</span>
+                                            </div>
+                                        </div>
+
+                                        {/* HP */}
+                                        <div className="bg-[#050a05] border border-[#1a2a1a] p-3 rounded-xl space-y-2">
+                                            <HealthBar current={draft.hp_current} max={draft.hp_max} />
                                             <div className="grid grid-cols-2 gap-2">
-                                                <input type="number" min={1} className={numInputCls} placeholder="Qtd" value={newInventoryItem.quantidade} onChange={(e) => setNewInventoryItem(prev => ({ ...prev, quantidade: e.target.value }))} />
-                                                <input className={inputCls} placeholder="Efeito (ex: Cura 2d4+2)" value={newInventoryItem.efeito} onChange={(e) => setNewInventoryItem(prev => ({ ...prev, efeito: e.target.value }))} />
+                                                <div>
+                                                    <label className="text-[14px] text-[#4a5a4a] font-black uppercase">HP Atual</label>
+                                                    <input type="number" className={numInputCls} value={draft.hp_current ?? 0} onChange={(e) => updateDraft('hp_current', Number(e.target.value))} />
+                                                </div>
+                                                <div>
+                                                    <label className="text-[14px] text-[#4a5a4a] font-black uppercase">HP Máx</label>
+                                                    <input type="number" className={numInputCls + " text-white"} value={draft.hp_max ?? 0} onChange={(e) => updateDraft('hp_max', Number(e.target.value))} />
+                                                </div>
                                             </div>
-                                        )}
-                                        {newInventoryItem.categoria === 'item' && (
-                                            <input className={inputCls} placeholder="Subtipo (ex: Ferramenta, Chave, Joia...)" value={newInventoryItem.tipo} onChange={(e) => setNewInventoryItem(prev => ({ ...prev, tipo: e.target.value }))} />
-                                        )}
-                                        <textarea className={inputCls + ' h-14 resize-none'} placeholder="Descricao (opcional)" value={newInventoryItem.desc} onChange={(e) => setNewInventoryItem(prev => ({ ...prev, desc: e.target.value }))} />
-                                        <div className="flex gap-2">
-                                            <button onClick={() => { addInventoryItem(); setShowInventoryForm(false); }} className="flex-1 bg-[#00ff66]/10 border border-[#00ff66]/20 text-[#00ff66] px-2 py-1.5 rounded hover:bg-[#00ff66]/20 transition-colors text-[12px] font-black uppercase">
-                                                {editingInventoryId !== null ? 'Salvar edicao' : 'Adicionar'}
-                                            </button>
-                                            <button onClick={() => { resetInventoryForm(); setShowInventoryForm(false); }} className="bg-black/40 border border-[#1a2a1a] text-[#4a5a4a] px-3 rounded hover:border-[#00ff66]/40 transition-colors text-[12px] font-black uppercase">Cancelar</button>
                                         </div>
                                     </div>
+
+                                    {/* COLUNA 2 */}
+                                    <div className="space-y-3">
+
+                                        {/* Atributos */}
+                                        <div className="grid grid-cols-2 gap-2">
+                                            {(['str', 'dex', 'con', 'int', 'wis', 'cha'] as const).map((s) => {
+                                                const mod = getModifier(draft.stats[s]);
+                                                return (
+                                                    <div
+                                                        key={s}
+                                                        onClick={() => rollD20(statLabels[s], mod)}
+                                                        title={`Rolar ${statLabels[s]}`}
+                                                        className="bg-black border border-[#1a2a1a] rounded-xl p-2 text-center group relative cursor-pointer hover:border-[#00ff66]/40 transition-colors"
+                                                    >
+                                                        <span className="text-[14px] text-[#4a5a4a] font-black uppercase">{statLabels[s]}</span>
+                                                        <input
+                                                            type="number" min={1} max={30}
+                                                            className="w-full bg-transparent text-xl font-black text-white text-center outline-none my-0.5 border-b border-[#1a2a1a] focus:border-[#00ff66]/50"
+                                                            value={draft.stats[s]}
+                                                            onClick={(e) => e.stopPropagation()}
+                                                            onChange={(e) => updateStat(s, Number(e.target.value))}
+                                                        />
+                                                        <div className="text-[#00ff66] text-[14px] font-black">{fmtMod(mod)}</div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+
+                                        {/* Salvaguardas */}
+                                        <div className="bg-black/40 border border-[#1a2a1a] p-3 rounded-xl">
+                                            <h3 className="text-[13px] text-[#4a5a4a] font-black uppercase mb-2 flex items-center gap-2">
+                                                <ShieldAlert size={11} /> Salvaguardas
+                                            </h3>
+                                            <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                                                {(['str', 'dex', 'con', 'int', 'wis', 'cha'] as const).map((s) => {
+                                                    const proficient = draft.savingThrows?.[s];
+                                                    const mod = getModifier(draft.stats[s]);
+                                                    const total = mod + (proficient ? (draft.proficiencyBonus ?? 2) : 0);
+                                                    return (
+                                                        <div
+                                                            key={s}
+                                                            onClick={() => rollD20(`Salv. ${statLabels[s]}`, total)}
+                                                            title={`Rolar salvaguarda de ${statLabels[s]}`}
+                                                            className="flex items-center justify-between border-b border-[#1a2a1a]/50 py-0.5 cursor-pointer hover:bg-white/5 rounded px-1 transition-colors"
+                                                        >
+                                                            <div className="flex items-center gap-1.5">
+                                                                <input type="checkbox" checked={!!proficient} onClick={(e) => e.stopPropagation()} onChange={() => toggleSavingThrow(s)} className="accent-[#00ff66] w-3 h-3 cursor-pointer" />
+                                                                <span className="text-[13px] uppercase text-gray-300">{statLabels[s]}</span>
+                                                            </div>
+                                                            <span className="text-[13px] font-black text-[#00ff66]">{fmtMod(total)}</span>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+
+                                        {/* Habilidades */}
+                                        <div className="bg-[#050a05] border border-[#1a2a1a] p-3 rounded-xl">
+                                            <h3 className="text-[#f1e5ac] text-[13px] font-black uppercase mb-3 flex items-center gap-2">
+                                                <Sparkles size={12} /> Habilidades
+                                            </h3>
+                                            <div className="max-h-[140px] overflow-y-auto space-y-1.5 pr-1 mb-2">
+                                                {RACE_DATA[draft.race]?.traits.split(', ').map((trait) => (
+                                                    <div key={trait} className="bg-[#0a1a0a] p-1.5 rounded border border-[#1a2a1a]/60 flex justify-between items-center">
+                                                        <span className="text-[13px] uppercase font-bold text-[#4a7a4a]">{trait}</span>
+                                                        <span className="text-[14px] text-[#2a4a2a] font-black uppercase">Raça</span>
+                                                    </div>
+                                                ))}
+                                                {RACE_DATA[draft.race]?.traits && draft.spells?.length > 0 && <div className="border-t border-[#1a2a1a] my-1" />}
+                                                {draft.spells?.map((spell: { id: number; name: string }) => (
+                                                    <div key={spell.id} className="bg-black/60 p-1.5 rounded border border-[#1a2a1a] flex justify-between items-center">
+                                                        <span className="text-[13px] uppercase font-bold text-gray-300">{spell.name}</span>
+                                                        <button onClick={() => removeSpell(spell.id)} className="text-red-500/60 hover:text-red-400 transition-colors ml-2 shrink-0"><Trash2 size={10} /></button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                    </div>
                                 </div>
-                            </div>
-                        </>
-                    )}
+
+                                {/* Perícias (fora das colunas) */}
+                                <div className={`bg-black border border-[#1a2a1a] p-3 rounded-xl mt-5 ${readOnly ? 'pointer-events-none select-none' : ''}`}>
+                                    <h3 className="text-[#f1e5ac] text-[13px] font-black uppercase mb-3 text-center">Perícias</h3>
+                                    <div className="grid grid-cols-2 gap-1">
+                                        {Object.entries(skillsData).map(([key, info]) => {
+                                            const mod = getModifier(draft.stats[info.attr]);
+                                            const proficient = draft.skills?.[key];
+                                            const total = mod + (proficient ? (draft.proficiencyBonus ?? 2) : 0);
+                                            return (
+                                                <div
+                                                    key={key}
+                                                    onClick={() => rollD20(info.name, total)}
+                                                    title={`Rolar ${info.name}`}
+                                                    className="flex items-center justify-between bg-black/40 px-2 py-1 rounded border border-[#1a2a1a] cursor-pointer hover:border-[#00ff66]/40 transition-colors"
+                                                >
+                                                    <div className="flex items-center gap-1.5 min-w-0">
+                                                        <input type="checkbox" checked={!!proficient} onClick={(e) => e.stopPropagation()} onChange={() => toggleSkill(key)} className="accent-[#00ff66] w-3 h-3 cursor-pointer shrink-0" />
+                                                        <span className="text-[13px] uppercase text-gray-300 leading-tight truncate">{info.name}</span>
+                                                    </div>
+                                                    <span className="text-[13px] font-black text-[#00ff66] ml-1 shrink-0">{fmtMod(total)}</span>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+
+                                {/* INVENTÁRIO */}
+                                <div className={`bg-[#050a05] border border-[#1a2a1a] p-3 rounded-xl mt-3 ${readOnly ? 'pointer-events-none select-none' : ''}`}>
+                                    <div className="flex items-center justify-between mb-2">
+                                        <h3 className="text-[#00ff66] text-[13px] font-black uppercase flex items-center gap-2">
+                                            <Box size={12} /> Inventário
+                                        </h3>
+                                        {!readOnly && (
+                                            <button
+                                                onClick={() => setShowInventoryForm(true)}
+                                                className="w-7 h-7 rounded-md bg-[#00ff66] text-black flex items-center justify-center text-base font-black transition-all hover:brightness-110 shadow-[0_0_8px_rgba(0,255,102,0.5)]"
+                                                title="Adicionar item"
+                                            >
+                                                <Plus size={14} />
+                                            </button>
+                                        )}
+                                    </div>
+
+                                    <div className="space-y-1.5">
+                                        {draft.inventory?.length ? draft.inventory.map((item: InventoryItem) => {
+                                            const isExpanded = expandedItemId === item.id;
+                                            const cat = item.categoria || 'item';
+                                            return (
+                                                <div key={item.id} className="bg-black/40 rounded-lg border border-[#1a2a1a] overflow-hidden">
+                                                    <div className="flex items-center gap-2 px-2 py-1.5">
+                                                        <div className="flex-1 min-w-0 cursor-pointer" onClick={() => setExpandedItemId(isExpanded ? null : item.id)}>
+                                                            <div className="flex items-center gap-2">
+                                                                {categoriaIcons[cat]}
+                                                                <span className="text-[13px] font-black uppercase text-gray-200 truncate">{item.nome || item.name || 'Item sem nome'}</span>
+                                                            </div>
+                                                            <div className="flex items-center gap-1.5 mt-0.5">
+                                                                <span className="text-[11px] uppercase text-gray-500 ml-5">{item.tipo || item.categoria || 'Item'}</span>
+                                                                {item.categoria === 'consumivel' && item.quantidade !== undefined && (
+                                                                    <span className="bg-purple-900/40 border border-purple-800/40 text-purple-300 px-1.5 rounded text-[10px] font-black">x{item.quantidade}</span>
+                                                                )}
+                                                                {item.categoria === 'armadura' && item.caBase !== undefined && (
+                                                                    <span className="bg-blue-900/40 border border-blue-800/40 text-blue-300 px-1.5 rounded text-[10px] font-black">CA {item.caBase}</span>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex gap-1 shrink-0">
+                                                            {item.ataque && (
+                                                                <button onClick={() => rollWeaponFormula(item.nome || item.name || 'arma', item.ataque ?? '', 'ataque', item.atributo)} className="bg-[#f1e5ac]/10 border border-[#f1e5ac]/20 text-[#f1e5ac] px-2 py-0.5 rounded text-[10px] font-black uppercase hover:bg-[#f1e5ac]/20 transition-colors">ATK</button>
+                                                            )}
+                                                            {item.dano && (
+                                                                <button onClick={() => rollWeaponFormula(item.nome || item.name || 'arma', item.dano ?? '', 'dano', item.atributo)} className="bg-[#1a0a0a] border border-red-900/20 text-red-400 px-2 py-0.5 rounded text-[10px] font-black uppercase hover:bg-red-600 hover:text-white transition-colors">DANO</button>
+                                                            )}
+                                                        </div>
+                                                        <button
+                                                            onClick={() => setExpandedItemId(isExpanded ? null : item.id)}
+                                                            className="w-6 h-6 flex items-center justify-center rounded-md border border-[#1a2a1a] text-[#4a5a4a] hover:border-[#00ff66]/40 hover:text-[#00ff66] transition-all shrink-0"
+                                                        >
+                                                            <span className={`text-[9px] transition-transform duration-200 inline-block ${isExpanded ? 'rotate-180' : 'rotate-0'}`}>▼</span>
+                                                        </button>
+                                                    </div>
+                                                    <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isExpanded ? 'max-h-80' : 'max-h-0'}`}>
+                                                        <div className="space-y-2 border-t border-[#1a2a1a] p-2 bg-black/20">
+                                                            {item.atributo && <span className="inline-block bg-[#f1e5ac]/10 border border-[#f1e5ac]/20 text-[#f1e5ac] px-2 py-0.5 rounded text-[11px] font-black uppercase">{weaponAttributeLabels[item.atributo]}</span>}
+                                                            {item.categoria === 'armadura' && (item.tipoArmadura || item.caBase !== undefined) && (
+                                                                <div className="flex flex-wrap gap-1.5">
+                                                                    {item.tipoArmadura && <span className="bg-blue-900/30 border border-blue-800/40 text-blue-300 px-2 py-0.5 rounded text-[11px] font-black uppercase">{item.tipoArmadura}</span>}
+                                                                    {item.caBase !== undefined && <span className="bg-blue-900/30 border border-blue-800/40 text-blue-300 px-2 py-0.5 rounded text-[11px] font-black uppercase">CA base: {item.caBase}</span>}
+                                                                </div>
+                                                            )}
+                                                            {item.categoria === 'consumivel' && item.efeito && <span className="inline-block bg-purple-900/30 border border-purple-800/40 text-purple-300 px-2 py-0.5 rounded text-[11px] font-black">Efeito: {item.efeito}</span>}
+                                                            {item.desc && <p className="text-[12px] text-gray-400 leading-relaxed">{item.desc}</p>}
+                                                            <div className="flex justify-end gap-3 pt-1">
+                                                                <button onClick={() => editInventoryItem(item)} className="flex items-center gap-1 text-[#00ff66] text-[11px] font-bold uppercase hover:text-white transition-colors"><Pencil size={11} /> Editar</button>
+                                                                <button onClick={() => removeInventoryItem(item.id)} className="flex items-center gap-1 text-red-500/70 text-[11px] font-bold uppercase hover:text-red-400 transition-colors"><Trash2 size={11} /> Excluir</button>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        }) : (
+                                            <p className="text-[13px] text-[#4a5a4a] py-2 text-center">Inventário vazio.</p>
+                                        )}
+                                    </div>
+                                </div>
+                            </>
+                        )}
+                    </div>
                 </div>
             </div>
-        </div>
+
+            {/* MODAL DE ADICIONAR/EDITAR ITEM (POPUP) */}
+            {showInventoryForm && (
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80" onClick={(e) => e.target === e.currentTarget && setShowInventoryForm(false)}>
+                    <div className="bg-[#0a120a] border border-[#1a2a1a] rounded-2xl p-5 w-[450px] max-w-[90vw] space-y-3 shadow-[0_0_50px_rgba(0,0,0,0.9)]">
+                        <div className="flex justify-between items-center border-b border-[#1a2a1a] pb-2">
+                            <h3 className="text-[#f1e5ac] text-sm font-black uppercase tracking-widest">
+                                {editingInventoryId !== null ? 'Editar Item' : 'Adicionar Item'}
+                            </h3>
+                            <button onClick={() => { resetInventoryForm(); setShowInventoryForm(false); }} className="text-[#4a5a4a] hover:text-red-400 transition-colors text-lg">&times;</button>
+                        </div>
+
+                        <div className="grid grid-cols-4 gap-1">
+                            {(Object.keys(CATEGORIA_LABELS) as ItemCategoria[]).map((cat) => (
+                                <button key={cat} onClick={() => setNewInventoryItem(prev => ({ ...prev, categoria: cat }))} className={`text-[10px] font-black uppercase py-1.5 rounded border transition-all ${newInventoryItem.categoria === cat ? 'bg-[#00ff66]/20 border-[#00ff66]/60 text-[#00ff66]' : 'bg-black/40 border-[#1a2a1a] text-[#4a5a4a] hover:border-[#00ff66]/30'}`}>
+                                    {CATEGORIA_LABELS[cat]}
+                                </button>
+                            ))}
+                        </div>
+
+                        <input className={inputCls} placeholder={newInventoryItem.categoria === 'arma' ? 'Nome da arma' : newInventoryItem.categoria === 'armadura' ? 'Nome da armadura' : newInventoryItem.categoria === 'consumivel' ? 'Nome do consumível' : 'Nome do item'} value={newInventoryItem.nome} onChange={(e) => setNewInventoryItem(prev => ({ ...prev, nome: e.target.value }))} />
+
+                        {newInventoryItem.categoria === 'arma' && (
+                            <>
+                                <select className={selectCls} value={newInventoryItem.atributo} onChange={(e) => setNewInventoryItem(prev => ({ ...prev, atributo: e.target.value as WeaponAttribute }))}>
+                                    <option value="">Sem atributo</option>
+                                    {WEAPON_ATTRIBUTE_OPTIONS.map((opt) => <option key={opt} value={opt}>{weaponAttributeLabels[opt]}</option>)}
+                                </select>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <input className={inputCls} placeholder="ATK (ex: 1d20+3)" value={newInventoryItem.ataque} onChange={(e) => setNewInventoryItem(prev => ({ ...prev, ataque: e.target.value }))} />
+                                    <input className={inputCls} placeholder="DANO (ex: 1d8+3)" value={newInventoryItem.dano} onChange={(e) => setNewInventoryItem(prev => ({ ...prev, dano: e.target.value }))} />
+                                </div>
+                            </>
+                        )}
+
+                        {newInventoryItem.categoria === 'armadura' && (
+                            <div className="grid grid-cols-2 gap-2">
+                                <select className={selectCls} value={newInventoryItem.tipoArmadura} onChange={(e) => setNewInventoryItem(prev => ({ ...prev, tipoArmadura: e.target.value }))}>
+                                    <option value="">Tipo de armadura</option>
+                                    {TIPO_ARMADURA_OPTIONS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                                </select>
+                                <input type="number" min={0} className={numInputCls} placeholder="CA base" value={newInventoryItem.caBase} onChange={(e) => setNewInventoryItem(prev => ({ ...prev, caBase: e.target.value }))} />
+                            </div>
+                        )}
+
+                        {newInventoryItem.categoria === 'consumivel' && (
+                            <div className="grid grid-cols-2 gap-2">
+                                <input type="number" min={1} className={numInputCls} placeholder="Qtd" value={newInventoryItem.quantidade} onChange={(e) => setNewInventoryItem(prev => ({ ...prev, quantidade: e.target.value }))} />
+                                <input className={inputCls} placeholder="Efeito (ex: Cura 2d4+2)" value={newInventoryItem.efeito} onChange={(e) => setNewInventoryItem(prev => ({ ...prev, efeito: e.target.value }))} />
+                            </div>
+                        )}
+
+                        {newInventoryItem.categoria === 'item' && (
+                            <input className={inputCls} placeholder="Subtipo (ex: Ferramenta, Chave, Joia...)" value={newInventoryItem.tipo} onChange={(e) => setNewInventoryItem(prev => ({ ...prev, tipo: e.target.value }))} />
+                        )}
+
+                        <textarea className={inputCls + ' h-14 resize-none'} placeholder="Descrição (opcional)" value={newInventoryItem.desc} onChange={(e) => setNewInventoryItem(prev => ({ ...prev, desc: e.target.value }))} />
+
+                        <div className="flex gap-2">
+                            <button
+                                onClick={addInventoryItem}
+                                className="flex-1 bg-[#00ff66] text-black px-2 py-1.5 rounded hover:brightness-110 transition-colors text-[12px] font-black uppercase"
+                            >
+                                {editingInventoryId !== null ? 'Salvar edição' : 'Adicionar'}
+                            </button>
+                            <button onClick={() => { resetInventoryForm(); setShowInventoryForm(false); }} className="bg-black/40 border border-[#1a2a1a] text-[#4a5a4a] px-4 rounded hover:border-[#00ff66]/40 transition-colors text-[12px] font-black uppercase">Cancelar</button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </>
     );
 }
