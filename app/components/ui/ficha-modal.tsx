@@ -614,21 +614,19 @@ return (
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     {/* LEFT - occupy half modal */}
                                     <div className="space-y-3">
-                                        <div className="flex items-end justify-start gap-4">
-                                            <div className="flex flex-col items-center gap-2">
-                                                <div
-                                                    className="w-40 h-56 shrink-0 rounded-2xl border border-[#1a2a1a] bg-black bg-cover bg-center cursor-pointer overflow-hidden relative group shadow-[inset_0_0_0_1px_rgba(255,255,255,0.03)]"
-                                                    style={{
-                                                        backgroundImage: `url(${draft.img || '/placeholder.png'})`,
-                                                        backgroundPosition: `${draft.imgOffsetX ?? 50}% ${draft.imgOffsetY ?? 50}%`
-                                                    }}
-                                                    onClick={openFraming}
-                                                >
-                                                    <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/15 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                                                </div>
+                                        <div className="flex flex-col items-start gap-3">
+                                            <div
+                                                className="w-40 h-40 shrink-0 rounded-2xl border border-[#1a2a1a] bg-black bg-cover bg-center cursor-pointer overflow-hidden relative group shadow-[inset_0_0_0_1px_rgba(255,255,255,0.03)]"
+                                                style={{
+                                                    backgroundImage: `url(${draft.img || '/placeholder.png'})`,
+                                                    backgroundPosition: `${draft.imgOffsetX ?? 50}% ${draft.imgOffsetY ?? 50}%`
+                                                }}
+                                                onClick={openFraming}
+                                            >
+                                                <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/15 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                                             </div>
 
-                                            <div className="flex flex-col gap-2 translate-y-7">
+                                            <div className="flex gap-2">
                                                 <div className="rounded-2xl border border-[#1a2a1a] bg-[#0a120a] p-2 text-center shadow-[0_0_12px_rgba(0,0,0,0.2)] w-20">
                                                     <span className="block text-[10px] font-black uppercase tracking-[0.2em] text-[#4a5a4a]">Nível</span>
                                                     <input
