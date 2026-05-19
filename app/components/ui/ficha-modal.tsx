@@ -614,92 +614,115 @@ return (
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     {/* LEFT - occupy half modal */}
                                     <div className="space-y-3">
-                                        <div className="flex items-start gap-4">
-                                            <div
-                                                className="w-40 h-56 shrink-0 rounded-2xl border border-[#1a2a1a] bg-black bg-cover bg-center cursor-pointer overflow-hidden relative group shadow-[inset_0_0_0_1px_rgba(255,255,255,0.03)]"
-                                                style={{
-                                                    backgroundImage: `url(${draft.img || '/placeholder.png'})`,
-                                                    backgroundPosition: `${draft.imgOffsetX ?? 50}% ${draft.imgOffsetY ?? 50}%`
-                                                }}
-                                                onClick={openFraming}
-                                            >
-                                                <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/15 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                                        <div className="flex items-end justify-start gap-4">
+                                            <div className="flex flex-col items-center gap-2">
+                                                <div
+                                                    className="w-40 h-56 shrink-0 rounded-2xl border border-[#1a2a1a] bg-black bg-cover bg-center cursor-pointer overflow-hidden relative group shadow-[inset_0_0_0_1px_rgba(255,255,255,0.03)]"
+                                                    style={{
+                                                        backgroundImage: `url(${draft.img || '/placeholder.png'})`,
+                                                        backgroundPosition: `${draft.imgOffsetX ?? 50}% ${draft.imgOffsetY ?? 50}%`
+                                                    }}
+                                                    onClick={openFraming}
+                                                >
+                                                    <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/15 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                </div>
                                             </div>
 
-                                            <div className="flex flex-col gap-2 flex-1">
-                                                <div className="flex gap-2">
-                                                    <div className="rounded-2xl border border-[#1a2a1a] bg-[#0a120a] p-2 text-center shadow-[0_0_12px_rgba(0,0,0,0.2)] w-20">
-                                                        <span className="block text-[10px] font-black uppercase tracking-[0.2em] text-[#4a5a4a]">Nível</span>
-                                                        <input
-                                                            type="number"
-                                                            min={1}
-                                                            max={20}
-                                                            className="mt-1 w-full bg-transparent text-2xl font-black text-white text-center outline-none"
-                                                            value={levelValue}
-                                                            onChange={(e) => updateDraft('level', Number(e.target.value))}
-                                                        />
-                                                    </div>
-                                                    <div className="rounded-2xl border border-[#1a2a1a] bg-[#0a120a] p-2 text-center shadow-[0_0_12px_rgba(0,0,0,0.2)] w-24">
-                                                        <span className="block text-[10px] font-black uppercase tracking-[0.2em] text-[#4a5a4a]">XP</span>
+                                            <div className="flex flex-col gap-2 translate-y-7">
+                                                <div className="rounded-2xl border border-[#1a2a1a] bg-[#0a120a] p-2 text-center shadow-[0_0_12px_rgba(0,0,0,0.2)] w-20">
+                                                    <span className="block text-[10px] font-black uppercase tracking-[0.2em] text-[#4a5a4a]">Nível</span>
+                                                    <input
+                                                        type="number"
+                                                        min={1}
+                                                        max={20}
+                                                        className="mt-1 w-full bg-transparent text-2xl font-black text-white text-center outline-none"
+                                                        value={levelValue}
+                                                        onChange={(e) => updateDraft('level', Number(e.target.value))}
+                                                    />
+                                                </div>
+                                                <div className="rounded-2xl border border-[#1a2a1a] bg-[#0a120a] p-2 text-center shadow-[0_0_12px_rgba(0,0,0,0.2)] w-24">
+                                                    <span className="block text-[10px] font-black uppercase tracking-[0.2em] text-[#4a5a4a]">XP</span>
+                                                    <input
+                                                        type="number"
+                                                        min={0}
+                                                        className="mt-1 w-full bg-transparent text-lg font-black text-[#f1e5ac] text-center outline-none"
+                                                        value={xpValue}
+                                                        onChange={(e) => updateDraft('experiencePoints', Number(e.target.value))}
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-1">
+                                            <label className="text-[11px] text-[#4a5a4a] font-black uppercase tracking-widest block text-left">Nome</label>
+                                            <input className={inputCls + " text-left text-2xl font-black"} value={draft.name} onChange={(e) => updateDraft('name', e.target.value)} />
+                                        </div>
+
+                                        <div className="flex gap-2 flex-wrap">
+                                            <span className="inline-flex items-center gap-2 rounded-full border border-[#1a2a1a] bg-[#0a120a] px-2 py-0.5 text-[10px] font-black uppercase tracking-widest text-[#4a5a4a]">
+                                                Raça: <span className="text-[#00ff66]">{draft.race}</span>
+                                            </span>
+                                            <span className="inline-flex items-center gap-2 rounded-full border border-[#1a2a1a] bg-[#0a120a] px-2 py-0.5 text-[10px] font-black uppercase tracking-widest text-[#4a5a4a]">
+                                                Classe: <span className="text-[#f1e5ac]">{draft.class}</span>
+                                            </span>
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <div className="w-full space-y-2">
+                                                <div className="flex justify-between items-center text-[11px] sm:text-[12px] font-black uppercase tracking-widest text-[#4a5a4a]">
+                                                    <span>Pontos de Vida</span>
+                                                    <span className="text-[#f1e5ac]">{hpCurrent} / {hpMax}</span>
+                                                </div>
+                                                <div className="relative w-full h-3 bg-black border border-[#1a2a1a] rounded-full overflow-hidden shadow-[inset_0_0_8px_rgba(0,0,0,0.55)]">
+                                                    <div className={`absolute inset-y-0 left-0 ${hpMax > 0 ? (hpCurrent / hpMax * 100 > 50 ? 'bg-[#00ff66]' : hpCurrent / hpMax * 100 > 20 ? 'bg-yellow-500' : 'bg-red-600') : 'bg-red-600'} transition-all duration-500`} style={{ width: `${Math.min(Math.max(hpMax > 0 ? (hpCurrent / hpMax * 100) : 0, 0), 100)}%` }} />
+                                                </div>
+                                                <div className="grid grid-cols-2 gap-2">
+                                                    <div>
+                                                        <label className="text-[10px] font-black uppercase tracking-[0.2em] text-[#4a5a4a] block mb-1">Vida atual</label>
                                                         <input
                                                             type="number"
                                                             min={0}
-                                                            className="mt-1 w-full bg-transparent text-lg font-black text-[#f1e5ac] text-center outline-none"
-                                                            value={xpValue}
-                                                            onChange={(e) => updateDraft('experiencePoints', Number(e.target.value))}
+                                                            className="w-full bg-black/50 border border-[#1a2a1a] rounded-lg px-2 py-1 text-base font-black text-white text-center outline-none focus:border-[#00ff66]/50"
+                                                            value={draft.hp_current}
+                                                            onChange={(e) => updateDraft('hp_current', Number(e.target.value))}
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label className="text-[10px] font-black uppercase tracking-[0.2em] text-[#4a5a4a] block mb-1">Vida máxima</label>
+                                                        <input
+                                                            type="number"
+                                                            min={1}
+                                                            className="w-full bg-black/50 border border-[#1a2a1a] rounded-lg px-2 py-1 text-base font-black text-white text-center outline-none focus:border-[#00ff66]/50"
+                                                            value={draft.hp_max}
+                                                            onChange={(e) => updateDraft('hp_max', Number(e.target.value))}
                                                         />
                                                     </div>
                                                 </div>
+                                            </div>
 
-                                                <div className="space-y-1">
-                                                    <label className="text-[11px] text-[#4a5a4a] font-black uppercase tracking-widest">Nome</label>
-                                                    <input className={inputCls + " text-left text-lg font-black"} value={draft.name} onChange={(e) => updateDraft('name', e.target.value)} />
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <div className="rounded-2xl border border-[#1a2a1a] bg-[#0a150a] p-2 text-center">
+                                                    <Shield className="mx-auto text-[#00ff66] mb-1" size={16} />
+                                                    <input
+                                                        type="number"
+                                                        min={0}
+                                                        className="w-full bg-transparent text-2xl font-black text-white text-center outline-none"
+                                                        value={draft.ac ?? 10}
+                                                        onChange={(e) => updateDraft('ac', Number(e.target.value))}
+                                                    />
+                                                    <span className="mt-1 block text-[10px] font-black uppercase tracking-[0.2em] text-[#4a5a4a]">CA</span>
                                                 </div>
-
-                                                <div className="flex gap-2">
-                                                    <span className="inline-flex items-center gap-2 rounded-full border border-[#1a2a1a] bg-[#0a120a] px-2 py-0.5 text-[10px] font-black uppercase tracking-widest text-[#4a5a4a]">
-                                                        Raça: <span className="text-[#00ff66]">{draft.race}</span>
-                                                    </span>
-                                                    <span className="inline-flex items-center gap-2 rounded-full border border-[#1a2a1a] bg-[#0a120a] px-2 py-0.5 text-[10px] font-black uppercase tracking-widest text-[#4a5a4a]">
-                                                        Classe: <span className="text-[#f1e5ac]">{draft.class}</span>
-                                                    </span>
-                                                </div>
-
-                                                <div className="space-y-2">
-                                                    <div className="w-full">
-                                                        <div className="flex justify-between items-center text-[11px] sm:text-[12px] font-black uppercase tracking-widest text-[#4a5a4a]">
-                                                            <span>Pontos de Vida</span>
-                                                            <span className="text-[#f1e5ac]">{hpCurrent} / {hpMax}</span>
-                                                        </div>
-                                                        <div className="relative w-full h-3 bg-black border border-[#1a2a1a] rounded-full overflow-hidden shadow-[inset_0_0_8px_rgba(0,0,0,0.55)] mt-1">
-                                                            <div className={`absolute inset-y-0 left-0 ${hpMax>0? (hpCurrent/hpMax*100>50? 'bg-[#00ff66]': hpCurrent/hpMax*100>20? 'bg-yellow-500':'bg-red-600') : 'bg-red-600'} transition-all duration-500`} style={{ width: `${Math.min(Math.max(hpMax>0? (hpCurrent/hpMax*100):0,0),100)}%` }} />
-                                                        </div>
-                                                    </div>
-
-                                                    <div className="grid grid-cols-2 gap-2">
-                                                        <div className="rounded-2xl border border-[#1a2a1a] bg-[#0a150a] p-2 text-center">
-                                                            <Shield className="mx-auto text-[#00ff66] mb-1" size={16} />
-                                                            <input
-                                                                type="number"
-                                                                min={0}
-                                                                className="w-full bg-transparent text-2xl font-black text-white text-center outline-none"
-                                                                value={draft.ac ?? 10}
-                                                                onChange={(e) => updateDraft('ac', Number(e.target.value))}
-                                                            />
-                                                            <span className="mt-1 block text-[10px] font-black uppercase tracking-[0.2em] text-[#4a5a4a]">CA</span>
-                                                        </div>
-                                                        <div className="rounded-2xl border border-[#1a2a1a] bg-[#0a150a] p-2 text-center flex flex-col">
-                                                            <Zap className="mx-auto text-[#f1e5ac] mb-1" size={16} />
-                                                            <div className="text-2xl font-black text-white leading-none">{initiativeValue}</div>
-                                                            <span className="mt-1 block text-[10px] font-black uppercase tracking-[0.2em] text-[#4a5a4a]">Iniciativa</span>
-                                                            <label className="mt-2 inline-flex items-center justify-center gap-2 rounded-full border border-[#1a2a1a] bg-black/40 px-2 py-1 text-[10px] font-black uppercase tracking-[0.2em] text-[#4a5a4a]">
-                                                                <input type="checkbox" id="inspiration" checked={!!draft.inspiration} onChange={(e) => updateDraft('inspiration', e.target.checked)} className="accent-[#00ff66] w-3 h-3 cursor-pointer" />
-                                                                Inspiração
-                                                            </label>
-                                                        </div>
-                                                    </div>
+                                                <div className="rounded-2xl border border-[#1a2a1a] bg-[#0a150a] p-2 text-center flex flex-col">
+                                                    <Zap className="mx-auto text-[#f1e5ac] mb-1" size={16} />
+                                                    <div className="text-2xl font-black text-white leading-none">{initiativeValue}</div>
+                                                    <span className="mt-1 block text-[10px] font-black uppercase tracking-[0.2em] text-[#4a5a4a]">Iniciativa</span>
                                                 </div>
                                             </div>
+
+                                            <label className="inline-flex items-center justify-center gap-2 rounded-full border border-[#1a2a1a] bg-black/40 px-3 py-1 text-[10px] font-black uppercase tracking-[0.2em] text-[#4a5a4a] w-fit">
+                                                <input type="checkbox" id="inspiration" checked={!!draft.inspiration} onChange={(e) => updateDraft('inspiration', e.target.checked)} className="accent-[#00ff66] w-3 h-3 cursor-pointer" />
+                                                Inspiração
+                                            </label>
                                         </div>
                                     </div>
 
