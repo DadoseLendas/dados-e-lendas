@@ -611,189 +611,183 @@ return (
                             </div>
 
                             <div className="bg-black/65 border border-[#1a2a1a] rounded-2xl p-3 sm:p-4 space-y-4 shadow-[0_0_24px_rgba(0,0,0,0.35)] mb-6">
-                                <div className="flex flex-col sm:flex-row gap-3 items-start">
-                                    <div className="flex gap-3 items-start w-full sm:w-auto">
-                                        <div
-                                            className="w-[168px] h-[220px] shrink-0 rounded-2xl border border-[#1a2a1a] bg-black bg-cover bg-center cursor-pointer overflow-hidden relative group shadow-[inset_0_0_0_1px_rgba(255,255,255,0.03)]"
-                                            style={{
-                                                backgroundImage: `url(${draft.img || '/placeholder.png'})`,
-                                                backgroundPosition: `${draft.imgOffsetX ?? 50}% ${draft.imgOffsetY ?? 50}%`
-                                            }}
-                                            onClick={openFraming}
-                                        >
-                                            <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/15 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                                            <div className="absolute inset-x-0 bottom-0 p-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <span className="inline-flex max-w-full rounded-full border border-[#00ff66]/40 bg-black/70 px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-[#00ff66]">
-                                                    Ajustar enquadramento
-                                                </span>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {/* LEFT - occupy half modal */}
+                                    <div className="space-y-3">
+                                        <div className="flex items-start gap-4">
+                                            <div
+                                                className="w-40 h-56 shrink-0 rounded-2xl border border-[#1a2a1a] bg-black bg-cover bg-center cursor-pointer overflow-hidden relative group shadow-[inset_0_0_0_1px_rgba(255,255,255,0.03)]"
+                                                style={{
+                                                    backgroundImage: `url(${draft.img || '/placeholder.png'})`,
+                                                    backgroundPosition: `${draft.imgOffsetX ?? 50}% ${draft.imgOffsetY ?? 50}%`
+                                                }}
+                                                onClick={openFraming}
+                                            >
+                                                <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/15 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                                             </div>
-                                        </div>
 
-                                        <div className="flex flex-col gap-2 w-24 shrink-0">
-                                            <div className="rounded-2xl border border-[#1a2a1a] bg-[#0a120a] p-2.5 text-center shadow-[0_0_18px_rgba(0,0,0,0.25)]">
-                                                <span className="block text-[10px] font-black uppercase tracking-[0.2em] text-[#4a5a4a]">Nível</span>
-                                                <input
-                                                    type="number"
-                                                    min={1}
-                                                    max={20}
-                                                    className="mt-1 w-full bg-transparent text-3xl font-black text-white text-center outline-none"
-                                                    value={levelValue}
-                                                    onChange={(e) => updateDraft('level', Number(e.target.value))}
-                                                />
-                                            </div>
-                                            <div className="rounded-2xl border border-[#1a2a1a] bg-[#0a120a] p-2.5 text-center shadow-[0_0_18px_rgba(0,0,0,0.25)]">
-                                                <span className="block text-[10px] font-black uppercase tracking-[0.2em] text-[#4a5a4a]">XP</span>
-                                                <input
-                                                    type="number"
-                                                    min={0}
-                                                    className="mt-1 w-full bg-transparent text-[20px] font-black text-[#f1e5ac] text-center outline-none"
-                                                    value={xpValue}
-                                                    onChange={(e) => updateDraft('experiencePoints', Number(e.target.value))}
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="space-y-3">
-                                    <div className="space-y-1">
-                                        <label className="text-[11px] text-[#4a5a4a] font-black uppercase tracking-widest">Nome</label>
-                                        <input className={inputCls + " text-center text-lg sm:text-xl font-black"} value={draft.name} onChange={(e) => updateDraft('name', e.target.value)} />
-                                    </div>
-
-                                    <div className="flex flex-wrap gap-2">
-                                        <span className="inline-flex items-center gap-2 rounded-full border border-[#1a2a1a] bg-[#0a120a] px-3 py-1 text-[11px] font-black uppercase tracking-widest text-[#4a5a4a]">
-                                            Raça: <span className="text-[#00ff66]">{draft.race}</span>
-                                        </span>
-                                        <span className="inline-flex items-center gap-2 rounded-full border border-[#1a2a1a] bg-[#0a120a] px-3 py-1 text-[11px] font-black uppercase tracking-widest text-[#4a5a4a]">
-                                            Classe: <span className="text-[#f1e5ac]">{draft.class}</span>
-                                        </span>
-                                    </div>
-
-                                    <div className="space-y-2">
-                                        <HealthBar current={hpCurrent} max={hpMax} />
-                                        <div className="grid grid-cols-2 gap-2 sm:gap-3">
-                                            <div className="rounded-2xl border border-[#1a2a1a] bg-[#0a150a] p-3 text-center">
-                                                <Shield className="mx-auto text-[#00ff66] mb-2" size={18} />
-                                                <input
-                                                    type="number"
-                                                    min={0}
-                                                    className="w-full bg-transparent text-3xl font-black text-white text-center outline-none"
-                                                    value={draft.ac ?? 10}
-                                                    onChange={(e) => updateDraft('ac', Number(e.target.value))}
-                                                />
-                                                <span className="mt-1 block text-[10px] font-black uppercase tracking-[0.2em] text-[#4a5a4a]">Classe de Armadura</span>
-                                            </div>
-                                            <div className="rounded-2xl border border-[#1a2a1a] bg-[#0a150a] p-3 text-center flex flex-col">
-                                                <Zap className="mx-auto text-[#f1e5ac] mb-2" size={18} />
-                                                <div className="text-3xl font-black text-white leading-none">{initiativeValue}</div>
-                                                <span className="mt-1 block text-[10px] font-black uppercase tracking-[0.2em] text-[#4a5a4a]">Iniciativa</span>
-                                                <label className="mt-3 inline-flex items-center justify-center gap-2 rounded-full border border-[#1a2a1a] bg-black/40 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-[#4a5a4a]">
-                                                    <input type="checkbox" id="inspiration" checked={!!draft.inspiration} onChange={(e) => updateDraft('inspiration', e.target.checked)} className="accent-[#00ff66] w-3 h-3 cursor-pointer" />
-                                                    Inspiração
-                                                </label>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                                        <div>
-                                            <label className="text-[11px] text-[#4a5a4a] font-black uppercase tracking-widest">Alinhamento</label>
-                                            <input className={inputCls} value={draft.alignment || ''} onChange={(e) => updateDraft('alignment', e.target.value)} />
-                                        </div>
-                                        <div>
-                                            <label className="text-[11px] text-[#4a5a4a] font-black uppercase tracking-widest">Antecedente</label>
-                                            <input className={inputCls} value={draft.background || ''} onChange={(e) => updateDraft('background', e.target.value)} />
-                                        </div>
-                                        <div>
-                                            <label className="text-[11px] text-[#4a5a4a] font-black uppercase tracking-widest">Bônus Prof.</label>
-                                            <input type="number" min={2} max={6} className={numInputCls} value={draft.proficiencyBonus ?? 2} onChange={(e) => updateDraft('proficiencyBonus', Number(e.target.value))} />
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Grid de Atributos, Salvaguardas e Habilidades */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="space-y-3">
-                                    {/* Atributos */}
-                                    <div className="grid grid-cols-2 gap-2">
-                                        {(['str', 'dex', 'con', 'int', 'wis', 'cha'] as const).map((s) => {
-                                            const mod = getModifier(draft.stats[s]);
-                                            return (
-                                                <div
-                                                    key={s}
-                                                    onClick={() => rollD20(statLabels[s], mod)}
-                                                    title={`Rolar ${statLabels[s]}`}
-                                                    className="bg-black border border-[#1a2a1a] rounded-xl p-2 text-center group relative cursor-pointer hover:border-[#00ff66]/40 transition-colors"
-                                                >
-                                                    <span className="text-[14px] text-[#4a5a4a] font-black uppercase">{statLabels[s]}</span>
-                                                    <input
-                                                        type="number" min={1} max={30}
-                                                        className="w-full bg-transparent text-xl font-black text-white text-center outline-none my-0.5 border-b border-[#1a2a1a] focus:border-[#00ff66]/50"
-                                                        value={draft.stats[s]}
-                                                        onClick={(e) => e.stopPropagation()}
-                                                        onChange={(e) => updateStat(s, Number(e.target.value))}
-                                                    />
-                                                    <div className="text-[#00ff66] text-[14px] font-black">{fmtMod(mod)}</div>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                </div>
-
-                                <div className="space-y-3">
-                                    {/* Salvaguardas */}
-                                    <div className="bg-black/40 border border-[#1a2a1a] p-3 rounded-xl">
-                                        <h3 className="text-[13px] text-[#4a5a4a] font-black uppercase mb-2 flex items-center gap-2">
-                                            <ShieldAlert size={11} /> Salvaguardas
-                                        </h3>
-                                        <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-                                            {(['str', 'dex', 'con', 'int', 'wis', 'cha'] as const).map((s) => {
-                                                const proficient = draft.savingThrows?.[s];
-                                                const mod = getModifier(draft.stats[s]);
-                                                const total = mod + (proficient ? (draft.proficiencyBonus ?? 2) : 0);
-                                                return (
-                                                    <div
-                                                        key={s}
-                                                        onClick={() => rollD20(`Salv. ${statLabels[s]}`, total)}
-                                                        title={`Rolar salvaguarda de ${statLabels[s]}`}
-                                                        className="flex items-center justify-between border-b border-[#1a2a1a]/50 py-0.5 cursor-pointer hover:bg-white/5 rounded px-1 transition-colors"
-                                                    >
-                                                        <div className="flex items-center gap-1.5">
-                                                            <input type="checkbox" checked={!!proficient} onClick={(e) => e.stopPropagation()} onChange={() => toggleSavingThrow(s)} className="accent-[#00ff66] w-3 h-3 cursor-pointer" />
-                                                            <span className="text-[13px] uppercase text-gray-300">{statLabels[s]}</span>
-                                                        </div>
-                                                        <span className="text-[13px] font-black text-[#00ff66]">{fmtMod(total)}</span>
+                                            <div className="flex flex-col gap-2 flex-1">
+                                                <div className="flex gap-2">
+                                                    <div className="rounded-2xl border border-[#1a2a1a] bg-[#0a120a] p-2 text-center shadow-[0_0_12px_rgba(0,0,0,0.2)] w-20">
+                                                        <span className="block text-[10px] font-black uppercase tracking-[0.2em] text-[#4a5a4a]">Nível</span>
+                                                        <input
+                                                            type="number"
+                                                            min={1}
+                                                            max={20}
+                                                            className="mt-1 w-full bg-transparent text-2xl font-black text-white text-center outline-none"
+                                                            value={levelValue}
+                                                            onChange={(e) => updateDraft('level', Number(e.target.value))}
+                                                        />
                                                     </div>
-                                                );
-                                            })}
+                                                    <div className="rounded-2xl border border-[#1a2a1a] bg-[#0a120a] p-2 text-center shadow-[0_0_12px_rgba(0,0,0,0.2)] w-24">
+                                                        <span className="block text-[10px] font-black uppercase tracking-[0.2em] text-[#4a5a4a]">XP</span>
+                                                        <input
+                                                            type="number"
+                                                            min={0}
+                                                            className="mt-1 w-full bg-transparent text-lg font-black text-[#f1e5ac] text-center outline-none"
+                                                            value={xpValue}
+                                                            onChange={(e) => updateDraft('experiencePoints', Number(e.target.value))}
+                                                        />
+                                                    </div>
+                                                </div>
+
+                                                <div className="space-y-1">
+                                                    <label className="text-[11px] text-[#4a5a4a] font-black uppercase tracking-widest">Nome</label>
+                                                    <input className={inputCls + " text-left text-lg font-black"} value={draft.name} onChange={(e) => updateDraft('name', e.target.value)} />
+                                                </div>
+
+                                                <div className="flex gap-2">
+                                                    <span className="inline-flex items-center gap-2 rounded-full border border-[#1a2a1a] bg-[#0a120a] px-2 py-0.5 text-[10px] font-black uppercase tracking-widest text-[#4a5a4a]">
+                                                        Raça: <span className="text-[#00ff66]">{draft.race}</span>
+                                                    </span>
+                                                    <span className="inline-flex items-center gap-2 rounded-full border border-[#1a2a1a] bg-[#0a120a] px-2 py-0.5 text-[10px] font-black uppercase tracking-widest text-[#4a5a4a]">
+                                                        Classe: <span className="text-[#f1e5ac]">{draft.class}</span>
+                                                    </span>
+                                                </div>
+
+                                                <div className="space-y-2">
+                                                    <div className="w-full">
+                                                        <div className="flex justify-between items-center text-[11px] sm:text-[12px] font-black uppercase tracking-widest text-[#4a5a4a]">
+                                                            <span>Pontos de Vida</span>
+                                                            <span className="text-[#f1e5ac]">{hpCurrent} / {hpMax}</span>
+                                                        </div>
+                                                        <div className="relative w-full h-3 bg-black border border-[#1a2a1a] rounded-full overflow-hidden shadow-[inset_0_0_8px_rgba(0,0,0,0.55)] mt-1">
+                                                            <div className={`absolute inset-y-0 left-0 ${hpMax>0? (hpCurrent/hpMax*100>50? 'bg-[#00ff66]': hpCurrent/hpMax*100>20? 'bg-yellow-500':'bg-red-600') : 'bg-red-600'} transition-all duration-500`} style={{ width: `${Math.min(Math.max(hpMax>0? (hpCurrent/hpMax*100):0,0),100)}%` }} />
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="grid grid-cols-2 gap-2">
+                                                        <div className="rounded-2xl border border-[#1a2a1a] bg-[#0a150a] p-2 text-center">
+                                                            <Shield className="mx-auto text-[#00ff66] mb-1" size={16} />
+                                                            <input
+                                                                type="number"
+                                                                min={0}
+                                                                className="w-full bg-transparent text-2xl font-black text-white text-center outline-none"
+                                                                value={draft.ac ?? 10}
+                                                                onChange={(e) => updateDraft('ac', Number(e.target.value))}
+                                                            />
+                                                            <span className="mt-1 block text-[10px] font-black uppercase tracking-[0.2em] text-[#4a5a4a]">CA</span>
+                                                        </div>
+                                                        <div className="rounded-2xl border border-[#1a2a1a] bg-[#0a150a] p-2 text-center flex flex-col">
+                                                            <Zap className="mx-auto text-[#f1e5ac] mb-1" size={16} />
+                                                            <div className="text-2xl font-black text-white leading-none">{initiativeValue}</div>
+                                                            <span className="mt-1 block text-[10px] font-black uppercase tracking-[0.2em] text-[#4a5a4a]">Iniciativa</span>
+                                                            <label className="mt-2 inline-flex items-center justify-center gap-2 rounded-full border border-[#1a2a1a] bg-black/40 px-2 py-1 text-[10px] font-black uppercase tracking-[0.2em] text-[#4a5a4a]">
+                                                                <input type="checkbox" id="inspiration" checked={!!draft.inspiration} onChange={(e) => updateDraft('inspiration', e.target.checked)} className="accent-[#00ff66] w-3 h-3 cursor-pointer" />
+                                                                Inspiração
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
 
-                                    {/* Habilidades */}
-                                    <div className="bg-[#050a05] border border-[#1a2a1a] p-3 rounded-xl">
-                                        <h3 className="text-[#f1e5ac] text-[13px] font-black uppercase mb-3 flex items-center gap-2">
-                                            <Sparkles size={12} /> Habilidades
-                                        </h3>
-                                        <div className="max-h-[140px] overflow-y-auto space-y-1.5 pr-1 mb-2">
-                                            {RACE_DATA[draft.race]?.traits.split(', ').map((trait) => (
-                                                <div key={trait} className="bg-[#0a1a0a] p-1.5 rounded border border-[#1a2a1a]/60 flex justify-between items-center">
-                                                    <span className="text-[13px] uppercase font-bold text-[#4a7a4a]">{trait}</span>
-                                                    <span className="text-[14px] text-[#2a4a2a] font-black uppercase">Raça</span>
+                                    {/* RIGHT - Attributes, Salvaguardas e Habilidades */}
+                                    <div className="space-y-3">
+                                        <div className="space-y-3">
+                                            {/* Atributos */}
+                                            <div className="grid grid-cols-2 gap-2">
+                                                {(['str', 'dex', 'con', 'int', 'wis', 'cha'] as const).map((s) => {
+                                                    const mod = getModifier(draft.stats[s]);
+                                                    return (
+                                                        <div
+                                                            key={s}
+                                                            onClick={() => rollD20(statLabels[s], mod)}
+                                                            title={`Rolar ${statLabels[s]}`}
+                                                            className="bg-black border border-[#1a2a1a] rounded-xl p-2 text-center group relative cursor-pointer hover:border-[#00ff66]/40 transition-colors"
+                                                        >
+                                                            <span className="text-[14px] text-[#4a5a4a] font-black uppercase">{statLabels[s]}</span>
+                                                            <input
+                                                                type="number" min={1} max={30}
+                                                                className="w-full bg-transparent text-xl font-black text-white text-center outline-none my-0.5 border-b border-[#1a2a1a] focus:border-[#00ff66]/50"
+                                                                value={draft.stats[s]}
+                                                                onClick={(e) => e.stopPropagation()}
+                                                                onChange={(e) => updateStat(s, Number(e.target.value))}
+                                                            />
+                                                            <div className="text-[#00ff66] text-[14px] font-black">{fmtMod(mod)}</div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+
+                                            <div className="space-y-3">
+                                                {/* Salvaguardas */}
+                                                <div className="bg-black/40 border border-[#1a2a1a] p-3 rounded-xl">
+                                                    <h3 className="text-[13px] text-[#4a5a4a] font-black uppercase mb-2 flex items-center gap-2">
+                                                        <ShieldAlert size={11} /> Salvaguardas
+                                                    </h3>
+                                                    <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                                                        {(['str', 'dex', 'con', 'int', 'wis', 'cha'] as const).map((s) => {
+                                                            const proficient = draft.savingThrows?.[s];
+                                                            const mod = getModifier(draft.stats[s]);
+                                                            const total = mod + (proficient ? (draft.proficiencyBonus ?? 2) : 0);
+                                                            return (
+                                                                <div
+                                                                    key={s}
+                                                                    onClick={() => rollD20(`Salv. ${statLabels[s]}`, total)}
+                                                                    title={`Rolar salvaguarda de ${statLabels[s]}`}
+                                                                    className="flex items-center justify-between border-b border-[#1a2a1a]/50 py-0.5 cursor-pointer hover:bg-white/5 rounded px-1 transition-colors"
+                                                                >
+                                                                    <div className="flex items-center gap-1.5">
+                                                                        <input type="checkbox" checked={!!proficient} onClick={(e) => e.stopPropagation()} onChange={() => toggleSavingThrow(s)} className="accent-[#00ff66] w-3 h-3 cursor-pointer" />
+                                                                        <span className="text-[13px] uppercase text-gray-300">{statLabels[s]}</span>
+                                                                    </div>
+                                                                    <span className="text-[13px] font-black text-[#00ff66]">{fmtMod(total)}</span>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
                                                 </div>
-                                            ))}
-                                            {RACE_DATA[draft.race]?.traits && draft.spells?.length > 0 && <div className="border-t border-[#1a2a1a] my-1" />}
-                                            {draft.spells?.map((spell: { id: number; name: string }) => (
-                                                <div key={spell.id} className="bg-black/60 p-1.5 rounded border border-[#1a2a1a] flex justify-between items-center">
-                                                    <span className="text-[13px] uppercase font-bold text-gray-300">{spell.name}</span>
-                                                    <button onClick={() => removeSpell(spell.id)} className="text-red-500/60 hover:text-red-400 transition-colors ml-2 shrink-0"><Trash2 size={10} /></button>
+
+                                                {/* Habilidades */}
+                                                <div className="bg-[#050a05] border border-[#1a2a1a] p-3 rounded-xl">
+                                                    <h3 className="text-[#f1e5ac] text-[13px] font-black uppercase mb-3 flex items-center gap-2">
+                                                        <Sparkles size={12} /> Habilidades
+                                                    </h3>
+                                                    <div className="max-h-[200px] overflow-y-auto space-y-1.5 pr-1 mb-2">
+                                                        {RACE_DATA[draft.race]?.traits.split(', ').map((trait) => (
+                                                            <div key={trait} className="bg-[#0a1a0a] p-1.5 rounded border border-[#1a2a1a]/60 flex justify-between items-center">
+                                                                <span className="text-[13px] uppercase font-bold text-[#4a7a4a]">{trait}</span>
+                                                                <span className="text-[14px] text-[#2a4a2a] font-black uppercase">Raça</span>
+                                                            </div>
+                                                        ))}
+                                                        {RACE_DATA[draft.race]?.traits && draft.spells?.length > 0 && <div className="border-t border-[#1a2a1a] my-1" />}
+                                                        {draft.spells?.map((spell: { id: number; name: string }) => (
+                                                            <div key={spell.id} className="bg-black/60 p-1.5 rounded border border-[#1a2a1a] flex justify-between items-center">
+                                                                <span className="text-[13px] uppercase font-bold text-gray-300">{spell.name}</span>
+                                                                <button onClick={() => removeSpell(spell.id)} className="text-red-500/60 hover:text-red-400 transition-colors ml-2 shrink-0"><Trash2 size={10} /></button>
+                                                            </div>
+                                                        ))}
+                                                    </div>
                                                 </div>
-                                            ))}
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
+
+                            
 
                             {/* Perícias (fora das colunas) */}
                             <div className={`bg-black border border-[#1a2a1a] p-3 rounded-xl mt-5 ${readOnly ? 'pointer-events-none select-none' : ''}`}>
