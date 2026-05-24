@@ -17,6 +17,7 @@ import DiceRoller from '@/app/components/ui/dice-roller';
 import TokenLibraryWidget from '@/app/components/ui/token-library-widget';
 import MapEditorModal from '@/app/components/ui/map-editor-modal';
 import { EffectResult, SpellExecution } from '@/utils/spell-executor';
+import TokenSheetPanel, { TokenSheet } from '@/app/components/ui/token-sheet-panel';
 interface Token {
   id: string;
   url: string;
@@ -32,6 +33,62 @@ interface Token {
   maxHp?: number;
   sizeCategory?: 'Tiny' | 'Small' | 'Medium' | 'Large' | 'Huge' | 'Gargantuan';
 }
+
+const EMPTY_ABILITIES = {
+  str: "",
+  dex: "",
+  con: "",
+  int: "",
+  wis: "",
+  cha: "",
+};
+
+const buildEmptySheet = (name?: string): TokenSheet => ({
+  name: name ?? "",
+  size_category: "",
+  type: "",
+  alignment: "",
+  armorClass: "",
+  hitPoints: "",
+  speed: "",
+  abilities: { ...EMPTY_ABILITIES },
+  saves: { ...EMPTY_ABILITIES },
+  skills: {},
+  damageResistances: "",
+  conditionImmunities: "",
+  senses: "",
+  languages: "",
+  challengeRating: "",
+  xp: "",
+  abilitiesText: "",
+  actionsText: "",
+});
+
+const toNumberOrNull = (value: string) => {
+  const normalized = value.replace(',', '.').trim();
+  if (!normalized) return null;
+  const num = Number(normalized);
+  return Number.isFinite(num) ? num : null;
+};
+
+const toNumberOrString = (value: string) => {
+  const normalized = value.replace(',', '.').trim();
+  if (!normalized) return null;
+  const num = Number(normalized);
+  return Number.isFinite(num) ? num : normalized;
+};
+
+const toList = (value: string) =>
+  value
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
+
+const fromList = (value?: string[] | string | null) => {
+  if (!value) return "";
+  if (Array.isArray(value)) return value.join(', ');
+  return value;
+};
 // Nota: removido o mapeamento para o SpellCasterMap; mantemos tokens simples
 const CONDICOES_RPG = [
   { 
@@ -487,7 +544,14 @@ export default function TelaDeMesa() {
     const newToken: Token = { id: newId, url: t.url, x: 0, y: 0, rotation: 0, name: t.name, isMonster: true, sizeCategory: defaultSize };
     setTokens(prev => [...prev, newToken]);
     const { data, error } = await supabase.from('campaign_tokens').insert({
-      id: newId, campaign_id: campaignId, url: t.url, x: 0, y: 0, is_monster: true, size_category: defaultSize,
+      id: newId,
+      campaign_id: campaignId,
+      url: t.url,
+      name: t.name,
+      x: 0,
+      y: 0,
+      is_monster: true,
+      size_category: defaultSize,
     }).select();
     if (error) console.error('[TOKEN] Erro ao inserir token:', error);
     realtimeChannelRef.current?.send({ type: 'broadcast', event: 'token-add', payload: { token: newToken } });
@@ -554,11 +618,16 @@ export default function TelaDeMesa() {
           setTokens(prev => {
             if (prev.find(tk => tk.id === t.id)) return prev;
             return [...prev, {
-              id: t.id, url: t.url || '', x: t.x, y: t.y,
+              id: t.id,
+              url: t.url || '',
+              x: t.x,
+              y: t.y,
               rotation: t.rotation ?? 0,
               characterId: t.character_id ?? null,
+              name: t.name ?? undefined,
               isMonster: t.is_monster ?? false,
-              imgOffsetX: 50, imgOffsetY: 50,
+              imgOffsetX: 50,
+              imgOffsetY: 50,
               sizeCategory: t.size_category ?? 'Medium',
             }];
           });
@@ -629,6 +698,11 @@ export default function TelaDeMesa() {
   const [showSpellModal, setShowSpellModal] = useState(false);
   const [fichaCharacterId, setFichaCharacterId] = useState<number | string | null>(null);
   const [isDM, setIsDM] = useState(false);
+  const [showTokenSheet, setShowTokenSheet] = useState(false);
+  const [tokenSheetTokenId, setTokenSheetTokenId] = useState<string | null>(null);
+  const [tokenSheetLoading, setTokenSheetLoading] = useState(false);
+  const [tokenSheetSaving, setTokenSheetSaving] = useState(false);
+  const [tokenSheet, setTokenSheet] = useState<TokenSheet>(buildEmptySheet());
   // DM visualizando ficha de jogador
   const [showPlayerList, setShowPlayerList] = useState(false);
   const [showFichaDM, setShowFichaDM] = useState(false);
@@ -697,6 +771,140 @@ export default function TelaDeMesa() {
       return { ...token, hp: nextHp, maxHp };
     }));
   }, []);
+
+  const selectedToken = useMemo(() => {
+    if (!tokenSelecionado) return null;
+    return tokens.find((token) => token.id === tokenSelecionado) ?? null;
+  }, [tokenSelecionado, tokens]);
+
+  const openTokenSheet = (tokenId: string) => {
+    setTokenSelecionado(tokenId);
+    setTokenSheetTokenId(tokenId);
+    setShowTokenSheet(true);
+  };
+
+  useEffect(() => {
+    if (!showTokenSheet || !tokenSheetTokenId) return;
+    let active = true;
+    const loadSheet = async () => {
+      setTokenSheetLoading(true);
+      const { data, error } = await supabase
+          .from('campaign_tokens')
+            .select('name, size_category, type, alignment, armor_class, hit_points, speed, abilities, saving_throws, skills, damage_resistances, condition_immunities, senses, languages, challenge_rating, xp, abilities_text, actions_text')
+        .eq('id', tokenSheetTokenId)
+        .maybeSingle();
+
+      if (!active) return;
+
+      if (error || !data) {
+        setTokenSheet(buildEmptySheet(selectedToken?.name));
+        setTokenSheetLoading(false);
+        return;
+      }
+
+      const abilities = (data as any).abilities ?? {};
+      const saves = (data as any).saving_throws ?? {};
+      const normalizeAbility = (obj: any) => ({
+        str: obj?.str != null ? String(obj.str) : "",
+        dex: obj?.dex != null ? String(obj.dex) : "",
+        con: obj?.con != null ? String(obj.con) : "",
+        int: obj?.int != null ? String(obj.int) : "",
+        wis: obj?.wis != null ? String(obj.wis) : "",
+        cha: obj?.cha != null ? String(obj.cha) : "",
+      });
+
+      setTokenSheet({
+        name: (data as any).name ?? selectedToken?.name ?? "",
+        size_category: (data as any).size_category ?? (data as any).size ?? selectedToken?.sizeCategory ?? "",
+        type: (data as any).type ?? "",
+        alignment: (data as any).alignment ?? "",
+        armorClass: (data as any).armor_class != null ? String((data as any).armor_class) : "",
+        hitPoints: (data as any).hit_points != null ? String((data as any).hit_points) : "",
+        speed: (data as any).speed ?? "",
+        abilities: normalizeAbility(abilities),
+        saves: normalizeAbility(saves),
+        skills: {},
+        damageResistances: fromList((data as any).damage_resistances),
+        conditionImmunities: fromList((data as any).condition_immunities),
+        senses: (data as any).senses ?? "",
+        languages: (data as any).languages ?? "",
+        challengeRating: (data as any).challenge_rating ?? "",
+        xp: (data as any).xp != null ? String((data as any).xp) : "",
+        abilitiesText: (data as any).abilities_text ?? "",
+        actionsText: (data as any).actions_text ?? "",
+      });
+      setTokenSheetLoading(false);
+    };
+
+    loadSheet();
+    return () => {
+      active = false;
+    };
+  }, [showTokenSheet, tokenSheetTokenId, selectedToken?.name, supabase]);
+
+  useEffect(() => {
+    if (!tokenSheetTokenId) return;
+    const stillExists = tokens.some((token) => token.id === tokenSheetTokenId);
+    if (!stillExists) {
+      setShowTokenSheet(false);
+      setTokenSheetTokenId(null);
+    }
+  }, [tokenSheetTokenId, tokens]);
+
+  const handleSaveTokenSheet = async () => {
+    if (!tokenSheetTokenId) return;
+    setTokenSheetSaving(true);
+    const payload = {
+      name: tokenSheet.name || null,
+      size_category: tokenSheet.size_category || null,
+      type: tokenSheet.type || null,
+      alignment: tokenSheet.alignment || null,
+      armor_class: toNumberOrNull(tokenSheet.armorClass),
+      hit_points: toNumberOrNull(tokenSheet.hitPoints),
+      speed: tokenSheet.speed || null,
+      abilities: {
+        str: toNumberOrNull(tokenSheet.abilities.str),
+        dex: toNumberOrNull(tokenSheet.abilities.dex),
+        con: toNumberOrNull(tokenSheet.abilities.con),
+        int: toNumberOrNull(tokenSheet.abilities.int),
+        wis: toNumberOrNull(tokenSheet.abilities.wis),
+        cha: toNumberOrNull(tokenSheet.abilities.cha),
+      },
+      saving_throws: {
+        str: toNumberOrNull(tokenSheet.saves.str),
+        dex: toNumberOrNull(tokenSheet.saves.dex),
+        con: toNumberOrNull(tokenSheet.saves.con),
+        int: toNumberOrNull(tokenSheet.saves.int),
+        wis: toNumberOrNull(tokenSheet.saves.wis),
+        cha: toNumberOrNull(tokenSheet.saves.cha),
+      },
+      damage_resistances: toList(tokenSheet.damageResistances),
+      condition_immunities: toList(tokenSheet.conditionImmunities),
+      senses: tokenSheet.senses || null,
+      languages: tokenSheet.languages || null,
+      challenge_rating: tokenSheet.challengeRating || null,
+      xp: toNumberOrNull(tokenSheet.xp),
+      abilities_text: tokenSheet.abilitiesText || null,
+      actions_text: tokenSheet.actionsText || null,
+    };
+
+    const { error } = await supabase
+      .from('campaign_tokens')
+      .update(payload)
+      .eq('id', tokenSheetTokenId)
+      .eq('campaign_id', campaignId);
+
+    setTokenSheetSaving(false);
+
+    if (error) {
+      alert(`Erro ao salvar ficha: ${error.message}`);
+      return;
+    }
+
+    if (tokenSheet.name) {
+      setTokens((prev) => prev.map((token) => token.id === tokenSheetTokenId ? { ...token, name: tokenSheet.name } : token));
+    }
+  };
 
   // Busca role do usuário e personagem vinculado
   useEffect(() => {
@@ -838,13 +1046,13 @@ export default function TelaDeMesa() {
       let dbTokens: any[] | null = null;
       const { data: dbTokensWithRotation, error: dbTokensWithRotationError } = await supabase
         .from('campaign_tokens')
-        .select('id, url, x, y, rotation, character_id, is_monster, size_category')
+        .select('id, url, name, x, y, rotation, character_id, is_monster, size_category')
         .eq('campaign_id', campaignId);
 
       if (dbTokensWithRotationError) {
         const { data: dbTokensFallback } = await supabase
           .from('campaign_tokens')
-          .select('id, url, x, y, character_id, is_monster, size_category')
+          .select('id, url, name, x, y, character_id, is_monster, size_category')
           .eq('campaign_id', campaignId);
         dbTokens = dbTokensFallback;
       } else {
@@ -879,7 +1087,7 @@ export default function TelaDeMesa() {
             y: t.y,
             rotation: t.rotation ?? 0,
             characterId: t.character_id ?? null,
-            name: charData?.name,
+            name: charData?.name ?? t.name,
             imgOffsetX: charData?.imgOffsetX ?? 50,
             imgOffsetY: charData?.imgOffsetY ?? 50,
             isMonster: t.is_monster ?? false,
@@ -1216,6 +1424,11 @@ export default function TelaDeMesa() {
                   <div
                     key={token.id}
                     onMouseDown={(e) => handleMouseDown(e, token.id)}
+                    onDoubleClick={(e) => {
+                      e.stopPropagation();
+                      if (token.characterId) return;
+                      openTokenSheet(token.id);
+                    }}
                     style={{
                       transform: `translate(${token.x}px, ${token.y}px)`,
                       position: 'absolute',
@@ -1296,6 +1509,7 @@ export default function TelaDeMesa() {
             onRollDice={rollDiceFunc ? (type, secret, mode) => rollDiceFunc(type, secret, mode) : (async () => null)} 
           />
         </div>
+
       </div>
 
       {/* COMPONENTE EXTRAÍDO DOS DADOS FÍSICOS */}
@@ -1359,6 +1573,21 @@ export default function TelaDeMesa() {
         onClose={() => setShowSpellModal(false)}
         characterId={fichaCharacterId}
         onLaunchSpell={handleSpellLaunch}
+      />
+
+      <TokenSheetPanel
+        isOpen={showTokenSheet}
+        isDM={isDM}
+        loading={tokenSheetLoading}
+        saving={tokenSheetSaving}
+        tokenLabel={tokenSheet.name || selectedToken?.name}
+        sheet={tokenSheet}
+        onChange={setTokenSheet}
+        onSave={handleSaveTokenSheet}
+        onClose={() => {
+          setShowTokenSheet(false);
+          setTokenSheetTokenId(null);
+        }}
       />
 
       {/* Ficha de jogador — visualização do Mestre */}
