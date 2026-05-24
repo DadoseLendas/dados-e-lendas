@@ -455,7 +455,7 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
             id: editingSpellId ?? Date.now(),
             name: newSpellItem.name.trim(),
             level: newSpellItem.level.trim(),
-            tipo: newSpellItem.tipo.trim(),
+            tipo: (newSpellItem.tipo ?? '').trim() || 'Magia',
             desc: newSpellItem.desc.trim(),
         };
 
@@ -986,8 +986,8 @@ return (
                                                         ))}
                                                         {RACE_DATA[draft.race]?.traits && draft.spells?.length > 0 && <div className="border-t border-[#1a2a1a] my-1" />}
                                                         
-                                                        {/* Lista Dinâmica com Expansão e Edição de Habilidades */}
-                                                        {draft.spells?.map((spell: any) => {
+                                                        {/* Lista Dinâmica com Expansão e Edição de Habilidades (apenas Habilidades, sem Magias) */}
+                                                        {draft.spells?.filter((s: any) => s.tipo !== 'Magia').map((spell: any) => {
                                                             const isSpellExpanded = expandedSpellId === spell.id;
                                                             return (
                                                                 <div key={spell.id} className="bg-black/60 rounded border border-[#1a2a1a] overflow-hidden">

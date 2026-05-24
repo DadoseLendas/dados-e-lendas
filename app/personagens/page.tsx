@@ -166,7 +166,7 @@ export default function PersonagensPage() {
   const [expandedItemId, setExpandedItemId] = useState<number | null>(null);
   const [expandedSpellId, setExpandedSpellId] = useState<number | null>(null);
   const [editingSpellId, setEditingSpellId] = useState<number | null>(null);
-  const [spellForm, setSpellForm] = useState<{ name: string; level: string; desc?: string }>({ name: '', level: '', desc: '' });
+  const [spellForm, setSpellForm] = useState<{ name: string; level: string; desc?: string; tipo?: string }>({ name: '', level: '', desc: '', tipo: 'Habilidade' });
   const [showSpellForm, setShowSpellForm] = useState(false);
   const [showInventoryForm, setShowInventoryForm] = useState(false);
   const [sheetView, setSheetView] = useState<'ficha' | 'grimorio' | 'inventario'>('ficha');
@@ -816,7 +816,7 @@ export default function PersonagensPage() {
                     </div>
                   ))}
 
-                  {activeCharacter.spells?.map((ability: any) => {
+                  {activeCharacter.spells?.filter((s: any) => s.tipo !== 'Magia').map((ability: any) => {
                     const isExpanded = expandedSpellId === ability.id;
                     return (
                       <div key={ability.id} className="bg-black/60 p-2 rounded border border-[#1a2a1a] flex justify-between items-center group">
@@ -827,7 +827,7 @@ export default function PersonagensPage() {
                         </div>
                         <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
                           <button
-                            onClick={() => { setEditingSpellId(ability.id); setSpellForm({ name: ability.name ?? '', level: ability.level ?? '', desc: ability.desc ?? '' }); setShowSpellForm(true); }}
+                            onClick={() => { setEditingSpellId(ability.id); setSpellForm({ name: ability.name ?? '', level: ability.level ?? '', desc: ability.desc ?? '', tipo: ability.tipo ?? 'Habilidade' }); setShowSpellForm(true); }}
                             className="text-gray-400 hover:text-white p-1"
                             title="Editar"
                           >
@@ -847,7 +847,7 @@ export default function PersonagensPage() {
                 </div>
                 <div className="flex gap-2">
                   <button
-                    onClick={() => { setEditingSpellId(null); setSpellForm({ name: '', level: '', desc: '' }); setShowSpellForm(true); }}
+                    onClick={() => { setEditingSpellId(null); setSpellForm({ name: '', level: '', desc: '', tipo: 'Habilidade' }); setShowSpellForm(true); }}
                     className="w-6 h-6 rounded-md bg-[#f1e5ac] text-black flex items-center justify-center text-xs font-black transition-all hover:brightness-110 shadow-[0_0_8px_rgba(241,229,172,0.4)]"
                     title="Adicionar Habilidade/Magia"
                   >
@@ -1178,19 +1178,19 @@ export default function PersonagensPage() {
                       </div>
                     </div>
                     <div className="flex gap-2 pt-2">
-                      <button onClick={() => { setShowSpellForm(false); setEditingSpellId(null); setSpellForm({ name: '', level: '', desc: '' }); }} className="flex-1 bg-transparent border border-[#1a2a1a] text-[#4a5a4a] hover:text-white uppercase text-[11px] font-black tracking-widest py-2 rounded-xl">Cancelar</button>
+                      <button onClick={() => { setShowSpellForm(false); setEditingSpellId(null); setSpellForm({ name: '', level: '', desc: '', tipo: 'Habilidade' }); }} className="flex-1 bg-transparent border border-[#1a2a1a] text-[#4a5a4a] hover:text-white uppercase text-[11px] font-black tracking-widest py-2 rounded-xl">Cancelar</button>
                       <button onClick={() => {
                         if (!spellForm.name.trim()) return;
                         if (editingSpellId !== null) {
-                          const updated = activeCharacter.spells.map((s: any) => s.id === editingSpellId ? { ...s, name: spellForm.name.trim(), level: spellForm.level.trim(), desc: spellForm.desc?.trim() } : s);
+                          const updated = activeCharacter.spells.map((s: any) => s.id === editingSpellId ? { ...s, name: spellForm.name.trim(), level: spellForm.level.trim(), desc: spellForm.desc?.trim(), tipo: spellForm.tipo ?? 'Habilidade' } : s);
                           updateCharacter('spells', updated);
                         } else {
-                          const payload = { id: Date.now(), name: spellForm.name.trim(), level: spellForm.level.trim(), desc: spellForm.desc?.trim() };
+                          const payload = { id: Date.now(), name: spellForm.name.trim(), level: spellForm.level.trim(), desc: spellForm.desc?.trim(), tipo: spellForm.tipo ?? 'Habilidade' };
                           updateCharacter('spells', [...(activeCharacter.spells ?? []), payload]);
                         }
                         setShowSpellForm(false);
                         setEditingSpellId(null);
-                        setSpellForm({ name: '', level: '', desc: '' });
+                        setSpellForm({ name: '', level: '', desc: '', tipo: 'Habilidade' });
                       }} className="flex-1 bg-[#f1e5ac] text-black uppercase text-[11px] font-black tracking-widest py-2 rounded-xl">Salvar</button>
                     </div>
                   </div>
