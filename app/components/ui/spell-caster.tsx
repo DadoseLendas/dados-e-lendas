@@ -245,31 +245,62 @@ export default function SpellCaster({
 
   };
 
+  const resolverNomesAlvos = (resultados: EffectResult[]) => {
+    const nomes = resultados
+      .map((resultado) => tokens.find((token) => token.id === resultado.tokenId)?.nome || resultado.tokenId)
+      .filter(Boolean);
+
+    const unicos = Array.from(new Set(nomes));
+    if (unicos.length === 0) return 'Nenhum alvo identificado';
+    if (unicos.length === 1) return unicos[0];
+    if (unicos.length === 2) return `${unicos[0]} e ${unicos[1]}`;
+    return `${unicos[0]}, ${unicos[1]} e mais ${unicos.length - 2}`;
+  };
+
   const salvarCastDoChatLog = async (spellToLog: SpellExecution, resultados: EffectResult[], kind: "dano" | "cura" | "efeito") => {
     const linhas = resultados.map((resultado) => {
       if (kind === "cura") {
-        return `• **${resultado.tokenId}**: curou ${Math.abs(resultado.danoRecebido)} PV`;
+        return `- ${resultado.tokenId}: curou ${Math.abs(resultado.danoRecebido)} PV`;
       }
-      return `• **${resultado.tokenId}**: ${resultado.danoRecebido} de dano${resultado.salvou ? " (salvação bem-sucedida)" : ""}`;
+      return `- ${resultado.tokenId}: ${resultado.danoRecebido} de dano${resultado.salvou ? " (salvacao bem-sucedida)" : ""}`;
     });
 
-    const mensagem = `
-🔮 **${spellToLog.spellName}** foi lançada!
-📍 Posição: (${Math.round(spellToLog.posicao?.x || 0)}, ${Math.round(spellToLog.posicao?.y || 0)})
-${spellToLog.alcanceTexto ? `📏 Alcance: ${spellToLog.alcanceTexto}\n` : ""}
-${spellToLog.areaTexto ? `🟢 Área: ${spellToLog.areaTexto}\n` : ""}
-${kind === "cura" ? "✨ Tipo: cura\n" : spellToLog.danoRolagem ? `💥 Dano: ${spellToLog.danoRolagem}\n` : ""}
-🎯 Atingidos: ${resultados.length} alvo(s)
+    const mensagem = [
+      `Magia lancada: ${spellToLog.spellName}`,
+      `Alvo(s): ${resolverNomesAlvos(resultados)}`,
+      spellToLog.alcanceTexto ? `Alcance: ${spellToLog.alcanceTexto}` : null,
+      spellToLog.areaTexto ? `Area: ${spellToLog.areaTexto}` : null,
+      kind === "cura"
+        ? "Tipo: cura"
+        : spellToLog.danoRolagem
+          ? `Tipo: dano` 
+          : "Tipo: efeito",
+      spellToLog.danoRolagem ? `Rolagem de dano: ${spellToLog.danoRolagem}` : null,
+      `Atingidos: ${resultados.length} alvo(s)`,
+      '',
+      ...linhas,
+    ].filter(Boolean).join('\n');
 
-${linhas.join("\n")}
-    `.trim();
+    const { data: authData } = await supabase.auth.getUser();
+    const userId = authData.user?.id ?? null;
+
+    const { data: profileData } = userId
+      ? await supabase
+          .from('profiles')
+          .select('display_name')
+          .eq('id', userId)
+          .maybeSingle()
+      : { data: null };
 
     await supabase.from("chat_messages").insert({
       campaign_id: campaignId,
-      user_id: (await supabase.auth.getUser()).data.user?.id,
-      message: mensagem,
-      is_system: true,
-      created_at: new Date().toISOString(),
+      user_name: profileData?.display_name || authData.user?.user_metadata?.full_name || authData.user?.email?.split('@')[0] || 'Mestre',
+      sender_id: userId,
+      receiver_id: null,
+      text: mensagem,
+      is_roll: false,
+      is_secret: false,
+      channel: 'campanha',
     });
   };
 

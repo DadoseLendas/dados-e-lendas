@@ -170,6 +170,7 @@ export default function SpellModal({ isOpen, onClose, characterId, campaignId = 
   const [character, setCharacter] = useState<CharacterLite | null>(null);
   const [catalog, setCatalog] = useState<SpellCatalogItem[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [currentUserName, setCurrentUserName] = useState<string>('Aventureiro');
 
   const [loadingCharacter, setLoadingCharacter] = useState(false);
   const [loadingCatalog, setLoadingCatalog] = useState(false);
@@ -199,6 +200,23 @@ export default function SpellModal({ isOpen, onClose, characterId, campaignId = 
       const { data: authData } = await supabase.auth.getUser();
       const userId = authData.user?.id ?? null;
       setCurrentUserId(userId);
+
+      if (userId) {
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('display_name')
+          .eq('id', userId)
+          .maybeSingle();
+
+        setCurrentUserName(
+          profileData?.display_name ||
+          authData.user?.user_metadata?.full_name ||
+          authData.user?.email?.split('@')[0] ||
+          'Aventureiro'
+        );
+      } else {
+        setCurrentUserName('Aventureiro');
+      }
 
       const spellQuery = supabase
         .from("spell_catalog")
@@ -255,6 +273,21 @@ export default function SpellModal({ isOpen, onClose, characterId, campaignId = 
     setShowCreateSpellModal(false);
   };
 
+  const logFichaMessage = async (text: string) => {
+    if (!currentUserId) return;
+
+    await supabase.from('chat_messages').insert({
+      campaign_id: campaignId,
+      user_name: currentUserName,
+      sender_id: currentUserId,
+      receiver_id: null,
+      text,
+      is_roll: false,
+      is_secret: false,
+      channel: 'fichas',
+    });
+  };
+
   const handleCreateSpell = async () => {
     const spellName = newSpell.nome.trim();
     if (!spellName) {
@@ -308,6 +341,8 @@ export default function SpellModal({ isOpen, onClose, characterId, campaignId = 
 
       const { error } = await supabase.from('spell_catalog').insert(payload);
       if (error) throw error;
+
+      void logFichaMessage(`${currentUserName} criou a magia ${spellName} no catálogo.`);
 
       const reloadQuery = supabase
         .from("spell_catalog")
@@ -457,6 +492,8 @@ export default function SpellModal({ isOpen, onClose, characterId, campaignId = 
       };
       return next;
     });
+
+    void logFichaMessage(`${currentUserName} adicionou ${spell.nome} ao livro de magias.`);
   };
 
   const removeSpell = (id: number) => {
