@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { createClient } from '@/utils/supabase/client';
-import { Plus, Trash2, Save } from 'lucide-react';
+import { Trash2, Save } from 'lucide-react';
 
 type CharacterSpell = {
   id: number;
@@ -17,6 +17,37 @@ type SpellCatalogItem = {
   escola: string;
   tempo_conjuracao: string;
   alcance: string;
+  campaign_id?: string | number | null;
+  created_by?: string | number | null;
+  visibility?: string | null;
+  source?: string | null;
+  material?: string | null;
+  componentes?: string | null;
+  duracao?: string | null;
+  descricao?: string | null;
+  escala_por_nivel?: string | null;
+  dano?: string | null;
+  area?: string | null;
+  formato?: string | null;
+  efeito?: string | null;
+  rolagem?: string | null;
+  tipo_alvo?: string | null;
+  salvacao?: string | null;
+  eh_concentracao?: boolean | null;
+  requisitos_rituais?: boolean | null;
+  classes_disponivel?: string | string[] | null;
+  categoria_magia?: string | null;
+  efeito_principal?: string | null;
+  beneficio_concedido?: string | null;
+  restricao_concedida?: string | null;
+  transforma_em?: string | null;
+  movimento_concedido?: string | null;
+  protecao_concedida?: string | null;
+  condicoes_aplicadas?: string | string[] | null;
+  palavras_chave?: string | string[] | null;
+  cd_salvacao?: string | number | null;
+  tipo_dano?: string | null;
+  tipo_ataque?: string | null;
 };
 
 type CharacterRow = {
@@ -41,10 +72,11 @@ function getMaxSpellLevelForCharacter(characterLevel: number) {
 
 interface CharacterGrimorioPanelProps {
   characterId: string | number;
+  campaignId?: string | number | null;
   onSaved?: (spells: CharacterSpell[]) => void;
 }
 
-export default function CharacterGrimorioPanel({ characterId, onSaved }: CharacterGrimorioPanelProps) {
+export default function CharacterGrimorioPanel({ characterId, campaignId = null, onSaved }: CharacterGrimorioPanelProps) {
   const supabase = createClient();
 
   const [characterName, setCharacterName] = useState('');
@@ -62,14 +94,27 @@ export default function CharacterGrimorioPanel({ characterId, onSaved }: Charact
     const load = async () => {
       setLoading(true);
 
-      const [{ data: charData, error: charError }, { data: catalogData, error: catalogError }] = await Promise.all([
-        supabase.from('characters').select('id, name, level, spells').eq('id', characterId).single(),
-        supabase
-          .from('spell_catalog')
-          .select('id, nome, nivel_magia, escola, tempo_conjuracao, alcance')
-          .order('nivel_magia', { ascending: true })
-          .order('nome', { ascending: true }),
-      ]);
+      const { data: charData, error: charError } = await supabase
+        .from('characters')
+        .select('id, name, level, spells')
+        .eq('id', characterId)
+        .single();
+
+      if (!active) return;
+
+      let catalogQuery = supabase
+        .from('spell_catalog')
+        .select('id, nome, nivel_magia, escola, tempo_conjuracao, alcance, campaign_id, created_by, visibility, source')
+        .order('nivel_magia', { ascending: true })
+        .order('nome', { ascending: true });
+
+      if (campaignId != null) {
+        catalogQuery = catalogQuery.or(`campaign_id.is.null,campaign_id.eq.${String(campaignId)}`);
+      } else {
+        catalogQuery = catalogQuery.is('campaign_id', null);
+      }
+
+      const { data: catalogData, error: catalogError } = await catalogQuery;
 
       if (!active) return;
 
@@ -265,7 +310,7 @@ export default function CharacterGrimorioPanel({ characterId, onSaved }: Charact
                               ? 'border-[#1a2a1a] text-[#4a5a4a]'
                               : 'border-[#00ff66]/40 text-[#00ff66] hover:bg-[#00ff66]/10'}`}
                           >
-                            {already ? 'ok' : !allowed ? 'lvl' : <Plus size={12} />}
+                            {already ? 'ok' : !allowed ? 'lvl' : '+'}
                           </button>
                         </div>
                       );

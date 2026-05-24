@@ -55,10 +55,78 @@ type SpellCatalogItem = {
   tipo_ataque?: string | null;
 };
 
+type SpellCatalogForm = {
+  nome: string;
+  escola: string;
+  nivel_magia: string;
+  tempo_conjuracao: string;
+  alcance: string;
+  componentes: string;
+  duracao: string;
+  material: string;
+  descricao: string;
+  escala_por_nivel: string;
+  dano: string;
+  area: string;
+  formato: string;
+  efeito: string;
+  rolagem: string;
+  tipo_alvo: string;
+  salvacao: string;
+  classes_disponivel: string;
+  categoria_magia: string;
+  condicoes_aplicadas: string;
+  palavras_chave: string;
+  cd_salvacao: string;
+  tipo_dano: string;
+  tipo_ataque: string;
+  eh_concentracao: boolean;
+  requisitos_rituais: boolean;
+};
+
+const defaultSpellForm = (): SpellCatalogForm => ({
+  nome: '',
+  escola: 'evocação',
+  nivel_magia: '0',
+  tempo_conjuracao: '1 ação',
+  alcance: 'Alcance pessoal',
+  componentes: 'V, S',
+  duracao: 'Instantânea',
+  material: '',
+  descricao: '',
+  escala_por_nivel: '',
+  dano: '',
+  area: '',
+  formato: '',
+  efeito: '',
+  rolagem: '',
+  tipo_alvo: '',
+  salvacao: '',
+  classes_disponivel: '',
+  categoria_magia: '',
+  condicoes_aplicadas: '',
+  palavras_chave: '',
+  cd_salvacao: '',
+  tipo_dano: '',
+  tipo_ataque: '',
+  eh_concentracao: false,
+  requisitos_rituais: false,
+});
+
+const normalizeSlug = (value: string) =>
+  value
+    .toLowerCase()
+    .trim()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+
 interface SpellModalProps {
   isOpen: boolean;
   onClose: () => void;
   characterId: number | string | null;
+  campaignId?: string | number | null;
   onLaunchSpell?: (spell: SpellExecution) => void;
 }
 
@@ -96,11 +164,12 @@ const buildSpellExecution = (spell: SpellCatalogItem, casterLevel = 1): SpellExe
   casterLevel,
 });
 
-export default function SpellModal({ isOpen, onClose, characterId, onLaunchSpell }: SpellModalProps) {
+export default function SpellModal({ isOpen, onClose, characterId, campaignId = null, onLaunchSpell }: SpellModalProps) {
   const supabase = createClient();
 
   const [character, setCharacter] = useState<CharacterLite | null>(null);
   const [catalog, setCatalog] = useState<SpellCatalogItem[]>([]);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   const [loadingCharacter, setLoadingCharacter] = useState(false);
   const [loadingCatalog, setLoadingCatalog] = useState(false);
@@ -112,6 +181,9 @@ export default function SpellModal({ isOpen, onClose, characterId, onLaunchSpell
   const [selectedSpellName, setSelectedSpellName] = useState<string | null>(null);
   const [hoverCatalogSpell, setHoverCatalogSpell] = useState<SpellCatalogItem | null>(null);
   const [expandedCatalogLevels, setExpandedCatalogLevels] = useState<Set<number>>(new Set([0, 1]));
+  const [showCreateSpellModal, setShowCreateSpellModal] = useState(false);
+  const [savingNewSpell, setSavingNewSpell] = useState(false);
+  const [newSpell, setNewSpell] = useState<SpellCatalogForm>(() => defaultSpellForm());
 
   useEffect(() => {
     if (!isOpen || !characterId) return;
@@ -124,13 +196,23 @@ export default function SpellModal({ isOpen, onClose, characterId, onLaunchSpell
       setSearch("");
       setIsAdding(false);
 
+      const { data: authData } = await supabase.auth.getUser();
+      const userId = authData.user?.id ?? null;
+      setCurrentUserId(userId);
+
+      const spellQuery = supabase
+        .from("spell_catalog")
+        .select("id, slug, nome, escola, nivel_magia, tempo_conjuracao, alcance, componentes, duracao, material, descricao, escala_por_nivel, dano, area, formato, efeito, rolagem, tipo_alvo, salvacao, eh_concentracao, requisitos_rituais, classes_disponivel, categoria_magia, efeito_principal, beneficio_concedido, restricao_concedida, transforma_em, movimento_concedido, protecao_concedida, condicoes_aplicadas, palavras_chave, cd_salvacao, tipo_dano, tipo_ataque, campaign_id")
+        .order("nivel_magia", { ascending: true })
+        .order("nome", { ascending: true });
+
+      const scopedSpellQuery = campaignId != null
+        ? spellQuery.or(`campaign_id.is.null,campaign_id.eq.${String(campaignId)}`)
+        : spellQuery.is("campaign_id", null);
+
       const [{ data: charData, error: charError }, { data: spellData, error: spellError }] = await Promise.all([
         supabase.from("characters").select("id, name, level, spells").eq("id", characterId).single(),
-        supabase
-          .from("spell_catalog")
-          .select("id, slug, nome, escola, nivel_magia, tempo_conjuracao, alcance, componentes, duracao, material, descricao, escala_por_nivel, dano, area, formato, efeito, rolagem, tipo_alvo, salvacao, eh_concentracao, requisitos_rituais, classes_disponivel, categoria_magia, efeito_principal, beneficio_concedido, restricao_concedida, transforma_em, movimento_concedido, protecao_concedida, condicoes_aplicadas, palavras_chave, cd_salvacao, tipo_dano, tipo_ataque")
-          .order("nivel_magia", { ascending: true })
-          .order("nome", { ascending: true }),
+        scopedSpellQuery,
       ]);
 
       if (!active) return;
@@ -167,6 +249,89 @@ export default function SpellModal({ isOpen, onClose, characterId, onLaunchSpell
       setHoverCatalogSpell(null);
     };
   }, [isOpen, characterId, supabase]);
+
+  const resetCreateSpell = () => {
+    setNewSpell(defaultSpellForm());
+    setShowCreateSpellModal(false);
+  };
+
+  const handleCreateSpell = async () => {
+    const spellName = newSpell.nome.trim();
+    if (!spellName) {
+      alert('Informe o nome da magia.');
+      return;
+    }
+
+    if (!currentUserId && campaignId == null) {
+      alert('Não foi possível identificar o contexto para salvar esta magia.');
+      return;
+    }
+
+    const nivelMagia = Number.parseInt(newSpell.nivel_magia, 10);
+    const slug = `${normalizeSlug(spellName) || 'magia'}-${Date.now()}`;
+
+    setSavingNewSpell(true);
+    try {
+      const payload = {
+        slug,
+        nome: spellName,
+        escola: newSpell.escola.trim() || 'evocação',
+        nivel_magia: Number.isFinite(nivelMagia) ? nivelMagia : 0,
+        tempo_conjuracao: newSpell.tempo_conjuracao.trim(),
+        alcance: newSpell.alcance.trim(),
+        componentes: newSpell.componentes.trim(),
+        duracao: newSpell.duracao.trim(),
+        material: newSpell.material.trim() || null,
+        descricao: newSpell.descricao.trim(),
+        escala_por_nivel: newSpell.escala_por_nivel.trim() || null,
+        dano: newSpell.dano.trim() || null,
+        area: newSpell.area.trim() || null,
+        formato: newSpell.formato.trim() || null,
+        efeito: newSpell.efeito.trim() || null,
+        rolagem: newSpell.rolagem.trim() || null,
+        tipo_alvo: newSpell.tipo_alvo.trim() || null,
+        salvacao: newSpell.salvacao.trim() || null,
+        classes_disponivel: newSpell.classes_disponivel.trim() || null,
+        categoria_magia: newSpell.categoria_magia.trim() || null,
+        condicoes_aplicadas: newSpell.condicoes_aplicadas.trim() || null,
+        palavras_chave: newSpell.palavras_chave.trim() || null,
+        cd_salvacao: newSpell.cd_salvacao.trim() || null,
+        tipo_dano: newSpell.tipo_dano.trim() || null,
+        tipo_ataque: newSpell.tipo_ataque.trim() || null,
+        eh_concentracao: newSpell.eh_concentracao,
+        requisitos_rituais: newSpell.requisitos_rituais,
+        campaign_id: campaignId,
+        created_by: currentUserId,
+        visibility: campaignId != null ? 'campaign' : 'custom',
+        source: campaignId != null ? 'campaign' : 'custom',
+      };
+
+      const { error } = await supabase.from('spell_catalog').insert(payload);
+      if (error) throw error;
+
+      const reloadQuery = supabase
+        .from("spell_catalog")
+        .select("id, slug, nome, escola, nivel_magia, tempo_conjuracao, alcance, componentes, duracao, material, descricao, escala_por_nivel, dano, area, formato, efeito, rolagem, tipo_alvo, salvacao, eh_concentracao, requisitos_rituais, classes_disponivel, categoria_magia, efeito_principal, beneficio_concedido, restricao_concedida, transforma_em, movimento_concedido, protecao_concedida, condicoes_aplicadas, palavras_chave, cd_salvacao, tipo_dano, tipo_ataque, campaign_id")
+        .order("nivel_magia", { ascending: true })
+        .order("nome", { ascending: true });
+
+      const scopedReloadQuery = campaignId != null
+        ? reloadQuery.or(`campaign_id.is.null,campaign_id.eq.${String(campaignId)}`)
+        : reloadQuery.is("campaign_id", null);
+
+      const { data: spellData, error: reloadError } = await scopedReloadQuery;
+      if (!reloadError && spellData) {
+        setCatalog(spellData as SpellCatalogItem[]);
+      }
+
+      resetCreateSpell();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Falha inesperada ao criar magia';
+      alert(message);
+    } finally {
+      setSavingNewSpell(false);
+    }
+  };
 
   const maxSpellLevel = useMemo(() => getMaxSpellLevelForCharacter(character?.level ?? 1), [character?.level]);
 
@@ -326,6 +491,10 @@ export default function SpellModal({ isOpen, onClose, characterId, onLaunchSpell
   if (!isOpen) return null;
 
   const descriptionSpell = isAdding ? hoverCatalogSpell : selectedKnownSpell;
+  const createSpellTitle = newSpell.nome.trim() || 'Nova magia';
+  const createSpellSchool = newSpell.escola.trim() || 'Evocação';
+  const createSpellLevel = newSpell.nivel_magia.trim() || '0';
+  const createSpellSummary = [newSpell.tempo_conjuracao.trim(), newSpell.alcance.trim(), newSpell.duracao.trim()].filter(Boolean).join(' • ');
 
   // ===== MODO GRANDE: isAdding = true =====
   // Lista todas as magias da biblioteca para adicionar
@@ -367,6 +536,16 @@ export default function SpellModal({ isOpen, onClose, characterId, onLaunchSpell
           </div>
 
           <div className="flex items-center gap-2">
+            {isAdding ? (
+              <button
+                type="button"
+                onClick={() => setShowCreateSpellModal(true)}
+                className="inline-flex items-center gap-2 rounded-md border border-[#00ff66]/30 bg-[#00ff66]/10 px-3 py-2 text-[12px] font-black uppercase text-[#00ff66] hover:bg-[#00ff66]/20"
+              >
+                <Plus size={14} /> Criar magia
+              </button>
+            ) : null}
+
             {isAdding ? (
               <button
                 onClick={() => {
@@ -622,6 +801,272 @@ export default function SpellModal({ isOpen, onClose, characterId, onLaunchSpell
             )}
           </section>
         </div>
+
+        {showCreateSpellModal && (
+          <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/80 p-3 sm:p-4 backdrop-blur-sm" onMouseDown={resetCreateSpell}>
+            <div
+              className="relative flex h-[92vh] w-full max-w-[1240px] flex-col overflow-hidden rounded-[28px] border border-[#1a2a1a] bg-[radial-gradient(circle_at_top_left,_rgba(0,255,102,0.12),_transparent_32%),linear-gradient(180deg,_rgba(6,12,6,0.98),_rgba(3,6,3,0.98))] shadow-[0_0_80px_rgba(0,255,102,0.14)]"
+              onMouseDown={(event) => event.stopPropagation()}
+            >
+              <div className="flex items-start justify-between gap-4 border-b border-[#1a2a1a] px-5 py-4 sm:px-6">
+                <div className="space-y-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="rounded-full border border-[#00ff66]/30 bg-[#00ff66]/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.22em] text-[#00ff66]">
+                      Criar magia
+                    </span>
+                    <span className="rounded-full border border-[#1a2a1a] bg-black/35 px-3 py-1 text-[10px] font-black uppercase tracking-[0.2em] text-[#8a9a8a]">
+                      {(campaignId != null ? 'Campanha' : 'Biblioteca pessoal')}
+                    </span>
+                  </div>
+                  <div>
+                    <h3 className="text-[20px] font-black uppercase tracking-[0.18em] text-[#f1e5ac] sm:text-[24px]">
+                      Novo registro no catálogo
+                    </h3>
+                    <p className="mt-1 max-w-3xl text-[12px] uppercase leading-5 text-[#6d7a6d]">
+                      Organize os dados principais primeiro. O resumo ao lado te mostra como a magia vai ficar antes de salvar.
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={resetCreateSpell}
+                  className="rounded-full border border-[#1a2a1a] bg-black/35 p-2 text-[#8a9a8a] transition hover:border-[#00ff66]/40 hover:text-[#00ff66]"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+                <div className="grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_420px]">
+                  <div className="space-y-4">
+                    <div className="grid gap-4 rounded-2xl border border-[#1a2a1a] bg-black/25 p-4 sm:p-5">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-[11px] font-black uppercase tracking-[0.22em] text-[#00ff66]">Identidade</h4>
+                        <span className="text-[10px] uppercase text-[#6d7a6d]">obrigatório</span>
+                      </div>
+
+                      <div className="grid gap-3 lg:grid-cols-2">
+                        <div className="lg:col-span-2">
+                          <label className="mb-1 block text-[10px] font-black uppercase tracking-[0.2em] text-[#8a9a8a]">Nome da magia</label>
+                          <input
+                            value={newSpell.nome}
+                            onChange={(e) => setNewSpell((prev) => ({ ...prev, nome: e.target.value }))}
+                            placeholder="Ex.: Lâmina Sombria"
+                            className="w-full rounded-xl border border-[#1a2a1a] bg-black/45 px-4 py-3 text-[14px] text-white outline-none transition placeholder:text-[#4a5a4a] focus:border-[#00ff66]/50 focus:bg-black/55"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="mb-1 block text-[10px] font-black uppercase tracking-[0.2em] text-[#8a9a8a]">Escola</label>
+                          <input
+                            value={newSpell.escola}
+                            onChange={(e) => setNewSpell((prev) => ({ ...prev, escola: e.target.value }))}
+                            placeholder="Evocação"
+                            className="w-full rounded-xl border border-[#1a2a1a] bg-black/45 px-4 py-3 text-[13px] text-white outline-none transition placeholder:text-[#4a5a4a] focus:border-[#00ff66]/50 focus:bg-black/55"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="mb-1 block text-[10px] font-black uppercase tracking-[0.2em] text-[#8a9a8a]">Nível</label>
+                          <input
+                            value={newSpell.nivel_magia}
+                            onChange={(e) => setNewSpell((prev) => ({ ...prev, nivel_magia: e.target.value }))}
+                            placeholder="0"
+                            className="w-full rounded-xl border border-[#1a2a1a] bg-black/45 px-4 py-3 text-[13px] text-white outline-none transition placeholder:text-[#4a5a4a] focus:border-[#00ff66]/50 focus:bg-black/55"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid gap-4 rounded-2xl border border-[#1a2a1a] bg-black/25 p-4 sm:p-5">
+                      <h4 className="text-[11px] font-black uppercase tracking-[0.22em] text-[#00ff66]">Conjuração</h4>
+                      <div className="grid gap-3 lg:grid-cols-3">
+                        <div>
+                          <label className="mb-1 block text-[10px] font-black uppercase tracking-[0.2em] text-[#8a9a8a]">Tempo</label>
+                          <input value={newSpell.tempo_conjuracao} onChange={(e) => setNewSpell((prev) => ({ ...prev, tempo_conjuracao: e.target.value }))} placeholder="1 ação" className="w-full rounded-xl border border-[#1a2a1a] bg-black/45 px-4 py-3 text-[13px] text-white outline-none transition placeholder:text-[#4a5a4a] focus:border-[#00ff66]/50 focus:bg-black/55" />
+                        </div>
+                        <div>
+                          <label className="mb-1 block text-[10px] font-black uppercase tracking-[0.2em] text-[#8a9a8a]">Alcance</label>
+                          <input value={newSpell.alcance} onChange={(e) => setNewSpell((prev) => ({ ...prev, alcance: e.target.value }))} placeholder="18 m" className="w-full rounded-xl border border-[#1a2a1a] bg-black/45 px-4 py-3 text-[13px] text-white outline-none transition placeholder:text-[#4a5a4a] focus:border-[#00ff66]/50 focus:bg-black/55" />
+                        </div>
+                        <div>
+                          <label className="mb-1 block text-[10px] font-black uppercase tracking-[0.2em] text-[#8a9a8a]">Duração</label>
+                          <input value={newSpell.duracao} onChange={(e) => setNewSpell((prev) => ({ ...prev, duracao: e.target.value }))} placeholder="Instantânea" className="w-full rounded-xl border border-[#1a2a1a] bg-black/45 px-4 py-3 text-[13px] text-white outline-none transition placeholder:text-[#4a5a4a] focus:border-[#00ff66]/50 focus:bg-black/55" />
+                        </div>
+                        <div className="lg:col-span-3">
+                          <label className="mb-1 block text-[10px] font-black uppercase tracking-[0.2em] text-[#8a9a8a]">Componentes</label>
+                          <input value={newSpell.componentes} onChange={(e) => setNewSpell((prev) => ({ ...prev, componentes: e.target.value }))} placeholder="V, S, M" className="w-full rounded-xl border border-[#1a2a1a] bg-black/45 px-4 py-3 text-[13px] text-white outline-none transition placeholder:text-[#4a5a4a] focus:border-[#00ff66]/50 focus:bg-black/55" />
+                        </div>
+                        <div className="lg:col-span-3">
+                          <label className="mb-1 block text-[10px] font-black uppercase tracking-[0.2em] text-[#8a9a8a]">Material</label>
+                          <input value={newSpell.material} onChange={(e) => setNewSpell((prev) => ({ ...prev, material: e.target.value }))} placeholder="Opcional" className="w-full rounded-xl border border-[#1a2a1a] bg-black/45 px-4 py-3 text-[13px] text-white outline-none transition placeholder:text-[#4a5a4a] focus:border-[#00ff66]/50 focus:bg-black/55" />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid gap-4 rounded-2xl border border-[#1a2a1a] bg-black/25 p-4 sm:p-5">
+                      <h4 className="text-[11px] font-black uppercase tracking-[0.22em] text-[#00ff66]">Descrição e efeitos</h4>
+                      <div className="grid gap-3 lg:grid-cols-2">
+                        <div className="lg:col-span-2">
+                          <label className="mb-1 block text-[10px] font-black uppercase tracking-[0.2em] text-[#8a9a8a]">Descrição</label>
+                          <textarea value={newSpell.descricao} onChange={(e) => setNewSpell((prev) => ({ ...prev, descricao: e.target.value }))} placeholder="Descreva o efeito completo da magia..." rows={6} className="w-full rounded-2xl border border-[#1a2a1a] bg-black/45 px-4 py-3 text-[13px] leading-6 text-white outline-none transition placeholder:text-[#4a5a4a] focus:border-[#00ff66]/50 focus:bg-black/55" />
+                        </div>
+                        <div className="lg:col-span-2">
+                          <label className="mb-1 block text-[10px] font-black uppercase tracking-[0.2em] text-[#8a9a8a]">Escala por nível</label>
+                          <textarea value={newSpell.escala_por_nivel} onChange={(e) => setNewSpell((prev) => ({ ...prev, escala_por_nivel: e.target.value }))} placeholder="Como a magia melhora em círculos maiores..." rows={3} className="w-full rounded-2xl border border-[#1a2a1a] bg-black/45 px-4 py-3 text-[13px] leading-6 text-white outline-none transition placeholder:text-[#4a5a4a] focus:border-[#00ff66]/50 focus:bg-black/55" />
+                        </div>
+                        <div>
+                          <label className="mb-1 block text-[10px] font-black uppercase tracking-[0.2em] text-[#8a9a8a]">Tipo de dano</label>
+                          <input value={newSpell.dano} onChange={(e) => setNewSpell((prev) => ({ ...prev, dano: e.target.value }))} placeholder="Fogo, necrótico..." className="w-full rounded-xl border border-[#1a2a1a] bg-black/45 px-4 py-3 text-[13px] text-white outline-none transition placeholder:text-[#4a5a4a] focus:border-[#00ff66]/50 focus:bg-black/55" />
+                        </div>
+                        <div>
+                          <label className="mb-1 block text-[10px] font-black uppercase tracking-[0.2em] text-[#8a9a8a]">Salvação</label>
+                          <input value={newSpell.salvacao} onChange={(e) => setNewSpell((prev) => ({ ...prev, salvacao: e.target.value }))} placeholder="DEX, CON..." className="w-full rounded-xl border border-[#1a2a1a] bg-black/45 px-4 py-3 text-[13px] text-white outline-none transition placeholder:text-[#4a5a4a] focus:border-[#00ff66]/50 focus:bg-black/55" />
+                        </div>
+                        <div>
+                          <label className="mb-1 block text-[10px] font-black uppercase tracking-[0.2em] text-[#8a9a8a]">Tipo de ataque</label>
+                          <input value={newSpell.tipo_ataque} onChange={(e) => setNewSpell((prev) => ({ ...prev, tipo_ataque: e.target.value }))} placeholder="Corpo a corpo, distância..." className="w-full rounded-xl border border-[#1a2a1a] bg-black/45 px-4 py-3 text-[13px] text-white outline-none transition placeholder:text-[#4a5a4a] focus:border-[#00ff66]/50 focus:bg-black/55" />
+                        </div>
+                        <div>
+                          <label className="mb-1 block text-[10px] font-black uppercase tracking-[0.2em] text-[#8a9a8a]">Área</label>
+                          <input value={newSpell.area} onChange={(e) => setNewSpell((prev) => ({ ...prev, area: e.target.value }))} placeholder="Cubo, cone, esfera..." className="w-full rounded-xl border border-[#1a2a1a] bg-black/45 px-4 py-3 text-[13px] text-white outline-none transition placeholder:text-[#4a5a4a] focus:border-[#00ff66]/50 focus:bg-black/55" />
+                        </div>
+                        <div>
+                          <label className="mb-1 block text-[10px] font-black uppercase tracking-[0.2em] text-[#8a9a8a]">Formato</label>
+                          <input value={newSpell.formato} onChange={(e) => setNewSpell((prev) => ({ ...prev, formato: e.target.value }))} placeholder="Linha, área, alvo..." className="w-full rounded-xl border border-[#1a2a1a] bg-black/45 px-4 py-3 text-[13px] text-white outline-none transition placeholder:text-[#4a5a4a] focus:border-[#00ff66]/50 focus:bg-black/55" />
+                        </div>
+                        <div className="lg:col-span-2">
+                          <label className="mb-1 block text-[10px] font-black uppercase tracking-[0.2em] text-[#8a9a8a]">Efeito</label>
+                          <textarea value={newSpell.efeito} onChange={(e) => setNewSpell((prev) => ({ ...prev, efeito: e.target.value }))} placeholder="Resultado extra além do dano/efeito principal" rows={3} className="w-full rounded-2xl border border-[#1a2a1a] bg-black/45 px-4 py-3 text-[13px] leading-6 text-white outline-none transition placeholder:text-[#4a5a4a] focus:border-[#00ff66]/50 focus:bg-black/55" />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid gap-4 rounded-2xl border border-[#1a2a1a] bg-black/25 p-4 sm:p-5">
+                      <h4 className="text-[11px] font-black uppercase tracking-[0.22em] text-[#00ff66]">Metadados</h4>
+                      <div className="grid gap-3 lg:grid-cols-2">
+                        <div>
+                          <label className="mb-1 block text-[10px] font-black uppercase tracking-[0.2em] text-[#8a9a8a]">Categorias</label>
+                          <input value={newSpell.categoria_magia} onChange={(e) => setNewSpell((prev) => ({ ...prev, categoria_magia: e.target.value }))} placeholder="Ataque, suporte..." className="w-full rounded-xl border border-[#1a2a1a] bg-black/45 px-4 py-3 text-[13px] text-white outline-none transition placeholder:text-[#4a5a4a] focus:border-[#00ff66]/50 focus:bg-black/55" />
+                        </div>
+                        <div>
+                          <label className="mb-1 block text-[10px] font-black uppercase tracking-[0.2em] text-[#8a9a8a]">CD de salvação</label>
+                          <input value={newSpell.cd_salvacao} onChange={(e) => setNewSpell((prev) => ({ ...prev, cd_salvacao: e.target.value }))} placeholder="10 + modificador..." className="w-full rounded-xl border border-[#1a2a1a] bg-black/45 px-4 py-3 text-[13px] text-white outline-none transition placeholder:text-[#4a5a4a] focus:border-[#00ff66]/50 focus:bg-black/55" />
+                        </div>
+                        <div>
+                          <label className="mb-1 block text-[10px] font-black uppercase tracking-[0.2em] text-[#8a9a8a]">Condições aplicadas</label>
+                          <input value={newSpell.condicoes_aplicadas} onChange={(e) => setNewSpell((prev) => ({ ...prev, condicoes_aplicadas: e.target.value }))} placeholder="Caído, paralisado..." className="w-full rounded-xl border border-[#1a2a1a] bg-black/45 px-4 py-3 text-[13px] text-white outline-none transition placeholder:text-[#4a5a4a] focus:border-[#00ff66]/50 focus:bg-black/55" />
+                        </div>
+                        <div>
+                          <label className="mb-1 block text-[10px] font-black uppercase tracking-[0.2em] text-[#8a9a8a]">Palavras-chave</label>
+                          <input value={newSpell.palavras_chave} onChange={(e) => setNewSpell((prev) => ({ ...prev, palavras_chave: e.target.value }))} placeholder="controle, fogo, cura..." className="w-full rounded-xl border border-[#1a2a1a] bg-black/45 px-4 py-3 text-[13px] text-white outline-none transition placeholder:text-[#4a5a4a] focus:border-[#00ff66]/50 focus:bg-black/55" />
+                        </div>
+                        <div>
+                          <label className="mb-1 block text-[10px] font-black uppercase tracking-[0.2em] text-[#8a9a8a]">Classes disponíveis</label>
+                          <input value={newSpell.classes_disponivel} onChange={(e) => setNewSpell((prev) => ({ ...prev, classes_disponivel: e.target.value }))} placeholder="Mago, bruxo..." className="w-full rounded-xl border border-[#1a2a1a] bg-black/45 px-4 py-3 text-[13px] text-white outline-none transition placeholder:text-[#4a5a4a] focus:border-[#00ff66]/50 focus:bg-black/55" />
+                        </div>
+                        <div>
+                          <label className="mb-1 block text-[10px] font-black uppercase tracking-[0.2em] text-[#8a9a8a]">Rolagem</label>
+                          <input value={newSpell.rolagem} onChange={(e) => setNewSpell((prev) => ({ ...prev, rolagem: e.target.value }))} placeholder="2d8, teste, etc." className="w-full rounded-xl border border-[#1a2a1a] bg-black/45 px-4 py-3 text-[13px] text-white outline-none transition placeholder:text-[#4a5a4a] focus:border-[#00ff66]/50 focus:bg-black/55" />
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap gap-3 border-t border-[#1a2a1a] pt-4">
+                        <label className="inline-flex items-center gap-2 rounded-full border border-[#1a2a1a] bg-black/35 px-4 py-2 text-[11px] font-black uppercase tracking-[0.16em] text-[#9ea8a0]">
+                          <input type="checkbox" checked={newSpell.eh_concentracao} onChange={(e) => setNewSpell((prev) => ({ ...prev, eh_concentracao: e.target.checked }))} />
+                          Concentração
+                        </label>
+                        <label className="inline-flex items-center gap-2 rounded-full border border-[#1a2a1a] bg-black/35 px-4 py-2 text-[11px] font-black uppercase tracking-[0.16em] text-[#9ea8a0]">
+                          <input type="checkbox" checked={newSpell.requisitos_rituais} onChange={(e) => setNewSpell((prev) => ({ ...prev, requisitos_rituais: e.target.checked }))} />
+                          Ritual
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+
+                  <aside className="space-y-4 xl:sticky xl:top-6 xl:self-start">
+                    <div className="rounded-2xl border border-[#00ff66]/20 bg-[#00ff66]/5 p-4 sm:p-5">
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#00ff66]">Pré-visualização</p>
+                          <h4 className="mt-1 text-[18px] font-black uppercase tracking-[0.14em] text-[#f1e5ac]">{createSpellTitle}</h4>
+                        </div>
+                        <span className="rounded-full border border-[#00ff66]/30 bg-black/30 px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-[#00ff66]">Círculo {createSpellLevel}</span>
+                      </div>
+
+                      <div className="mt-4 space-y-3 text-[12px] uppercase text-[#9ea8a0]">
+                        <p><span className="font-black text-[#00ff66]">Escola:</span> {createSpellSchool}</p>
+                        <p><span className="font-black text-[#00ff66]">Resumo:</span> {createSpellSummary || 'Ainda sem tempo, alcance e duração definidos.'}</p>
+                        <p><span className="font-black text-[#00ff66]">Componentes:</span> {newSpell.componentes.trim() || '-'}</p>
+                        <p><span className="font-black text-[#00ff66]">Alvo:</span> {newSpell.tipo_alvo.trim() || '-'}</p>
+                        <p><span className="font-black text-[#00ff66]">Salvacao:</span> {newSpell.salvacao.trim() || '-'}</p>
+                      </div>
+
+                      <div className="mt-4 rounded-2xl border border-[#1a2a1a] bg-black/35 p-3">
+                        <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#8a9a8a]">Descrição</p>
+                        <p className="mt-2 max-h-[240px] overflow-y-auto whitespace-pre-line text-[13px] leading-6 text-[#d5ead8]">
+                          {newSpell.descricao.trim() || 'A descrição aparecerá aqui enquanto você digita.'}
+                        </p>
+                      </div>
+
+                      <div className="mt-4 grid grid-cols-2 gap-2 text-[11px] uppercase text-[#8a9a8a]">
+                        <div className="rounded-xl border border-[#1a2a1a] bg-black/30 px-3 py-2">
+                          <p className="text-[#00ff66] font-black">Dano</p>
+                          <p className="mt-1 line-clamp-2">{newSpell.dano.trim() || '-'}</p>
+                        </div>
+                        <div className="rounded-xl border border-[#1a2a1a] bg-black/30 px-3 py-2">
+                          <p className="text-[#00ff66] font-black">Área</p>
+                          <p className="mt-1 line-clamp-2">{newSpell.area.trim() || '-'}</p>
+                        </div>
+                        <div className="rounded-xl border border-[#1a2a1a] bg-black/30 px-3 py-2">
+                          <p className="text-[#00ff66] font-black">Categoria</p>
+                          <p className="mt-1 line-clamp-2">{newSpell.categoria_magia.trim() || '-'}</p>
+                        </div>
+                        <div className="rounded-xl border border-[#1a2a1a] bg-black/30 px-3 py-2">
+                          <p className="text-[#00ff66] font-black">CD</p>
+                          <p className="mt-1 line-clamp-2">{newSpell.cd_salvacao.trim() || '-'}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="rounded-2xl border border-[#1a2a1a] bg-black/25 p-4 sm:p-5">
+                      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#00ff66]">Dica prática</p>
+                      <p className="mt-2 text-[12px] leading-6 text-[#9ea8a0]">
+                        Use a seção de identidade para nome, nível e escola. Depois preencha descrição e metadados sem pressa. Assim a magia fica fácil de encontrar depois na biblioteca.
+                      </p>
+                    </div>
+                  </aside>
+                </div>
+              </div>
+
+              <div className="border-t border-[#1a2a1a] bg-black/45 px-4 py-4 sm:px-6">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="text-[11px] uppercase text-[#6d7a6d]">
+                    {savingNewSpell ? 'Salvando no catálogo...' : 'Você pode fechar sem salvar a qualquer momento.'}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={resetCreateSpell}
+                      className="rounded-xl border border-[#1a2a1a] px-4 py-2 text-[11px] font-black uppercase tracking-[0.18em] text-[#8a9a8a] transition hover:border-[#00ff66]/35 hover:text-[#00ff66]"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleCreateSpell}
+                      disabled={savingNewSpell}
+                      className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#00ff66]/30 bg-[#00ff66]/10 px-5 py-2 text-[11px] font-black uppercase tracking-[0.18em] text-[#00ff66] transition hover:bg-[#00ff66]/20 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      <Plus size={14} /> {savingNewSpell ? 'Criando...' : 'Salvar magia'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

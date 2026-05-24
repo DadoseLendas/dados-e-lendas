@@ -1811,6 +1811,7 @@ export default function TelaDeMesa() {
         isOpen={showSpellModal}
         onClose={() => setShowSpellModal(false)}
         characterId={fichaCharacterId}
+        campaignId={campaignId}
         onLaunchSpell={handleSpellLaunch}
       />
 

@@ -54,16 +54,56 @@ interface SpellData {
   cd_salvacao?: string | number | null;
   tipo_dano?: string | null;
   tipo_ataque?: string | null;
+  campaign_id?: string | number | null;
 }
+
+type SpellCatalogForm = {
+  nome: string;
+  escola: string;
+  nivel_magia: string;
+  tempo_conjuracao: string;
+  alcance: string;
+  componentes: string;
+  duracao: string;
+  descricao: string;
+  material: string;
+  dano: string;
+  area: string;
+  formato: string;
+  efeito: string;
+  rolagem: string;
+  tipo_alvo: string;
+  salvacao: string;
+  escala_por_nivel: string;
+  classes_disponivel: string;
+  categoria_magia: string;
+  condicoes_aplicadas: string;
+  palavras_chave: string;
+  cd_salvacao: string;
+  tipo_dano: string;
+  tipo_ataque: string;
+  eh_concentracao: boolean;
+  requisitos_rituais: boolean;
+};
 
 interface SpellTableProps {
   characterLevel?: number;
   characterClass?: string;
   isEditable?: boolean;
+  campaignId?: string | number | null;
   selectedSpells?: string[];
   onSpellDrag?: (spell: SpellData) => void;
   onSpellClick?: (spell: SpellData) => void;
 }
+
+const normalizeSlug = (value: string) =>
+  value
+    .toLowerCase()
+    .trim()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
 
 // Mapeamento de cores por escola de magia
 const schoolColors: Record<string, string> = {
@@ -105,6 +145,7 @@ export default function SpellTable({
   characterLevel = 1,
   characterClass = "Mago",
   isEditable = false,
+  campaignId = null,
   selectedSpells = [],
   onSpellDrag,
   onSpellClick,
@@ -123,7 +164,7 @@ export default function SpellTable({
   const loadSpells = useCallback(async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      let query = supabase
         .from("spell_catalog")
         .select(
           `id, slug, nome, escola, nivel_magia, tempo_conjuracao, alcance, 
@@ -133,10 +174,18 @@ export default function SpellTable({
            classes_disponivel, categoria_magia, efeito_principal,
            beneficio_concedido, restricao_concedida, transforma_em,
            movimento_concedido, protecao_concedida, condicoes_aplicadas,
-           palavras_chave, cd_salvacao, tipo_dano, tipo_ataque`
+           palavras_chave, cd_salvacao, tipo_dano, tipo_ataque, campaign_id`
         )
         .order("nivel_magia", { ascending: true })
         .order("nome", { ascending: true });
+
+      if (campaignId != null) {
+        query = query.or(`campaign_id.is.null,campaign_id.eq.${String(campaignId)}`);
+      } else {
+        query = query.is("campaign_id", null);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       setSpells(data || []);
@@ -146,7 +195,7 @@ export default function SpellTable({
     } finally {
       setLoading(false);
     }
-  }, [supabase]);
+  }, [supabase, campaignId]);
 
   // Carregar magias ao montar
   useEffect(() => {
@@ -309,6 +358,7 @@ ${spell.efeito ? `\n**Efeito Mecânico**: ${spell.efeito}` : ""}
             </button>
           )}
         </div>
+
       </div>
 
       {/* Tabela de Magias */}
