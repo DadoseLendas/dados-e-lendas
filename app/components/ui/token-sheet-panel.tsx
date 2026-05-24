@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { X, Save } from "lucide-react";
 
 export type AbilityScores = {
@@ -46,10 +47,15 @@ interface TokenSheetPanelProps {
   isDM: boolean;
   loading: boolean;
   saving: boolean;
+  autoFillLoading?: boolean;
+  autoFillSource?: string | null;
+  autoFillError?: string | null;
   tokenLabel?: string;
   sheet: TokenSheet;
   onChange: (next: TokenSheet) => void;
   onSave: () => void;
+  onAutoFill?: () => Promise<boolean> | boolean;
+  onAutoFillFromText?: (text: string) => Promise<boolean> | boolean;
   onClose: () => void;
 }
 
@@ -58,36 +64,113 @@ export default function TokenSheetPanel({
   isDM,
   loading,
   saving,
+  autoFillLoading,
+  autoFillSource,
+  autoFillError,
   tokenLabel,
   sheet,
   onChange,
   onSave,
+  onAutoFill,
+  onAutoFillFromText,
   onClose,
 }: TokenSheetPanelProps) {
+  const [showAutoFillModal, setShowAutoFillModal] = useState(false);
+  const [autoFillMode, setAutoFillMode] = useState<"menu" | "manual">("menu");
+  const [manualText, setManualText] = useState("");
+  const [editingSection, setEditingSection] = useState<"abilities" | "actions" | null>(null);
+
   if (!isOpen) return null;
 
+  const abilities = sheet.abilities ?? {
+    str: "",
+    dex: "",
+    con: "",
+    int: "",
+    wis: "",
+    cha: "",
+  };
+
+  const saves = sheet.saves ?? {
+    str: "",
+    dex: "",
+    con: "",
+    int: "",
+    wis: "",
+    cha: "",
+  };
+
   const updateField = (key: keyof TokenSheet, value: string) => {
-    onChange({ ...sheet, [key]: value });
+    const nextSheet = { ...sheet, [key]: value };
+    onChange(nextSheet);
   };
 
   const updateAbility = (group: "abilities" | "saves", key: keyof AbilityScores, value: string) => {
-    onChange({
+    const nextSheet = {
       ...sheet,
       [group]: {
-        ...sheet[group],
+        ...(sheet[group] ?? {
+          str: "",
+          dex: "",
+          con: "",
+          int: "",
+          wis: "",
+          cha: "",
+        }),
         [key]: value,
       },
-    });
+    };
+    onChange(nextSheet);
   };
 
   const updateSkill = (key: string, value: string) => {
-    onChange({
+    const nextSheet = {
       ...sheet,
       skills: {
         ...sheet.skills,
         [key]: value,
       },
-    });
+    };
+    onChange(nextSheet);
+  };
+
+  const closeAutoFillModal = () => {
+    setShowAutoFillModal(false);
+    setAutoFillMode("menu");
+    setManualText("");
+  };
+
+  const handleManualAutoFill = async () => {
+    if (!onAutoFillFromText) return;
+
+    const text = manualText.trim();
+    if (!text) return;
+
+    const success = await onAutoFillFromText(text);
+    if (success) {
+      closeAutoFillModal();
+    }
+  };
+
+  const renderRichTextBlock = (text: string, placeholder: string) => {
+    const content = text.trim();
+    if (!content) {
+      return <p className="text-[12px] italic text-[#5f4e3c]">{placeholder}</p>;
+    }
+
+    const lines = content.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+    return (
+      <div className="space-y-2 text-[13px] leading-6 text-[#f2e7cf]">
+        {lines.map((line, index) => {
+          const isHeading = /^[A-ZÀ-ÿ][A-Za-zÀ-ÿ\s'’\-\.]+\./.test(line) || /^[A-ZÀ-ÿ][A-Za-zÀ-ÿ\s'’\-]+$/.test(line);
+          return (
+            <p key={`${line}-${index}`} className={isHeading ? "font-bold text-[#f5dca1]" : ""}>
+              {line}
+            </p>
+          );
+        })}
+      </div>
+    );
   };
 
   return (
@@ -101,6 +184,9 @@ export default function TokenSheetPanel({
           <div className="min-w-0">
             <p className="text-[9px] font-black uppercase tracking-[0.3em] text-[#c59d5f]">Stat Block</p>
             <p className="truncate text-[11px] uppercase text-[#6d5b46]">{tokenLabel ? tokenLabel : "Token selecionado"}</p>
+            {autoFillSource && (
+              <p className="mt-1 truncate text-[9px] uppercase tracking-[0.18em] text-[#4a5a4a]">Fonte: {autoFillSource}</p>
+            )}
           </div>
           <button onClick={onClose} className="text-[#6d5b46] hover:text-white">
             <X size={16} />
@@ -112,7 +198,7 @@ export default function TokenSheetPanel({
 
           {!loading && (
             <div className="space-y-5">
-              <div className="rounded-xl border border-[#3a2b1b] bg-[#120f0b] p-3">
+              <div className="rounded-2xl border border-[#3a2b1b] bg-[#120f0b] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
                 <label className="block text-[11px] uppercase tracking-[0.25em] text-[#c59d5f]">
                   Nome
                   <input
@@ -154,7 +240,7 @@ export default function TokenSheetPanel({
               </div>
 
               <div className="grid grid-cols-3 gap-2">
-                <div className="rounded-xl border border-[#3a2b1b] bg-[#120f0b] p-3 text-center">
+                <div className="rounded-2xl border border-[#3a2b1b] bg-[#120f0b] p-3 text-center">
                   <p className="text-[9px] uppercase tracking-[0.3em] text-[#c59d5f]">CA</p>
                   <input
                     value={sheet.armorClass}
@@ -163,7 +249,7 @@ export default function TokenSheetPanel({
                     className="mt-2 w-full rounded-md border border-[#2f2215] bg-black/40 px-2 py-1.5 text-center text-[13px] font-black text-white outline-none focus:border-[#c59d5f] disabled:opacity-60"
                   />
                 </div>
-                <div className="rounded-xl border border-[#3a2b1b] bg-[#120f0b] p-3 text-center">
+                <div className="rounded-2xl border border-[#3a2b1b] bg-[#120f0b] p-3 text-center">
                   <p className="text-[9px] uppercase tracking-[0.3em] text-[#c59d5f]">PV</p>
                   <input
                     value={sheet.hitPoints}
@@ -172,7 +258,7 @@ export default function TokenSheetPanel({
                     className="mt-2 w-full rounded-md border border-[#2f2215] bg-black/40 px-2 py-1.5 text-center text-[13px] font-black text-white outline-none focus:border-[#c59d5f] disabled:opacity-60"
                   />
                 </div>
-                <div className="rounded-xl border border-[#3a2b1b] bg-[#120f0b] p-3 text-center">
+                <div className="rounded-2xl border border-[#3a2b1b] bg-[#120f0b] p-3 text-center">
                   <p className="text-[9px] uppercase tracking-[0.3em] text-[#c59d5f]">Desloc.</p>
                   <input
                     value={sheet.speed}
@@ -193,7 +279,7 @@ export default function TokenSheetPanel({
                     <label key={`attr-${item.key}`} className="rounded-xl border border-[#3a2b1b] bg-[#120f0b] p-2 text-center">
                       <span className="text-[10px] font-black uppercase text-[#c59d5f]">{item.label}</span>
                       <input
-                        value={sheet.abilities[item.key]}
+                        value={abilities[item.key]}
                         onChange={(e) => updateAbility("abilities", item.key, e.target.value)}
                         disabled={!isDM}
                         className="mt-2 w-full rounded-md border border-[#2f2215] bg-black/40 px-2 py-1.5 text-center text-[13px] font-black text-white outline-none focus:border-[#c59d5f] disabled:opacity-60"
@@ -203,22 +289,85 @@ export default function TokenSheetPanel({
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="rounded-xl border border-[#3a2b1b] bg-[#120f0b] p-3">
-                  <p className="text-[10px] font-black uppercase tracking-[0.25em] text-[#c59d5f]">Testes de Resistencia</p>
-                  <div className="mt-2 grid grid-cols-2 gap-2">
-                    {abilityLabels.map((item) => (
-                      <label key={`save-${item.key}`} className="text-[10px] uppercase text-[#6d5b46]">
-                        {item.label}
-                        <input
-                          value={sheet.saves[item.key]}
-                          onChange={(e) => updateAbility("saves", item.key, e.target.value)}
-                          disabled={!isDM}
-                          className="mt-1 w-full rounded-md border border-[#2f2215] bg-black/40 px-2 py-1.5 text-[12px] text-white outline-none focus:border-[#c59d5f] disabled:opacity-60"
-                        />
-                      </label>
-                    ))}
+              <div className="flex flex-col gap-3">
+                <div className="rounded-2xl border border-[#3a2b1b] bg-[#120f0b] p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-[10px] font-black uppercase tracking-[0.25em] text-[#f5dca1]">Traços</p>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[9px] uppercase tracking-[0.18em] text-[#6d5b46]">habilidades passivas</span>
+                      {isDM && (
+                        <button
+                          type="button"
+                          onClick={() => setEditingSection(editingSection === "abilities" ? null : "abilities")}
+                          className="rounded-full border border-[#3a2b1b] bg-black/30 px-2 py-1 text-[9px] font-black uppercase tracking-[0.18em] text-[#f5dca1] hover:border-[#c59d5f]/60 hover:bg-black/50"
+                        >
+                          {editingSection === "abilities" ? "Fechar" : "Editar"}
+                        </button>
+                      )}
+                    </div>
                   </div>
+                  <div className="mt-3 rounded-xl border border-[#2f2215] bg-black/30 px-3 py-3 min-h-[160px]">
+                    {renderRichTextBlock(sheet.abilitiesText, "Descreva os traços especiais do monstro. Ex.: Regeneração, Faro Aguçado, Resistência...")}
+                  </div>
+                  {isDM && editingSection === "abilities" && (
+                    <textarea
+                      value={sheet.abilitiesText}
+                      onChange={(e) => updateField("abilitiesText", e.target.value)}
+                      rows={7}
+                      className="mt-3 w-full rounded-xl border border-[#2f2215] bg-black/40 px-3 py-3 text-[13px] leading-6 text-white outline-none focus:border-[#c59d5f]"
+                      placeholder="Faro Aguçado. O troll tem vantagem em testes de Sabedoria (Percepção) relacionados ao olfato."
+                    />
+                  )}
+                </div>
+
+                <div className="rounded-2xl border border-[#3a2b1b] bg-[#120f0b] p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-[10px] font-black uppercase tracking-[0.25em] text-[#f5dca1]">Ações</p>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[9px] uppercase tracking-[0.18em] text-[#6d5b46]">ataques e habilidades</span>
+                      {isDM && (
+                        <button
+                          type="button"
+                          onClick={() => setEditingSection(editingSection === "actions" ? null : "actions")}
+                          className="rounded-full border border-[#3a2b1b] bg-black/30 px-2 py-1 text-[9px] font-black uppercase tracking-[0.18em] text-[#f5dca1] hover:border-[#c59d5f]/60 hover:bg-black/50"
+                        >
+                          {editingSection === "actions" ? "Fechar" : "Editar"}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  <div className="mt-3 rounded-xl border border-[#2f2215] bg-black/30 px-3 py-3 min-h-[220px]">
+                    {renderRichTextBlock(sheet.actionsText, "Descreva as ações do monstro. Ex.: Ataques Múltiplos, Mordida, Garra...")}
+                  </div>
+                  {isDM && editingSection === "actions" && (
+                    <textarea
+                      value={sheet.actionsText}
+                      onChange={(e) => updateField("actionsText", e.target.value)}
+                      rows={10}
+                      className="mt-3 w-full rounded-xl border border-[#2f2215] bg-black/40 px-3 py-3 text-[13px] leading-6 text-white outline-none focus:border-[#c59d5f]"
+                      placeholder="Ataques Múltiplos. O troll realiza três ataques: um com sua mordida e dois com suas garras."
+                    />
+                  )}
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-[#3a2b1b] bg-[#120f0b] p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-[10px] font-black uppercase tracking-[0.25em] text-[#c59d5f]">Testes de Resistência</p>
+                  <span className="text-[9px] uppercase tracking-[0.18em] text-[#6d5b46]">salvaguardas</span>
+                </div>
+                <div className="mt-3 grid grid-cols-3 gap-2">
+                  {abilityLabels.map((item) => (
+                    <label key={`save-${item.key}`} className="rounded-lg border border-[#2f2215] bg-black/30 px-2 py-2 text-center text-[9px] uppercase text-[#6d5b46]">
+                      <span className="block text-[9px] font-black tracking-[0.16em] text-[#c59d5f]">{item.label}</span>
+                      <input
+                        value={saves[item.key]}
+                        onChange={(e) => updateAbility("saves", item.key, e.target.value)}
+                        disabled={!isDM}
+                        className="mt-1 w-full rounded-md border border-[#2f2215] bg-black/40 px-1.5 py-1 text-center text-[11px] text-white outline-none focus:border-[#c59d5f] disabled:opacity-60"
+                      />
+                    </label>
+                  ))}
                 </div>
               </div>
 
@@ -287,37 +436,28 @@ export default function TokenSheetPanel({
                 </label>
               </div>
 
-              <div className="rounded-xl border border-[#3a2b1b] bg-[#120f0b] p-3">
-                <p className="text-[10px] font-black uppercase tracking-[0.25em] text-[#c59d5f]">Habilidades</p>
-                <textarea
-                  value={sheet.abilitiesText}
-                  onChange={(e) => updateField("abilitiesText", e.target.value)}
-                  disabled={!isDM}
-                  rows={4}
-                  className="mt-2 w-full rounded-md border border-[#2f2215] bg-black/40 px-2 py-2 text-[12px] text-white outline-none focus:border-[#c59d5f] disabled:opacity-60"
-                />
-              </div>
-
-              <div className="rounded-xl border border-[#3a2b1b] bg-[#120f0b] p-3">
-                <p className="text-[10px] font-black uppercase tracking-[0.25em] text-[#c59d5f]">Acoes</p>
-                <textarea
-                  value={sheet.actionsText}
-                  onChange={(e) => updateField("actionsText", e.target.value)}
-                  disabled={!isDM}
-                  rows={4}
-                  className="mt-2 w-full rounded-md border border-[#2f2215] bg-black/40 px-2 py-2 text-[12px] text-white outline-none focus:border-[#c59d5f] disabled:opacity-60"
-                />
-              </div>
             </div>
           )}
         </div>
 
-        <div className="flex items-center justify-between border-t border-[#1a2a1a] bg-[#0a120a] px-4 py-3">
-          {!isDM && <span className="text-[10px] uppercase text-[#4a5a4a]">Somente mestre edita</span>}
+        <div className="flex items-center justify-between gap-3 border-t border-[#1a2a1a] bg-[#0a120a] px-4 py-3">
+          <div className="flex flex-wrap items-center gap-2">
+            {!isDM && <span className="text-[10px] uppercase text-[#4a5a4a]">Somente mestre edita</span>}
+            {isDM && onAutoFill && (
+              <button
+                onClick={() => setShowAutoFillModal(true)}
+                disabled={loading || saving || autoFillLoading}
+                className="inline-flex items-center gap-2 rounded-md border border-[#c59d5f]/30 bg-[#c59d5f]/10 px-3 py-2 text-[11px] font-black uppercase tracking-[0.18em] text-[#f5e6c1] hover:bg-[#c59d5f]/20 disabled:opacity-60"
+              >
+                {autoFillLoading ? 'Auto-preenchendo' : 'Auto-preencher'}
+              </button>
+            )}
+          </div>
           {isDM && (
             <button
-              onClick={onSave}
-              disabled={saving || loading}
+              type="button"
+              onClick={() => onSave()}
+              disabled={saving || loading || autoFillLoading}
               className="ml-auto inline-flex items-center gap-2 rounded-md border border-[#00ff66]/30 bg-[#00ff66]/10 px-3 py-2 text-[11px] font-black uppercase tracking-[0.18em] text-[#00ff66] hover:bg-[#00ff66]/20 disabled:opacity-60"
             >
               <Save size={14} /> {saving ? "Salvando" : "Salvar"}
@@ -325,6 +465,98 @@ export default function TokenSheetPanel({
           )}
         </div>
       </div>
+
+      {showAutoFillModal && isDM && (
+        <div className="fixed inset-0 z-[10001] flex items-center justify-center bg-black/70 p-4" onMouseDown={closeAutoFillModal}>
+          <div
+            className="w-full max-w-[720px] rounded-[22px] border border-[#3a2b1b] bg-[#100c08] shadow-[0_0_40px_rgba(0,0,0,0.85)]"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-start justify-between border-b border-[#3a2b1b] px-4 py-3">
+              <div>
+                <p className="text-[9px] font-black uppercase tracking-[0.3em] text-[#c59d5f]">Auto-preencher</p>
+                <p className="mt-1 text-[11px] uppercase text-[#6d5b46]">Escolha entre o livro PDF ou colar o texto da ficha</p>
+              </div>
+              <button onClick={closeAutoFillModal} className="text-[#6d5b46] hover:text-white">
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="space-y-4 px-4 py-4 text-white">
+              {autoFillError && (
+                <div className="rounded-xl border border-[#8f4d4d] bg-[#281111] px-3 py-2 text-[11px] text-[#ffb6b6]">
+                  {autoFillError}
+                </div>
+              )}
+
+              {autoFillMode === "menu" && (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const success = onAutoFill ? await onAutoFill() : false;
+                      if (success) {
+                        closeAutoFillModal();
+                      }
+                    }}
+                    disabled={loading || saving || autoFillLoading}
+                    className="rounded-2xl border border-[#3a2b1b] bg-[#120f0b] p-4 text-left transition hover:border-[#c59d5f]/60 hover:bg-[#1a150f] disabled:opacity-60"
+                  >
+                    <p className="text-[10px] font-black uppercase tracking-[0.25em] text-[#c59d5f]">Livro PDF</p>
+                    <p className="mt-2 text-sm font-semibold text-[#f5e6c1]">Procurar na biblioteca da campanha</p>
+                    <p className="mt-2 text-[11px] leading-relaxed text-[#6d5b46]">Usa o link do livro salvo na campanha para tentar localizar a ficha automaticamente.</p>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setAutoFillMode("manual")}
+                    className="rounded-2xl border border-[#3a2b1b] bg-[#120f0b] p-4 text-left transition hover:border-[#00ff66]/40 hover:bg-[#10140f]"
+                  >
+                    <p className="text-[10px] font-black uppercase tracking-[0.25em] text-[#00ff66]">Copiar e colar</p>
+                    <p className="mt-2 text-sm font-semibold text-[#f5e6c1]">Colar o bloco do monstro</p>
+                    <p className="mt-2 text-[11px] leading-relaxed text-[#6d5b46]">Cole o texto com nome, CA, PV, atributos, sentidos e ações. Eu preencho os campos direto.</p>
+                  </button>
+                </div>
+              )}
+
+              {autoFillMode === "manual" && (
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-[10px] font-black uppercase tracking-[0.25em] text-[#00ff66]">
+                      Texto da ficha
+                      <textarea
+                        value={manualText}
+                        onChange={(e) => setManualText(e.target.value)}
+                        rows={16}
+                        placeholder={"Cole aqui o bloco completo, por exemplo:\nTROLL\nGigante Grande, caótico e mau\nClasse de Armadura 15 (armadura natural)..."}
+                        className="mt-2 w-full rounded-2xl border border-[#2f2215] bg-black/40 px-3 py-3 text-[12px] leading-relaxed text-white outline-none focus:border-[#00ff66]/60"
+                      />
+                    </label>
+                  </div>
+
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setAutoFillMode("menu")}
+                      className="rounded-md border border-[#3a2b1b] bg-[#120f0b] px-3 py-2 text-[11px] font-black uppercase tracking-[0.18em] text-[#f5e6c1] hover:bg-[#1a150f]"
+                    >
+                      Voltar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleManualAutoFill}
+                      disabled={!manualText.trim() || autoFillLoading}
+                      className="rounded-md border border-[#00ff66]/30 bg-[#00ff66]/10 px-3 py-2 text-[11px] font-black uppercase tracking-[0.18em] text-[#00ff66] hover:bg-[#00ff66]/20 disabled:opacity-60"
+                    >
+                      {autoFillLoading ? "Preenchendo..." : "Preencher com texto"}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

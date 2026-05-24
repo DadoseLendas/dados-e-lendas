@@ -17,6 +17,7 @@ import DiceRoller from '@/app/components/ui/dice-roller';
 import TokenLibraryWidget from '@/app/components/ui/token-library-widget';
 import MapEditorModal from '@/app/components/ui/map-editor-modal';
 import { EffectResult, SpellExecution } from '@/utils/spell-executor';
+import { parseMonsterSheetFromClipboardText, parseMonsterSheetFromText } from '@/utils/monster-sheet-parser';
 import TokenSheetPanel, { TokenSheet } from '@/app/components/ui/token-sheet-panel';
 interface Token {
   id: string;
@@ -64,22 +65,36 @@ const buildEmptySheet = (name?: string): TokenSheet => ({
   actionsText: "",
 });
 
-const toNumberOrNull = (value: string) => {
-  const normalized = value.replace(',', '.').trim();
+const toStringValue = (value: unknown) => (typeof value === 'string' ? value : value == null ? '' : String(value));
+
+const toNumberOrNull = (value: unknown) => {
+  const normalized = toStringValue(value).replace(',', '.').trim();
   if (!normalized) return null;
   const num = Number(normalized);
   return Number.isFinite(num) ? num : null;
 };
 
-const toNumberOrString = (value: string) => {
-  const normalized = value.replace(',', '.').trim();
+const toLeadingNumberOrNull = (value: unknown) => {
+  const normalized = toStringValue(value).replace(',', '.').trim();
+  if (!normalized) return null;
+
+  const match = normalized.match(/-?\d[\d.,]*/);
+  if (!match?.[0]) return null;
+
+  const numericText = match[0].replace(/[.,]/g, '');
+  const num = Number(numericText);
+  return Number.isFinite(num) ? num : null;
+};
+
+const toNumberOrString = (value: unknown) => {
+  const normalized = toStringValue(value).replace(',', '.').trim();
   if (!normalized) return null;
   const num = Number(normalized);
   return Number.isFinite(num) ? num : normalized;
 };
 
-const toList = (value: string) =>
-  value
+const toList = (value: unknown) =>
+  toStringValue(value)
     .split(',')
     .map((item) => item.trim())
     .filter(Boolean);
@@ -89,6 +104,36 @@ const fromList = (value?: string[] | string | null) => {
   if (Array.isArray(value)) return value.join(', ');
   return value;
 };
+
+const normalizeAbilityScores = (value: Partial<typeof EMPTY_ABILITIES> | null | undefined) => ({
+  str: toStringValue(value?.str),
+  dex: toStringValue(value?.dex),
+  con: toStringValue(value?.con),
+  int: toStringValue(value?.int),
+  wis: toStringValue(value?.wis),
+  cha: toStringValue(value?.cha),
+});
+
+const normalizeTokenSheet = (sheet: Partial<TokenSheet> | null | undefined): TokenSheet => ({
+  name: toStringValue(sheet?.name),
+  size_category: toStringValue(sheet?.size_category),
+  type: toStringValue(sheet?.type),
+  alignment: toStringValue(sheet?.alignment),
+  armorClass: toStringValue(sheet?.armorClass),
+  hitPoints: toStringValue(sheet?.hitPoints),
+  speed: toStringValue(sheet?.speed),
+  abilities: normalizeAbilityScores(sheet?.abilities),
+  saves: normalizeAbilityScores(sheet?.saves),
+  skills: sheet?.skills ?? {},
+  damageResistances: toStringValue(sheet?.damageResistances),
+  conditionImmunities: toStringValue(sheet?.conditionImmunities),
+  senses: toStringValue(sheet?.senses),
+  languages: toStringValue(sheet?.languages),
+  challengeRating: toStringValue(sheet?.challengeRating),
+  xp: toStringValue(sheet?.xp),
+  abilitiesText: toStringValue(sheet?.abilitiesText),
+  actionsText: toStringValue(sheet?.actionsText),
+});
 // Nota: removido o mapeamento para o SpellCasterMap; mantemos tokens simples
 const CONDICOES_RPG = [
   { 
@@ -401,6 +446,17 @@ export default function TelaDeMesa() {
   //teclado (WASD + Delete)
   useEffect(() => {
     const handleKeyDown = async (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      const isTypingField = Boolean(
+        target && (
+          target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.tagName === 'SELECT' ||
+          target.isContentEditable
+        )
+      );
+
+      if (isTypingField) return;
       if (!tokenSelecionado) return;
       const id = tokenSelecionado;
       const token = tokensRef.current.find(t => t.id === id);
@@ -702,7 +758,11 @@ export default function TelaDeMesa() {
   const [tokenSheetTokenId, setTokenSheetTokenId] = useState<string | null>(null);
   const [tokenSheetLoading, setTokenSheetLoading] = useState(false);
   const [tokenSheetSaving, setTokenSheetSaving] = useState(false);
+  const [tokenSheetAutoFillLoading, setTokenSheetAutoFillLoading] = useState(false);
+  const [tokenSheetAutoFillSource, setTokenSheetAutoFillSource] = useState<string | null>(null);
+  const [tokenSheetAutoFillError, setTokenSheetAutoFillError] = useState<string | null>(null);
   const [tokenSheet, setTokenSheet] = useState<TokenSheet>(buildEmptySheet());
+  const tokenSheetRef = useRef<TokenSheet>(buildEmptySheet());
   // DM visualizando ficha de jogador
   const [showPlayerList, setShowPlayerList] = useState(false);
   const [showFichaDM, setShowFichaDM] = useState(false);
@@ -712,6 +772,10 @@ export default function TelaDeMesa() {
   const [modalAjuda, setModalAjuda] = useState(false);
   const [buscaCondicao, setBuscaCondicao] = useState("");
   const [itemExpandido, setItemExpandido] = useState<string | null>(null);
+
+  useEffect(() => {
+    tokenSheetRef.current = tokenSheet;
+  }, [tokenSheet]);
 
   // Busca e atualiza personagens dos jogadores da campanha (usado pelo Mestre)
   const fetchPlayerCharacters = async () => {
@@ -778,14 +842,29 @@ export default function TelaDeMesa() {
   }, [tokenSelecionado, tokens]);
 
   const openTokenSheet = (tokenId: string) => {
+    const token = tokens.find((item) => item.id === tokenId) ?? null;
     setTokenSelecionado(tokenId);
     setTokenSheetTokenId(tokenId);
+    setTokenSheet(
+      normalizeTokenSheet({
+        ...buildEmptySheet(token?.name ?? selectedToken?.name ?? ""),
+        size_category: token?.sizeCategory ?? selectedToken?.sizeCategory ?? "",
+      })
+    );
+    tokenSheetRef.current = normalizeTokenSheet({
+      ...buildEmptySheet(token?.name ?? selectedToken?.name ?? ""),
+      size_category: token?.sizeCategory ?? selectedToken?.sizeCategory ?? "",
+    });
+    setTokenSheetAutoFillSource(null);
+    setTokenSheetAutoFillError(null);
     setShowTokenSheet(true);
   };
 
   useEffect(() => {
     if (!showTokenSheet || !tokenSheetTokenId) return;
     let active = true;
+    setTokenSheetAutoFillError(null);
+    setTokenSheetAutoFillSource(null);
     const loadSheet = async () => {
       setTokenSheetLoading(true);
       const { data, error } = await supabase
@@ -797,7 +876,7 @@ export default function TelaDeMesa() {
       if (!active) return;
 
       if (error || !data) {
-        setTokenSheet(buildEmptySheet(selectedToken?.name));
+        console.error('[token-sheet-load] failed, keeping current sheet state:', { tokenSheetTokenId, error: error?.message ?? null, hasData: Boolean(data) });
         setTokenSheetLoading(false);
         return;
       }
@@ -851,58 +930,199 @@ export default function TelaDeMesa() {
     }
   }, [tokenSheetTokenId, tokens]);
 
-  const handleSaveTokenSheet = async () => {
-    if (!tokenSheetTokenId) return;
+  const handleSaveTokenSheet = async (sheetToSave: TokenSheet = tokenSheetRef.current) => {
+    if (!tokenSheetTokenId) return false;
     setTokenSheetSaving(true);
-    const payload = {
-      name: tokenSheet.name || null,
-      size_category: tokenSheet.size_category || null,
-      type: tokenSheet.type || null,
-      alignment: tokenSheet.alignment || null,
-      armor_class: toNumberOrNull(tokenSheet.armorClass),
-      hit_points: toNumberOrNull(tokenSheet.hitPoints),
-      speed: tokenSheet.speed || null,
+    try {
+      const safeSheet = normalizeTokenSheet(sheetToSave);
+      const fallbackSizeCategory = safeSheet.size_category || selectedToken?.sizeCategory || tokenSheet.size_category || 'Medium';
+      const payload = {
+        name: safeSheet.name || null,
+        size_category: fallbackSizeCategory,
+        type: safeSheet.type || null,
+        alignment: safeSheet.alignment || null,
+        armor_class: toLeadingNumberOrNull(safeSheet.armorClass),
+        hit_points: toLeadingNumberOrNull(safeSheet.hitPoints),
+        speed: safeSheet.speed || null,
+        abilities: {
+          str: toNumberOrNull(safeSheet.abilities.str),
+          dex: toNumberOrNull(safeSheet.abilities.dex),
+          con: toNumberOrNull(safeSheet.abilities.con),
+          int: toNumberOrNull(safeSheet.abilities.int),
+          wis: toNumberOrNull(safeSheet.abilities.wis),
+          cha: toNumberOrNull(safeSheet.abilities.cha),
+        },
+        saving_throws: {
+          str: toNumberOrNull(safeSheet.saves.str),
+          dex: toNumberOrNull(safeSheet.saves.dex),
+          con: toNumberOrNull(safeSheet.saves.con),
+          int: toNumberOrNull(safeSheet.saves.int),
+          wis: toNumberOrNull(safeSheet.saves.wis),
+          cha: toNumberOrNull(safeSheet.saves.cha),
+        },
+        damage_resistances: toList(safeSheet.damageResistances),
+        condition_immunities: toList(safeSheet.conditionImmunities),
+        senses: safeSheet.senses || null,
+        languages: safeSheet.languages || null,
+        challenge_rating: safeSheet.challengeRating || null,
+        xp: toLeadingNumberOrNull(safeSheet.xp),
+        abilities_text: safeSheet.abilitiesText || null,
+        actions_text: safeSheet.actionsText || null,
+        updated_at: new Date().toISOString(),
+      };
+
+      console.log('[token-sheet-save] sheetToSave:', sheetToSave);
+      console.log('[token-sheet-save] safeSheet:', safeSheet);
+      console.log('[token-sheet-save] payload:', payload);
+
+      const record = {
+        id: tokenSheetTokenId,
+        campaign_id: campaignId,
+        ...payload,
+      };
+
+      const { data: savedToken, error } = await supabase
+        .from('campaign_tokens')
+        .update(record)
+        .eq('id', tokenSheetTokenId)
+        .eq('campaign_id', campaignId)
+        .select('*')
+        .single();
+
+      if (error) {
+        alert(`Erro ao salvar ficha: ${error.message}`);
+        return false;
+      }
+
+      if (savedToken) {
+        const nextSheet = normalizeTokenSheet({
+          name: (savedToken as any).name ?? safeSheet.name,
+          size_category: (savedToken as any).size_category ?? fallbackSizeCategory,
+          type: (savedToken as any).type ?? safeSheet.type,
+          alignment: (savedToken as any).alignment ?? safeSheet.alignment,
+          armorClass: (savedToken as any).armor_class != null ? String((savedToken as any).armor_class) : safeSheet.armorClass,
+          hitPoints: (savedToken as any).hit_points != null ? String((savedToken as any).hit_points) : safeSheet.hitPoints,
+          speed: (savedToken as any).speed ?? safeSheet.speed,
+          abilities: (savedToken as any).abilities ?? safeSheet.abilities,
+          saves: (savedToken as any).saving_throws ?? safeSheet.saves,
+          damageResistances: Array.isArray((savedToken as any).damage_resistances) ? (savedToken as any).damage_resistances.join(', ') : safeSheet.damageResistances,
+          conditionImmunities: Array.isArray((savedToken as any).condition_immunities) ? (savedToken as any).condition_immunities.join(', ') : safeSheet.conditionImmunities,
+          senses: (savedToken as any).senses ?? safeSheet.senses,
+          languages: (savedToken as any).languages ?? safeSheet.languages,
+          challengeRating: (savedToken as any).challenge_rating ?? safeSheet.challengeRating,
+          xp: (savedToken as any).xp != null ? String((savedToken as any).xp) : safeSheet.xp,
+          abilitiesText: (savedToken as any).abilities_text ?? safeSheet.abilitiesText,
+          actionsText: (savedToken as any).actions_text ?? safeSheet.actionsText,
+        });
+        tokenSheetRef.current = nextSheet;
+        setTokenSheet(nextSheet);
+      }
+
+      if (safeSheet.name) {
+        setTokens((prev) => prev.map((token) => token.id === tokenSheetTokenId ? { ...token, name: safeSheet.name } : token));
+      }
+      return true;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Falha inesperada ao salvar ficha';
+      alert(`Erro ao salvar ficha: ${message}`);
+      return false;
+    } finally {
+      setTokenSheetSaving(false);
+    }
+  };
+
+  const handleTokenSheetChange = (nextSheet: TokenSheet) => {
+    tokenSheetRef.current = nextSheet;
+    setTokenSheet(nextSheet);
+  };
+
+  const applyAutoFillSheet = async (sheetFromSource: Partial<TokenSheet>, sourceLabel?: string | null) => {
+    const currentTokenName = tokenSheet.name || selectedToken?.name || '';
+    const mergedSheet: TokenSheet = {
+      ...buildEmptySheet(currentTokenName),
+      ...tokenSheet,
+      ...sheetFromSource,
       abilities: {
-        str: toNumberOrNull(tokenSheet.abilities.str),
-        dex: toNumberOrNull(tokenSheet.abilities.dex),
-        con: toNumberOrNull(tokenSheet.abilities.con),
-        int: toNumberOrNull(tokenSheet.abilities.int),
-        wis: toNumberOrNull(tokenSheet.abilities.wis),
-        cha: toNumberOrNull(tokenSheet.abilities.cha),
+        ...EMPTY_ABILITIES,
+        ...tokenSheet.abilities,
+        ...(sheetFromSource?.abilities ?? {}),
       },
-      saving_throws: {
-        str: toNumberOrNull(tokenSheet.saves.str),
-        dex: toNumberOrNull(tokenSheet.saves.dex),
-        con: toNumberOrNull(tokenSheet.saves.con),
-        int: toNumberOrNull(tokenSheet.saves.int),
-        wis: toNumberOrNull(tokenSheet.saves.wis),
-        cha: toNumberOrNull(tokenSheet.saves.cha),
+      saves: {
+        ...EMPTY_ABILITIES,
+        ...tokenSheet.saves,
+        ...(sheetFromSource?.saves ?? {}),
       },
-      damage_resistances: toList(tokenSheet.damageResistances),
-      condition_immunities: toList(tokenSheet.conditionImmunities),
-      senses: tokenSheet.senses || null,
-      languages: tokenSheet.languages || null,
-      challenge_rating: tokenSheet.challengeRating || null,
-      xp: toNumberOrNull(tokenSheet.xp),
-      abilities_text: tokenSheet.abilitiesText || null,
-      actions_text: tokenSheet.actionsText || null,
+      skills: {
+        ...tokenSheet.skills,
+        ...(sheetFromSource?.skills ?? {}),
+      },
     };
 
-    const { error } = await supabase
-      .from('campaign_tokens')
-      .update(payload)
-      .eq('id', tokenSheetTokenId)
-      .eq('campaign_id', campaignId);
+    tokenSheetRef.current = mergedSheet;
+    setTokenSheet(mergedSheet);
+    setTokenSheetAutoFillSource(sourceLabel ?? null);
+    setTokenSheetAutoFillError(null);
+    console.log('[token-sheet-autofill] source:', sourceLabel, 'sheetFromSource:', sheetFromSource, 'mergedSheet:', mergedSheet);
+    return true;
+  };
 
-    setTokenSheetSaving(false);
-
-    if (error) {
-      alert(`Erro ao salvar ficha: ${error.message}`);
-      return;
+  const handleAutoFillTokenSheet = async () => {
+    if (!tokenSheetTokenId) return false;
+    const currentTokenName = tokenSheet.name || selectedToken?.name || "";
+    if (!currentTokenName.trim()) {
+      setTokenSheetAutoFillError('Nome do token ausente para auto-preenchimento.');
+      return false;
     }
 
-    if (tokenSheet.name) {
-      setTokens((prev) => prev.map((token) => token.id === tokenSheetTokenId ? { ...token, name: tokenSheet.name } : token));
+    setTokenSheetAutoFillLoading(true);
+    setTokenSheetAutoFillError(null);
+    try {
+      console.log('[token-sheet-autofill] request:', { campaignId, tokenName: currentTokenName });
+      const response = await fetch('/api/monster-sheet-autofill', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ campaignId, tokenName: currentTokenName }),
+      });
+
+      console.log('[token-sheet-autofill] response status:', response.status);
+
+      const data = await response.json().catch(() => null);
+      console.log('[token-sheet-autofill] response body:', data);
+
+      if (!response.ok) {
+        throw new Error(data?.error || 'Falha ao ler o PDF');
+      }
+
+      const sheetFromPdf = data?.sheet as Partial<TokenSheet> | undefined;
+      return await applyAutoFillSheet(sheetFromPdf ?? {}, data?.sourceBook?.title ?? null);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Falha inesperada ao auto-preencher';
+      setTokenSheetAutoFillError(`Não foi possível ler o livro PDF. ${message}. Tente a opção copiar e colar.`);
+      return false;
+    } finally {
+      setTokenSheetAutoFillLoading(false);
+    }
+  };
+
+  const handleAutoFillTokenSheetFromText = async (rawText: string) => {
+    if (!tokenSheetTokenId) return false;
+
+    setTokenSheetAutoFillLoading(true);
+    setTokenSheetAutoFillError(null);
+    try {
+      const parsedSheet = parseMonsterSheetFromClipboardText(rawText);
+
+      if (!parsedSheet) {
+        throw new Error('Não encontrei um bloco de ficha no texto colado.');
+      }
+
+      return await applyAutoFillSheet(parsedSheet, 'Texto colado');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Falha inesperada ao preencher com texto';
+      setTokenSheetAutoFillError(`Não foi possível preencher com o texto colado. ${message}`);
+      return false;
+    } finally {
+      setTokenSheetAutoFillLoading(false);
     }
   };
 
@@ -1580,13 +1800,21 @@ export default function TelaDeMesa() {
         isDM={isDM}
         loading={tokenSheetLoading}
         saving={tokenSheetSaving}
+        autoFillLoading={tokenSheetAutoFillLoading}
+        autoFillSource={tokenSheetAutoFillSource}
+        autoFillError={tokenSheetAutoFillError}
         tokenLabel={tokenSheet.name || selectedToken?.name}
         sheet={tokenSheet}
-        onChange={setTokenSheet}
+        onChange={handleTokenSheetChange}
         onSave={handleSaveTokenSheet}
+        onAutoFill={handleAutoFillTokenSheet}
+        onAutoFillFromText={handleAutoFillTokenSheetFromText}
         onClose={() => {
           setShowTokenSheet(false);
           setTokenSheetTokenId(null);
+          setTokenSheetAutoFillLoading(false);
+          setTokenSheetAutoFillSource(null);
+          setTokenSheetAutoFillError(null);
         }}
       />
 
