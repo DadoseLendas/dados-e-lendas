@@ -846,7 +846,13 @@ export default function PersonagensPage() {
                   })}
                 </div>
                 <div className="flex gap-2">
-                  <button onClick={() => { setEditingSpellId(null); setSpellForm({ name: '', level: '', desc: '' }); setShowSpellForm(true); }} className="flex-1 bg-[#00ff66] text-black px-3 rounded text-base font-black uppercase py-2">Adicionar Habilidade</button>
+                  <button
+                    onClick={() => { setEditingSpellId(null); setSpellForm({ name: '', level: '', desc: '' }); setShowSpellForm(true); }}
+                    className="w-6 h-6 rounded-md bg-[#f1e5ac] text-black flex items-center justify-center text-xs font-black transition-all hover:brightness-110 shadow-[0_0_8px_rgba(241,229,172,0.4)]"
+                    title="Adicionar Habilidade/Magia"
+                  >
+                    <Plus size={12} />
+                  </button>
                 </div>
               </div>
             </div>

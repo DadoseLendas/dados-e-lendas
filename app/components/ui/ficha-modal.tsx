@@ -747,7 +747,7 @@ return (
             className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-8"
             onClick={(e) => e.target === e.currentTarget && onClose()}
         >
-            <div className="bg-[#020502]/95 border border-[#1a2a1a] rounded-2xl shadow-[0_0_80px_rgba(0,255,102,0.06),0_0_60px_rgba(0,0,0,0.9)] w-2/3 min-w-[480px] h-[88vh] flex flex-col overflow-hidden">
+            <div className="relative bg-[#020502]/95 border border-[#1a2a1a] rounded-2xl shadow-[0_0_80px_rgba(0,255,102,0.06),0_0_60px_rgba(0,0,0,0.9)] w-2/3 min-w-[480px] h-[88vh] flex flex-col overflow-hidden">
                 <div className="flex-1 overflow-y-auto px-6 py-8">
 
                     {loading && (
@@ -760,28 +760,23 @@ return (
                     {!loading && draft && (
                         <>
                             {/* BARRA DE NAVEGAÇÃO SUPERIOR - COM BOTAO SALVAR PADRÃO VERDE */}
-                            <div className="flex justify-between items-center mb-6">
-                                {!readOnly && (
-                                    <button
-                                        onClick={saveCharacter}
-                                        disabled={saving}
-                                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-black font-black uppercase text-sm tracking-widest shadow-lg transition-all
-                                            ${saveSuccess 
-                                                ? 'bg-blue-500 text-white shadow-[0_0_15px_rgba(59,130,246,0.5)]' 
-                                                : 'bg-[#00ff66] hover:brightness-110 shadow-[0_0_15px_rgba(0,255,102,0.4)]'
-                                            } disabled:opacity-50`}
-                                    >
-                                        <Save size={16} />
-                                        {saving ? 'Salvando...' : saveSuccess ? 'Salvo!' : 'Salvar'}
-                                    </button>
-                                )}
-                            </div>
+                            <div className="mb-6" />
 
-                            {/* Botão de fechar no canto superior direito (x pequeno) */}
+                            {/* Botões de ação no canto superior direito */}
+                            {!readOnly && (
+                                <button
+                                    onClick={saveCharacter}
+                                    disabled={saving}
+                                    className={`absolute top-4 right-12 z-50 flex items-center gap-2 px-4 py-2 rounded-xl text-black font-black uppercase text-sm tracking-widest shadow-lg transition-all bg-[#00ff66] hover:brightness-110 shadow-[0_0_15px_rgba(0,255,102,0.4)] disabled:opacity-50`}
+                                >
+                                    <Save size={16} />
+                                    {saving ? 'Salvando...' : saveSuccess ? 'Salvo!' : 'Salvar'}
+                                </button>
+                            )}
                             <button
                                 onClick={onClose}
                                 aria-label="Fechar"
-                                className="absolute top-4 right-4 w-8 h-8 rounded-full bg-black/40 flex items-center justify-center text-[#cbd5c1] hover:text-white transition-colors"
+                                className="absolute top-4 right-4 w-8 h-8 rounded-full bg-black/40 flex items-center justify-center text-[#cbd5c1] hover:text-white transition-colors z-50"
                             >
                                 <X size={16} />
                             </button>
