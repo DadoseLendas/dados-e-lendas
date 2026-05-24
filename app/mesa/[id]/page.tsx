@@ -18,6 +18,7 @@ import TokenLibraryWidget from '@/app/components/ui/token-library-widget';
 import MapEditorModal from '@/app/components/ui/map-editor-modal';
 import { EffectResult, SpellExecution } from '@/utils/spell-executor';
 import { parseMonsterSheetFromClipboardText, parseMonsterSheetFromText } from '@/utils/monster-sheet-parser';
+import { registerMesaCharacterShortcuts } from '@/utils/mesa-keyboard-shortcuts';
 import TokenSheetPanel, { TokenSheet } from '@/app/components/ui/token-sheet-panel';
 interface Token {
   id: string;
@@ -765,6 +766,30 @@ export default function TelaDeMesa() {
   const tokenSheetRef = useRef<TokenSheet>(buildEmptySheet());
   // DM visualizando ficha de jogador
   const [showPlayerList, setShowPlayerList] = useState(false);
+
+  const openCharacterSheet = useCallback(() => {
+    if (!fichaCharacterId) {
+      alert('Você não vinculou um personagem a esta mesa!');
+      return;
+    }
+    setShowFicha(true);
+  }, [fichaCharacterId]);
+
+  const openSpellBook = useCallback(() => {
+    if (!fichaCharacterId) {
+      alert('Você não vinculou um personagem a esta mesa!');
+      return;
+    }
+    setShowSpellModal(true);
+  }, [fichaCharacterId]);
+
+  useEffect(() => {
+    return registerMesaCharacterShortcuts({
+      enabled: !isDM,
+      onOpenCharacterSheet: openCharacterSheet,
+      onOpenSpellBook: openSpellBook,
+    });
+  }, [isDM, openCharacterSheet, openSpellBook]);
   const [showFichaDM, setShowFichaDM] = useState(false);
   const [fichaCharacterIdDM, setFichaCharacterIdDM] = useState<number | string | null>(null);
   const [playerCharacters, setPlayerCharacters] = useState<{ id: number; name: string; img: string | null; imgOffsetX: number; imgOffsetY: number }[]>([]);
@@ -1439,10 +1464,7 @@ export default function TelaDeMesa() {
           {/* Jogador */}
           {!isDM && (
             <button
-              onClick={() => {
-                if (!fichaCharacterId) { alert('Você não vinculou um personagem a esta mesa!'); return; }
-                setShowFicha(true);
-              }}
+              onClick={openCharacterSheet}
               className={`p-2 hover:drop-shadow-[0_0_8px_#00ff66] transition-all duration-300 ${fichaCharacterId ? 'text-white/30 hover:text-[#00ff66]' : 'text-white/10 cursor-not-allowed'}`}
               title="Ficha"
             >
@@ -1452,10 +1474,7 @@ export default function TelaDeMesa() {
 
           {!isDM && (
             <button
-              onClick={() => {
-                if (!fichaCharacterId) { alert('Você não vinculou um personagem a esta mesa!'); return; }
-                setShowSpellModal(true);
-              }}
+              onClick={openSpellBook}
               className={`p-2 hover:drop-shadow-[0_0_8px_#00ff66] transition-all duration-300 ${fichaCharacterId ? 'text-white/30 hover:text-[#00ff66]' : 'text-white/10 cursor-not-allowed'}`}
               title="Magias"
             >
