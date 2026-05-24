@@ -759,27 +759,35 @@ return (
 
                     {!loading && draft && (
                         <>
-                            {/* BARRA DE NAVEGAÇÃO SUPERIOR - COM BOTAO SALVAR PADRÃO VERDE */}
-                            <div className="mb-6" />
-
-                            {/* Botões de ação no canto superior direito */}
-                            {!readOnly && (
-                                <button
-                                    onClick={saveCharacter}
-                                    disabled={saving}
-                                    className={`absolute top-4 right-12 z-50 flex items-center gap-2 px-4 py-2 rounded-xl text-black font-black uppercase text-sm tracking-widest shadow-lg transition-all bg-[#00ff66] hover:brightness-110 shadow-[0_0_15px_rgba(0,255,102,0.4)] disabled:opacity-50`}
-                                >
-                                    <Save size={16} />
-                                    {saving ? 'Salvando...' : saveSuccess ? 'Salvo!' : 'Salvar'}
-                                </button>
-                            )}
-                            <button
-                                onClick={onClose}
-                                aria-label="Fechar"
-                                className="absolute top-4 right-4 w-8 h-8 rounded-full bg-black/40 flex items-center justify-center text-[#cbd5c1] hover:text-white transition-colors z-50"
-                            >
-                                <X size={16} />
-                            </button>
+                            {/* Barra de navegação */}
+                                <div className="flex justify-between items-center mb-6">
+                                    <button
+                                        onClick={onClose}
+                                        className="flex items-center gap-2 text-[#4a5a4a] hover:text-[#00ff66] text-base font-black transition-colors"
+                                    >
+                                        <ArrowLeft size={14} /> FECHAR
+                                    </button>
+                                    <span className="text-[#f1e5ac] text-base font-serif tracking-widest uppercase italic opacity-60">
+                                        Ficha — {draft.name}
+                                    </span>
+                                    {readOnly ? (
+                                        <span className="text-[14px] font-black uppercase tracking-widest text-[#4a5a4a] border border-[#1a2a1a] px-3 py-1.5 rounded-lg">
+                                            Apenas visualização
+                                        </span>
+                                    ) : (
+                                        <button
+                                            onClick={saveCharacter}
+                                            disabled={saving}
+                                            className={`flex items-center gap-2 text-base font-black uppercase px-4 py-1.5 rounded-lg transition-all ${saveSuccess
+                                                ? 'bg-[#00ff66]/20 text-[#00ff66] border border-[#00ff66]/40'
+                                                : 'bg-[#00ff66] text-black hover:brightness-110'
+                                                } disabled:opacity-50`}
+                                        >
+                                            <Save size={12} />
+                                            {saving ? 'Salvando...' : saveSuccess ? 'Salvo!' : 'Salvar'}
+                                        </button>
+                                    )}
+                                </div>
 
                             <div className="bg-black/65 border border-[#1a2a1a] rounded-2xl p-3 sm:p-4 space-y-4 shadow-[0_0_24px_rgba(0,0,0,0.35)] mb-6">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
