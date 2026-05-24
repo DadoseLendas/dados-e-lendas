@@ -2,7 +2,7 @@
 import { useEffect, useState, useRef, useMemo } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import {
-    ArrowLeft, Shield, Zap, ShieldAlert, Sparkles, Box, Save, Trash2, Pencil, Sword, ShieldHalf, FlaskConical, Backpack, Wand2, Eye, EyeOff, Plus
+    ArrowLeft, Shield, Zap, ShieldAlert, Sparkles, Box, Save, Trash2, Pencil, Sword, ShieldHalf, FlaskConical, Backpack, Wand2, Eye, EyeOff, Plus, X
 } from 'lucide-react';
 
 // ─── Dados estáticos (espelho de personagens/page.tsx) ────────────────────────
@@ -200,7 +200,7 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
     const [saveSuccess, setSaveSuccess] = useState(false);
     const [newInventoryItem, setNewInventoryItem] = useState<InventoryFormState>(EMPTY_FORM);
     const [editingInventoryId, setEditingInventoryId] = useState<number | null>(null);
-
+    
     // Estados para o Pop-up de Habilidades
     const [newSpellItem, setNewSpellItem] = useState<SpellFormState>(EMPTY_SPELL_FORM);
     const [editingSpellId, setEditingSpellId] = useState<number | null>(null);
@@ -295,8 +295,8 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
 
         const rawResult = await onRollDice(resolvedFormula, false, 'normal');
         if (rawResult === null) return;
-        const finalValue: number = typeof rawResult === 'object' && rawResult !== null
-            ? Number((rawResult as { finalValue: number }).finalValue)
+        const finalValue: number = typeof rawResult === 'object' && rawResult !== null 
+            ? Number((rawResult as { finalValue: number }).finalValue) 
             : Number(rawResult);
         if (currentUserId) {
             await supabase.from('chat_messages').insert([{
@@ -431,7 +431,7 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
     const removeInventoryItem = (id: number) =>
         setDraft(prev => prev ? { ...prev, inventory: prev.inventory.filter(i => i.id !== id) } : prev);
 
-    // Funções de Gerenciamento das Habilidades/Spells via Pop-up
+    // Funções de Gerenciamento das Habilidades via Pop-up
     const resetSpellForm = () => {
         setNewSpellItem(EMPTY_SPELL_FORM);
         setEditingSpellId(null);
@@ -565,229 +565,232 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
     const xpValue = draft?.experiencePoints ?? 0;
     const initiativeValue = fmtMod(getModifier(draft?.stats?.dex ?? 0));
 
-    return (
-        <>
-            {/* POPUP ROLAGEM DE DADOS */}
-            {rollPopup && (
-                <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 backdrop-blur-sm">
-                    <div className="bg-[#0a120a] border border-[#1a2a1a] rounded-2xl p-6 w-[350px] shadow-[0_0_50px_rgba(0,0,0,0.95)]">
-                        <div className="flex justify-between items-center mb-1">
-                            <div className="w-8"></div>
-                            <h3 className="text-[#f1e5ac] text-sm font-black uppercase tracking-widest text-center">
-                                {rollPopup.label}
-                            </h3>
-                            <button
-                                onClick={() => setRollPopup(prev => prev ? { ...prev, isSecret: !prev.isSecret } : null)}
-                                className={`p-1.5 rounded-lg border transition-colors flex items-center justify-center
+return (
+    <>
+        {/* POPUP ROLAGEM DE DADOS */}
+        {rollPopup && (
+            <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 backdrop-blur-sm">
+                <div className="bg-[#0a120a] border border-[#1a2a1a] rounded-2xl p-6 w-[350px] shadow-[0_0_50px_rgba(0,0,0,0.95)]">
+                    <div className="flex justify-between items-center mb-1">
+                        <div className="w-8"></div>
+                        <h3 className="text-[#f1e5ac] text-sm font-black uppercase tracking-widest text-center">
+                            {rollPopup.label}
+                        </h3>
+                        <button
+                            onClick={() => setRollPopup(prev => prev ? { ...prev, isSecret: !prev.isSecret } : null)}
+                            className={`p-1.5 rounded-lg border transition-colors flex items-center justify-center
                                 ${rollPopup.isSecret
-                                        ? 'bg-red-900/30 border-red-500 text-red-500 shadow-[0_0_10px_rgba(239,68,68,0.3)]'
-                                        : 'bg-transparent border-[#1a2a1a] text-[#4a5a4a] hover:border-[#00ff66] hover:text-[#00ff66]'}`}
-                                title={rollPopup.isSecret ? 'Desativar rolagem secreta' : 'Ativar rolagem secreta'}
-                            >
-                                {rollPopup.isSecret ? <EyeOff size={14} /> : <Eye size={14} />}
-                            </button>
-                        </div>
-                        <p className="text-[#4a5a4a] text-[10px] uppercase tracking-widest text-center mb-1">
-                            d20 {rollPopup.modifier >= 0 ? `+${rollPopup.modifier}` : rollPopup.modifier}
-                        </p>
-                        <div className="h-4 mb-4 flex items-center justify-center">
-                            {rollPopup.isSecret && (
-                                <p className="text-[9px] font-bold tracking-widest text-red-400/80 uppercase flex items-center gap-1 animate-pulse">
-                                    <EyeOff size={10} /> Apenas o Mestre verá
-                                </p>
-                            )}
-                        </div>
-                        <div className="flex gap-2">
-                            <button onClick={() => executeRoll('disadvantage')}
-                                className="flex-1 bg-red-700 hover:bg-red-600 text-white font-black text-[10px] sm:text-[11px] uppercase tracking-wide py-3 px-1 rounded-xl transition-all">
-                                Desvantagem
-                            </button>
-                            <button onClick={() => executeRoll('normal')}
-                                className="flex-1 bg-[#00ff66] text-black font-black text-[10px] sm:text-[11px] uppercase tracking-wide py-3 px-1 rounded-xl hover:brightness-110 transition-all">
-                                Normal
-                            </button>
-                            <button onClick={() => executeRoll('advantage')}
-                                className="flex-1 bg-green-700 hover:bg-green-600 text-white font-black text-[10px] sm:text-[11px] uppercase tracking-wide py-3 px-1 rounded-xl transition-all">
-                                Vantagem
-                            </button>
-                        </div>
-                        <button onClick={() => setRollPopup(null)}
-                            className="w-full mt-4 text-[10px] text-[#4a5a4a] hover:text-white uppercase tracking-widest transition-colors">
-                            Cancelar
+                                    ? 'bg-red-900/30 border-red-500 text-red-500 shadow-[0_0_10px_rgba(239,68,68,0.3)]'
+                                    : 'bg-transparent border-[#1a2a1a] text-[#4a5a4a] hover:border-[#00ff66] hover:text-[#00ff66]'}`}
+                            title={rollPopup.isSecret ? 'Desativar rolagem secreta' : 'Ativar rolagem secreta'}
+                        >
+                            {rollPopup.isSecret ? <EyeOff size={14} /> : <Eye size={14} />}
                         </button>
                     </div>
-                </div>
-            )}
-
-            {/* POPUP ADICIONAR/EDITAR INVENTÁRIO */}
-            {showInventoryForm && (
-                <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 backdrop-blur-sm">
-                    <div className="bg-[#0a120a] border border-[#1a2a1a] rounded-2xl p-6 w-[400px] shadow-[0_0_50px_rgba(0,0,0,0.95)] space-y-4 max-h-[90vh] overflow-y-auto">
-                        <h3 className="text-[#00ff66] text-sm font-black uppercase tracking-widest text-center">
-                            {editingInventoryId !== null ? 'Editar Item' : 'Novo Item'}
-                        </h3>
-                        <div className="space-y-3">
-                            <div>
-                                <label className="text-[10px] text-[#4a5a4a] font-black uppercase tracking-widest block mb-1">Nome do Item</label>
-                                <input type="text" className={inputCls} value={newInventoryItem.nome} onChange={e => setNewInventoryItem(prev => ({ ...prev, nome: e.target.value }))} />
-                            </div>
-                            <div>
-                                <label className="text-[10px] text-[#4a5a4a] font-black uppercase tracking-widest block mb-1">Categoria</label>
-                                <select className={selectCls} value={newInventoryItem.categoria} onChange={e => setNewInventoryItem(prev => ({ ...prev, categoria: e.target.value as ItemCategoria, tipo: '' }))}>
-                                    {Object.entries(CATEGORIA_LABELS).map(([val, lab]) => <option key={val} value={val}>{lab}</option>)}
-                                </select>
-                            </div>
-                            {newInventoryItem.categoria === 'arma' && (
-                                <div className="grid grid-cols-2 gap-2">
-                                    <div>
-                                        <label className="text-[10px] text-[#4a5a4a] font-black uppercase tracking-widest block mb-1">Fórmula de Ataque</label>
-                                        <input type="text" placeholder="ex: 1d20+5" className={inputCls} value={newInventoryItem.ataque} onChange={e => setNewInventoryItem(prev => ({ ...prev, ataque: e.target.value }))} />
-                                    </div>
-                                    <div>
-                                        <label className="text-[10px] text-[#4a5a4a] font-black uppercase tracking-widest block mb-1">Fórmula de Dano</label>
-                                        <input type="text" placeholder="ex: 1d8+3" className={inputCls} value={newInventoryItem.dano} onChange={e => setNewInventoryItem(prev => ({ ...prev, dano: e.target.value }))} />
-                                    </div>
-                                    <div className="col-span-2">
-                                        <label className="text-[10px] text-[#4a5a4a] font-black uppercase tracking-widest block mb-1">Atributo da Arma</label>
-                                        <select className={selectCls} value={newInventoryItem.atributo} onChange={e => setNewInventoryItem(prev => ({ ...prev, atributo: e.target.value as WeaponAttribute | '' }))}>
-                                            <option value="">Nenhum (Modificador Fixo)</option>
-                                            {WEAPON_ATTRIBUTE_OPTIONS.map(opt => <option key={opt} value={opt}>{weaponAttributeLabels[opt]}</option>)}
-                                        </select>
-                                    </div>
-                                </div>
-                            )}
-                            {newInventoryItem.categoria === 'armadura' && (
-                                <div className="grid grid-cols-2 gap-2">
-                                    <div>
-                                        <label className="text-[10px] text-[#4a5a4a] font-black uppercase tracking-widest block mb-1">CA Base</label>
-                                        <input type="number" className={inputCls} value={newInventoryItem.caBase} onChange={e => setNewInventoryItem(prev => ({ ...prev, caBase: e.target.value }))} />
-                                    </div>
-                                    <div>
-                                        <label className="text-[10px] text-[#4a5a4a] font-black uppercase tracking-widest block mb-1">Tipo</label>
-                                        <select className={selectCls} value={newInventoryItem.tipoArmadura} onChange={e => setNewInventoryItem(prev => ({ ...prev, tipoArmadura: e.target.value }))}>
-                                            <option value="">Selecione...</option>
-                                            {TIPO_ARMADURA_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
-                                        </select>
-                                    </div>
-                                </div>
-                            )}
-                            {newInventoryItem.categoria === 'consumivel' && (
-                                <div className="grid grid-cols-2 gap-2">
-                                    <div>
-                                        <label className="text-[10px] text-[#4a5a4a] font-black uppercase tracking-widest block mb-1">Quantidade</label>
-                                        <input type="number" className={inputCls} value={newInventoryItem.quantidade} onChange={e => setNewInventoryItem(prev => ({ ...prev, quantidade: e.target.value }))} />
-                                    </div>
-                                    <div>
-                                        <label className="text-[10px] text-[#4a5a4a] font-black uppercase tracking-widest block mb-1">Efeito</label>
-                                        <input type="text" placeholder="ex: Cura 2d4+2" className={inputCls} value={newInventoryItem.efeito} onChange={e => setNewInventoryItem(prev => ({ ...prev, efeito: e.target.value }))} />
-                                    </div>
-                                </div>
-                            )}
-                            {newInventoryItem.categoria === 'item' && (
-                                <div>
-                                    <label className="text-[10px] text-[#4a5a4a] font-black uppercase tracking-widest block mb-1">Subtipo / Tags</label>
-                                    <input type="text" placeholder="ex: Ferramenta, Relíquia" className={inputCls} value={newInventoryItem.tipo} onChange={e => setNewInventoryItem(prev => ({ ...prev, tipo: e.target.value }))} />
-                                </div>
-                            )}
-                            <div>
-                                <label className="text-[10px] text-[#4a5a4a] font-black uppercase tracking-widest block mb-1">Descrição</label>
-                                <textarea rows={3} className={inputCls + " resize-none"} value={newInventoryItem.desc} onChange={e => setNewInventoryItem(prev => ({ ...prev, desc: e.target.value }))} />
-                            </div>
-                        </div>
-                        <div className="flex gap-2 pt-2">
-                            <button onClick={() => { resetInventoryForm(); setShowInventoryForm(false); }} className="flex-1 bg-transparent border border-[#1a2a1a] text-[#4a5a4a] hover:text-white uppercase text-[11px] font-black tracking-widest py-2 rounded-xl transition-colors">Cancelar</button>
-                            <button onClick={addInventoryItem} className="flex-1 bg-[#00ff66] text-black uppercase text-[11px] font-black tracking-widest py-2 rounded-xl hover:brightness-110 transition-all">Salvar Item</button>
-                        </div>
+                    <p className="text-[#4a5a4a] text-[10px] uppercase tracking-widest text-center mb-1">
+                        d20 {rollPopup.modifier >= 0 ? `+${rollPopup.modifier}` : rollPopup.modifier}
+                    </p>
+                    <div className="h-4 mb-4 flex items-center justify-center">
+                        {rollPopup.isSecret && (
+                            <p className="text-[9px] font-bold tracking-widest text-red-400/80 uppercase flex items-center gap-1 animate-pulse">
+                                <EyeOff size={10} /> Apenas o Mestre verá
+                            </p>
+                        )}
                     </div>
+                    <div className="flex gap-2">
+                        <button onClick={() => executeRoll('disadvantage')}
+                            className="flex-1 bg-red-700 hover:bg-red-600 text-white font-black text-[10px] sm:text-[11px] uppercase tracking-wide py-3 px-1 rounded-xl transition-all">
+                            Desvantagem
+                        </button>
+                        <button onClick={() => executeRoll('normal')}
+                            className="flex-1 bg-[#00ff66] text-black font-black text-[10px] sm:text-[11px] uppercase tracking-wide py-3 px-1 rounded-xl hover:brightness-110 transition-all">
+                            Normal
+                        </button>
+                        <button onClick={() => executeRoll('advantage')}
+                            className="flex-1 bg-green-700 hover:bg-green-600 text-white font-black text-[10px] sm:text-[11px] uppercase tracking-wide py-3 px-1 rounded-xl transition-all">
+                            Vantagem
+                        </button>
+                    </div>
+                    <button onClick={() => setRollPopup(null)}
+                        className="w-full mt-4 text-[10px] text-[#4a5a4a] hover:text-white uppercase tracking-widest transition-colors">
+                        Cancelar
+                    </button>
                 </div>
-            )}
+            </div>
+        )}
 
-            {/* POPUP ADICIONAR/EDITAR HABILIDADE (IGUAL AO INVENTÁRIO) */}
-            {showSpellForm && (
-                <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 backdrop-blur-sm">
-                    <div className="bg-[#0a120a] border border-[#1a2a1a] rounded-2xl p-6 w-[400px] shadow-[0_0_50px_rgba(0,0,0,0.95)] space-y-4 max-h-[90vh] overflow-y-auto">
-                        <h3 className="text-[#f1e5ac] text-sm font-black uppercase tracking-widest text-center">
-                            {editingSpellId !== null ? 'Editar Habilidade' : 'Nova Habilidade'}
-                        </h3>
-                        <div className="space-y-3">
-                            <div>
-                                <label className="text-[10px] text-[#4a5a4a] font-black uppercase tracking-widest block mb-1">Nome da Habilidade</label>
-                                <input type="text" className={inputCls} value={newSpellItem.name} onChange={e => setNewSpellItem(prev => ({ ...prev, name: e.target.value }))} />
-                            </div>
+        {/* POPUP ADICIONAR/EDITAR INVENTÁRIO */}
+        {showInventoryForm && (
+            <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 backdrop-blur-sm">
+                <div className="bg-[#0a120a] border border-[#1a2a1a] rounded-2xl p-6 w-[400px] shadow-[0_0_50px_rgba(0,0,0,0.95)] space-y-4 max-h-[90vh] overflow-y-auto">
+                    <h3 className="text-[#00ff66] text-sm font-black uppercase tracking-widest text-center">
+                        {editingInventoryId !== null ? 'Editar Item' : 'Novo Item'}
+                    </h3>
+                    <div className="space-y-3">
+                        <div>
+                            <label className="text-[10px] text-[#4a5a4a] font-black uppercase tracking-widest block mb-1">Nome do Item</label>
+                            <input type="text" className={inputCls} value={newInventoryItem.nome} onChange={e => setNewInventoryItem(prev => ({ ...prev, nome: e.target.value }))} />
+                        </div>
+                        <div>
+                            <label className="text-[10px] text-[#4a5a4a] font-black uppercase tracking-widest block mb-1">Categoria</label>
+                            <select className={selectCls} value={newInventoryItem.categoria} onChange={e => setNewInventoryItem(prev => ({ ...prev, categoria: e.target.value as ItemCategoria, tipo: '' }))}>
+                                {Object.entries(CATEGORIA_LABELS).map(([val, lab]) => <option key={val} value={val}>{lab}</option>)}
+                            </select>
+                        </div>
+                        {newInventoryItem.categoria === 'arma' && (
                             <div className="grid grid-cols-2 gap-2">
                                 <div>
-                                    <label className="text-[10px] text-[#4a5a4a] font-black uppercase tracking-widest block mb-1">Tipo</label>
-                                    <select className={selectCls} value={newSpellItem.tipo} onChange={e => setNewSpellItem(prev => ({ ...prev, tipo: e.target.value }))}>
-                                        <option value="Magia">Magia</option>
-                                        <option value="Poder">Poder</option>
-                                        <option value="Passiva">Passiva</option>
-                                        <option value="Talento">Talento</option>
-                                    </select>
+                                    <label className="text-[10px] text-[#4a5a4a] font-black uppercase tracking-widest block mb-1">Fórmula de Ataque</label>
+                                    <input type="text" placeholder="ex: 1d20+5" className={inputCls} value={newInventoryItem.ataque} onChange={e => setNewInventoryItem(prev => ({ ...prev, ataque: e.target.value }))} />
                                 </div>
                                 <div>
-                                    <label className="text-[10px] text-[#4a5a4a] font-black uppercase tracking-widest block mb-1">Nível / Custo</label>
-                                    <input type="text" placeholder="ex: 1º Círculo, 2 PM" className={inputCls} value={newSpellItem.level} onChange={e => setNewSpellItem(prev => ({ ...prev, level: e.target.value }))} />
+                                    <label className="text-[10px] text-[#4a5a4a] font-black uppercase tracking-widest block mb-1">Fórmula de Dano</label>
+                                    <input type="text" placeholder="ex: 1d8+3" className={inputCls} value={newInventoryItem.dano} onChange={e => setNewInventoryItem(prev => ({ ...prev, dano: e.target.value }))} />
+                                </div>
+                                <div className="col-span-2">
+                                    <label className="text-[10px] text-[#4a5a4a] font-black uppercase tracking-widest block mb-1">Atributo da Arma</label>
+                                    <select className={selectCls} value={newInventoryItem.atributo} onChange={e => setNewInventoryItem(prev => ({ ...prev, atributo: e.target.value as WeaponAttribute | '' }))}>
+                                        <option value="">Nenhum (Modificador Fixo)</option>
+                                        {WEAPON_ATTRIBUTE_OPTIONS.map(opt => <option key={opt} value={opt}>{weaponAttributeLabels[opt]}</option>)}
+                                    </select>
                                 </div>
                             </div>
-                            <div>
-                                <label className="text-[10px] text-[#4a5a4a] font-black uppercase tracking-widest block mb-1">Descrição</label>
-                                <textarea rows={4} className={inputCls + " resize-none"} value={newSpellItem.desc} onChange={e => setNewSpellItem(prev => ({ ...prev, desc: e.target.value }))} />
+                        )}
+                        {newInventoryItem.categoria === 'armadura' && (
+                            <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label className="text-[10px] text-[#4a5a4a] font-black uppercase tracking-widest block mb-1">CA Base</label>
+                                    <input type="number" className={inputCls} value={newInventoryItem.caBase} onChange={e => setNewInventoryItem(prev => ({ ...prev, caBase: e.target.value }))} />
+                                </div>
+                                <div>
+                                    <label className="text-[10px] text-[#4a5a4a] font-black uppercase tracking-widest block mb-1">Tipo</label>
+                                    <select className={selectCls} value={newInventoryItem.tipoArmadura} onChange={e => setNewInventoryItem(prev => ({ ...prev, tipoArmadura: e.target.value }))}>
+                                        <option value="">Selecione...</option>
+                                        {TIPO_ARMADURA_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                                    </select>
+                                </div>
                             </div>
-                        </div>
-                        <div className="flex gap-2 pt-2">
-                            <button onClick={() => { resetSpellForm(); setShowSpellForm(false); }} className="flex-1 bg-transparent border border-[#1a2a1a] text-[#4a5a4a] hover:text-white uppercase text-[11px] font-black tracking-widest py-2 rounded-xl transition-colors">Cancelar</button>
-                            <button onClick={addSpellItem} className="flex-1 bg-[#f1e5ac] text-black uppercase text-[11px] font-black tracking-widest py-2 rounded-xl hover:brightness-110 transition-all">Salvar</button>
+                        )}
+                        {newInventoryItem.categoria === 'consumivel' && (
+                            <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label className="text-[10px] text-[#4a5a4a] font-black uppercase tracking-widest block mb-1">Quantidade</label>
+                                    <input type="number" className={inputCls} value={newInventoryItem.quantidade} onChange={e => setNewInventoryItem(prev => ({ ...prev, quantidade: e.target.value }))} />
+                                </div>
+                                <div>
+                                    <label className="text-[10px] text-[#4a5a4a] font-black uppercase tracking-widest block mb-1">Efeito</label>
+                                    <input type="text" placeholder="ex: Cura 2d4+2" className={inputCls} value={newInventoryItem.efeito} onChange={e => setNewInventoryItem(prev => ({ ...prev, efeito: e.target.value }))} />
+                                </div>
+                            </div>
+                        )}
+                        {newInventoryItem.categoria === 'item' && (
+                            <div>
+                                <label className="text-[10px] text-[#4a5a4a] font-black uppercase tracking-widest block mb-1">Subtipo / Tags</label>
+                                <input type="text" placeholder="ex: Ferramenta, Relíquia" className={inputCls} value={newInventoryItem.tipo} onChange={e => setNewInventoryItem(prev => ({ ...prev, tipo: e.target.value }))} />
+                            </div>
+                        )}
+                        <div>
+                            <label className="text-[10px] text-[#4a5a4a] font-black uppercase tracking-widest block mb-1">Descrição</label>
+                            <textarea rows={3} className={inputCls + " resize-none"} value={newInventoryItem.desc} onChange={e => setNewInventoryItem(prev => ({ ...prev, desc: e.target.value }))} />
                         </div>
                     </div>
+                    <div className="flex gap-2 pt-2">
+                        <button onClick={() => { resetInventoryForm(); setShowInventoryForm(false); }} className="flex-1 bg-transparent border border-[#1a2a1a] text-[#4a5a4a] hover:text-white uppercase text-[11px] font-black tracking-widest py-2 rounded-xl transition-colors">Cancelar</button>
+                        <button onClick={addInventoryItem} className="flex-1 bg-[#00ff66] text-black uppercase text-[11px] font-black tracking-widest py-2 rounded-xl hover:brightness-110 transition-all">Salvar Item</button>
+                    </div>
                 </div>
-            )}
+            </div>
+        )}
 
-            {/* CONTAINER PRINCIPAL DO MODAL */}
-            <div
-                className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-8"
-                onClick={(e) => e.target === e.currentTarget && onClose()}
-            >
-                <div className="bg-[#020502]/95 border border-[#1a2a1a] rounded-2xl shadow-[0_0_80px_rgba(0,255,102,0.06),0_0_60px_rgba(0,0,0,0.9)] w-2/3 min-w-[480px] h-[88vh] flex flex-col overflow-hidden">
-                    <div className="flex-1 overflow-y-auto px-6 py-8">
+        {/* POPUP ADICIONAR/EDITAR HABILIDADE (IGUAL AO INVENTÁRIO) */}
+        {showSpellForm && (
+            <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 backdrop-blur-sm">
+                <div className="bg-[#0a120a] border border-[#1a2a1a] rounded-2xl p-6 w-[400px] shadow-[0_0_50px_rgba(0,0,0,0.95)] space-y-4 max-h-[90vh] overflow-y-auto">
+                    <h3 className="text-[#f1e5ac] text-sm font-black uppercase tracking-widest text-center">
+                        {editingSpellId !== null ? 'Editar Habilidade' : 'Nova Habilidade'}
+                    </h3>
+                    <div className="space-y-3">
+                        <div>
+                            <label className="text-[10px] text-[#4a5a4a] font-black uppercase tracking-widest block mb-1">Nome da Habilidade</label>
+                            <input type="text" className={inputCls} value={newSpellItem.name} onChange={e => setNewSpellItem(prev => ({ ...prev, name: e.target.value }))} />
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                            <div>
+                                <label className="text-[10px] text-[#4a5a4a] font-black uppercase tracking-widest block mb-1">Tipo</label>
+                                <select className={selectCls} value={newSpellItem.tipo} onChange={e => setNewSpellItem(prev => ({ ...prev, tipo: e.target.value }))}>
+                                    <option value="Magia">Magia</option>
+                                    <option value="Poder">Poder</option>
+                                    <option value="Passiva">Passiva</option>
+                                    <option value="Talento">Talento</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="text-[10px] text-[#4a5a4a] font-black uppercase tracking-widest block mb-1">Nível / Custo</label>
+                                <input type="text" placeholder="ex: 1º Círculo, 2 PM" className={inputCls} value={newSpellItem.level} onChange={e => setNewSpellItem(prev => ({ ...prev, level: e.target.value }))} />
+                            </div>
+                        </div>
+                        <div>
+                            <label className="text-[10px] text-[#4a5a4a] font-black uppercase tracking-widest block mb-1">Descrição</label>
+                            <textarea rows={4} className={inputCls + " resize-none"} value={newSpellItem.desc} onChange={e => setNewSpellItem(prev => ({ ...prev, desc: e.target.value }))} />
+                        </div>
+                    </div>
+                    <div className="flex gap-2 pt-2">
+                        <button onClick={() => { resetSpellForm(); setShowSpellForm(false); }} className="flex-1 bg-transparent border border-[#1a2a1a] text-[#4a5a4a] hover:text-white uppercase text-[11px] font-black tracking-widest py-2 rounded-xl transition-colors">Cancelar</button>
+                        <button onClick={addSpellItem} className="flex-1 bg-[#f1e5ac] text-black uppercase text-[11px] font-black tracking-widest py-2 rounded-xl hover:brightness-110 transition-all">Salvar</button>
+                    </div>
+                </div>
+            </div>
+        )}
 
-                        {loading && (
-                            <div className="text-center text-[#8a9a8a] text-base py-20">Carregando ficha...</div>
-                        )}
-                        {!loading && !draft && (
-                            <div className="text-center text-red-400 text-base py-20">Não foi possível carregar a ficha.</div>
-                        )}
+        {/* CONTAINER PRINCIPAL DO MODAL */}
+        <div
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-8"
+            onClick={(e) => e.target === e.currentTarget && onClose()}
+        >
+            <div className="bg-[#020502]/95 border border-[#1a2a1a] rounded-2xl shadow-[0_0_80px_rgba(0,255,102,0.06),0_0_60px_rgba(0,0,0,0.9)] w-2/3 min-w-[480px] h-[88vh] flex flex-col overflow-hidden">
+                <div className="flex-1 overflow-y-auto px-6 py-8">
 
-                        {!loading && draft && (
-                            <>
-                                {/* BARRA DE NAVEGAÇÃO SUPERIOR - COM BOTAO SALVAR PADRÃO VERDE */}
-                                <div className="flex justify-between items-center mb-6">
+                    {loading && (
+                        <div className="text-center text-[#8a9a8a] text-base py-20">Carregando ficha...</div>
+                    )}
+                    {!loading && !draft && (
+                        <div className="text-center text-red-400 text-base py-20">Não foi possível carregar a ficha.</div>
+                    )}
+
+                    {!loading && draft && (
+                        <>
+                            {/* BARRA DE NAVEGAÇÃO SUPERIOR - COM BOTAO SALVAR PADRÃO VERDE */}
+                            <div className="flex justify-between items-center mb-6">
+                                {!readOnly && (
                                     <button
-                                        onClick={onClose}
-                                        className="flex items-center gap-2 text-[#4a5a4a] hover:text-[#00ff66] text-base font-black transition-colors"
+                                        onClick={saveCharacter}
+                                        disabled={saving}
+                                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-black font-black uppercase text-sm tracking-widest shadow-lg transition-all
+                                            ${saveSuccess 
+                                                ? 'bg-blue-500 text-white shadow-[0_0_15px_rgba(59,130,246,0.5)]' 
+                                                : 'bg-[#00ff66] hover:brightness-110 shadow-[0_0_15px_rgba(0,255,102,0.4)]'
+                                            } disabled:opacity-50`}
                                     >
-                                        Fechar Ficha
+                                        <Save size={16} />
+                                        {saving ? 'Salvando...' : saveSuccess ? 'Salvo!' : 'Salvar'}
                                     </button>
-                                    {!readOnly && (
-                                        <button
-                                            onClick={saveCharacter}
-                                            disabled={saving}
-                                            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-black font-black uppercase text-sm tracking-widest shadow-lg transition-all
-                                            ${saveSuccess
-                                                    ? 'bg-blue-500 text-white shadow-[0_0_15px_rgba(59,130,246,0.5)]'
-                                                    : 'bg-[#00ff66] hover:brightness-110 shadow-[0_0_15px_rgba(0,255,102,0.4)]'
-                                                } disabled:opacity-50`}
-                                        >
-                                            <Save size={16} />
-                                            {saving ? 'Salvando...' : saveSuccess ? 'Salvo!' : 'Salvar'}
-                                        </button>
-                                    )}
-                                </div>
+                                )}
+                            </div>
 
-                                <div className="bg-black/65 border border-[#1a2a1a] rounded-2xl p-3 sm:p-4 space-y-4 shadow-[0_0_24px_rgba(0,0,0,0.35)] mb-6">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        {/* LADO ESQUERDO - Estrutura idêntica ao layout da imagem */}
-                                        <div className="flex flex-row items-start gap-4 w-full">
-                                            {/* Imagem do Personagem (Lado Esquerdo) */}
+                            {/* Botão de fechar no canto superior direito (x pequeno) */}
+                            <button
+                                onClick={onClose}
+                                aria-label="Fechar"
+                                className="absolute top-4 right-4 w-8 h-8 rounded-full bg-black/40 flex items-center justify-center text-[#cbd5c1] hover:text-white transition-colors"
+                            >
+                                <X size={16} />
+                            </button>
+
+                            <div className="bg-black/65 border border-[#1a2a1a] rounded-2xl p-3 sm:p-4 space-y-4 shadow-[0_0_24px_rgba(0,0,0,0.35)] mb-6">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {/* LADO ESQUERDO */}
+                                    <div className="space-y-3">
+                                        <div className="flex flex-col items-start gap-3">
                                             <div
                                                 className="w-40 h-40 shrink-0 rounded-2xl border border-[#1a2a1a] bg-black bg-cover bg-center cursor-pointer overflow-hidden relative group shadow-[inset_0_0_0_1px_rgba(255,255,255,0.03)]"
                                                 style={{
@@ -799,19 +802,13 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
                                                 <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/15 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                                             </div>
 
-                                            {/* Coluna de Informações (Lado Direito da Imagem) */}
-                                            <div className="flex-1 flex flex-col justify-between h-40 space-y-2">
-                                                {/* Bloco do Nome */}
+                                            {/* NOME, RAÇA E CLASSE ESTRUTURADOS DEBAIXO DA FOTO, AINDA ESTÁTICOS */}
+                                            <div className="w-full space-y-2 mt-1">
                                                 <div className="space-y-1">
                                                     <label className="text-[11px] text-[#4a5a4a] font-black uppercase tracking-widest block text-left">Nome</label>
-                                                    <input
-                                                        className={inputCls + " text-left text-2xl font-black bg-transparent border-none p-0 focus:border-b focus:border-[#00ff66]/50 w-full"}
-                                                        value={draft.name}
-                                                        onChange={(e) => updateDraft('name', e.target.value)}
-                                                    />
+                                                    <input className={inputCls + " text-left text-2xl font-black bg-transparent border-none p-0 focus:border-b focus:border-[#00ff66]/50"} value={draft.name} onChange={(e) => updateDraft('name', e.target.value)} />
                                                 </div>
 
-                                                {/* Bloco de Raça e Classe */}
                                                 <div className="flex gap-2 flex-wrap">
                                                     <span className="inline-flex items-center gap-2 rounded-full border border-[#1a2a1a] bg-[#0a120a] px-2 py-0.5 text-[10px] font-black uppercase tracking-widest text-[#4a5a4a]">
                                                         Raça: <span className="text-[#00ff66]">{draft.race}</span>
@@ -820,33 +817,33 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
                                                         Classe: <span className="text-[#f1e5ac]">{draft.class}</span>
                                                     </span>
                                                 </div>
+                                            </div>
 
-                                                {/* Bloco de Nível e XP (Lado a lado na base da coluna) */}
-                                                <div className="flex gap-2 pt-1">
-                                                    <div className="rounded-2xl border border-[#1a2a1a] bg-[#0a120a] p-2 text-center shadow-[0_0_12px_rgba(0,0,0,0.2)] w-20">
-                                                        <span className="block text-[10px] font-black uppercase tracking-[0.2em] text-[#4a5a4a]">Nível</span>
-                                                        <input
-                                                            type="number"
-                                                            min={1}
-                                                            max={20}
-                                                            className="mt-1 w-full bg-transparent text-2xl font-black text-white text-center outline-none"
-                                                            value={levelValue}
-                                                            onChange={(e) => updateDraft('level', Number(e.target.value))}
-                                                        />
-                                                    </div>
-                                                    <div className="rounded-2xl border border-[#1a2a1a] bg-[#0a120a] p-2 text-center shadow-[0_0_12px_rgba(0,0,0,0.2)] w-24">
-                                                        <span className="block text-[10px] font-black uppercase tracking-[0.2em] text-[#4a5a4a]">XP</span>
-                                                        <input
-                                                            type="number"
-                                                            min={0}
-                                                            className="mt-1 w-full bg-transparent text-lg font-black text-[#f1e5ac] text-center outline-none"
-                                                            value={xpValue}
-                                                            onChange={(e) => updateDraft('experiencePoints', Number(e.target.value))}
-                                                        />
-                                                    </div>
+                                            <div className="flex gap-2">
+                                                <div className="rounded-2xl border border-[#1a2a1a] bg-[#0a120a] p-2 text-center shadow-[0_0_12px_rgba(0,0,0,0.2)] w-20">
+                                                    <span className="block text-[10px] font-black uppercase tracking-[0.2em] text-[#4a5a4a]">Nível</span>
+                                                    <input
+                                                        type="number"
+                                                        min={1}
+                                                        max={20}
+                                                        className="mt-1 w-full bg-transparent text-2xl font-black text-white text-center outline-none"
+                                                        value={levelValue}
+                                                        onChange={(e) => updateDraft('level', Number(e.target.value))}
+                                                    />
+                                                </div>
+                                                <div className="rounded-2xl border border-[#1a2a1a] bg-[#0a120a] p-2 text-center shadow-[0_0_12px_rgba(0,0,0,0.2)] w-24">
+                                                    <span className="block text-[10px] font-black uppercase tracking-[0.2em] text-[#4a5a4a]">XP</span>
+                                                    <input
+                                                        type="number"
+                                                        min={0}
+                                                        className="mt-1 w-full bg-transparent text-lg font-black text-[#f1e5ac] text-center outline-none"
+                                                        value={xpValue}
+                                                        onChange={(e) => updateDraft('experiencePoints', Number(e.target.value))}
+                                                    />
                                                 </div>
                                             </div>
                                         </div>
+
                                         <div className="space-y-2">
                                             <div className="w-full space-y-2">
                                                 <div className="flex justify-between items-center text-[11px] sm:text-[12px] font-black uppercase tracking-widest text-[#4a5a4a]">
@@ -967,7 +964,7 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
                                                 <div className="bg-[#050a05] border border-[#1a2a1a] p-3 rounded-xl">
                                                     <div className="flex items-center justify-between mb-3">
                                                         <h3 className="text-[#f1e5ac] text-[13px] font-black uppercase flex items-center gap-2">
-                                                            <Sparkles size={12} /> Habilidades / Magias
+                                                            <Sparkles size={12} /> Habilidades 
                                                         </h3>
                                                         {!readOnly && (
                                                             <button onClick={() => { resetSpellForm(); setShowSpellForm(true); }} className="w-6 h-6 rounded-md bg-[#f1e5ac] text-black flex items-center justify-center text-xs font-black transition-all hover:brightness-110 shadow-[0_0_8px_rgba(241,229,172,0.4)]" title="Adicionar Habilidade/Magia">
@@ -975,7 +972,7 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
                                                             </button>
                                                         )}
                                                     </div>
-
+                                                    
                                                     <div className="max-h-[220px] overflow-y-auto space-y-1.5 pr-1 mb-2">
                                                         {/* Traços Raciais Estáticos */}
                                                         {RACE_DATA[draft.race]?.traits.split(', ').map((trait) => (
@@ -985,7 +982,7 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
                                                             </div>
                                                         ))}
                                                         {RACE_DATA[draft.race]?.traits && draft.spells?.length > 0 && <div className="border-t border-[#1a2a1a] my-1" />}
-
+                                                        
                                                         {/* Lista Dinâmica com Expansão e Edição de Habilidades */}
                                                         {draft.spells?.map((spell: any) => {
                                                             const isSpellExpanded = expandedSpellId === spell.id;
@@ -1018,120 +1015,120 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
                                         </div>
                                     </div>
                                 </div>
-
-                        {/* PERÍCIAS */}
-                        <div className={`bg-black border border-[#1a2a1a] p-3 rounded-xl mt-5 ${readOnly ? 'pointer-events-none select-none' : ''}`}>
-                            <h3 className="text-[#f1e5ac] text-[13px] font-black uppercase mb-3 text-center">Perícias</h3>
-                            <div className="grid grid-cols-2 gap-1">
-                                {Object.entries(skillsData).map(([key, info]) => {
-                                    const mod = getModifier(draft?.stats?.[info.attr] ?? 0);
-                                    const proficient = draft?.skills?.[key];
-                                    const total = mod + (proficient ? (draft.proficiencyBonus ?? 2) : 0);
-                                    return (
-                                        <div
-                                            key={key}
-                                            onClick={() => rollD20(info.name, total)}
-                                            title={`Rolar ${info.name}`}
-                                            className="flex items-center justify-between bg-black/40 px-2 py-1 rounded border border-[#1a2a1a] cursor-pointer hover:border-[#00ff66]/40 transition-colors"
-                                        >
-                                            <div className="flex items-center gap-1.5 min-w-0">
-                                                <input type="checkbox" checked={!!proficient} onClick={(e) => e.stopPropagation()} onChange={() => toggleSkill(key)} className="accent-[#00ff66] w-3 h-3 cursor-pointer shrink-0" />
-                                                <span className="text-[13px] uppercase text-gray-300 leading-tight truncate">{info.name}</span>
-                                            </div>
-                                            <span className="text-[13px] font-black text-[#00ff66] ml-1 shrink-0">{fmtMod(total)}</span>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </div>
-
-                        {/* INVENTÁRIO E MOEDAS */}
-                        <div className={`bg-[#050a05] border border-[#1a2a1a] p-3 rounded-xl mt-3 ${readOnly ? 'pointer-events-none select-none' : ''}`}>
-                            <div className="flex items-center justify-between mb-2">
-                                <h3 className="text-[#00ff66] text-[13px] font-black uppercase flex items-center gap-2">
-                                    <Box size={12} /> Inventário
-                                </h3>
-                                {!readOnly && (
-                                    <button onClick={() => { resetInventoryForm(); setShowInventoryForm(true); }} className="w-7 h-7 rounded-md bg-[#00ff66] text-black flex items-center justify-center text-base font-black transition-all hover:brightness-110 shadow-[0_0_8px_rgba(0,255,102,0.5)]" title="Adicionar item">
-                                        <Plus size={14} />
-                                    </button>
-                                )}
                             </div>
 
-                            <div className="bg-black/30 rounded-lg p-2 mb-3 border border-[#1a2a1a]">
-                                <div className="flex items-center justify-between gap-2">
-                                    <span className="text-[10px] font-black uppercase text-[#f1e5ac] tracking-wider flex items-center gap-1"> Dinheiro</span>
-                                    <div className="flex gap-3">
-                                        {[
-                                            { key: 'pl', label: 'PL', color: 'text-[#e5e4e2]', title: 'Platina' },
-                                            { key: 'po', label: 'PO', color: 'text-[#f1e5ac]', title: 'Ouro' },
-                                            { key: 'pp', label: 'PP', color: 'text-[#c0c0c0]', title: 'Prata' },
-                                            { key: 'pc', label: 'PC', color: 'text-[#b87333]', title: 'Cobre' },
-                                        ].map(({ key, label, color, title }) => (
-                                            <div key={key} className="flex items-center gap-1" title={title}>
-                                                <span className={`text-[11px] font-black ${color}`}>{label}</span>
-                                                <input
-                                                    type="number"
-                                                    min={0}
-                                                    value={draft.currency?.[key as keyof typeof draft.currency] ?? 0}
-                                                    onChange={(e) => updateDraft('currency', { ...(draft.currency ?? { pl: 0, po: 0, pp: 0, pc: 0 }), [key]: Math.max(0, Number(e.target.value) || 0) })}
-                                                    className="w-12 bg-black/60 border border-[#1a2a1a] rounded px-1 py-0.5 text-[12px] text-white text-center outline-none focus:border-[#00ff66]/40"
-                                                />
+                            {/* PERÍCIAS */}
+                            <div className={`bg-black border border-[#1a2a1a] p-3 rounded-xl mt-5 ${readOnly ? 'pointer-events-none select-none' : ''}`}>
+                                <h3 className="text-[#f1e5ac] text-[13px] font-black uppercase mb-3 text-center">Perícias</h3>
+                                <div className="grid grid-cols-2 gap-1">
+                                    {Object.entries(skillsData).map(([key, info]) => {
+                                        const mod = getModifier(draft.stats[info.attr]);
+                                        const proficient = draft.skills?.[key];
+                                        const total = mod + (proficient ? (draft.proficiencyBonus ?? 2) : 0);
+                                        return (
+                                            <div
+                                                key={key}
+                                                onClick={() => rollD20(info.name, total)}
+                                                title={`Rolar ${info.name}`}
+                                                className="flex items-center justify-between bg-black/40 px-2 py-1 rounded border border-[#1a2a1a] cursor-pointer hover:border-[#00ff66]/40 transition-colors"
+                                            >
+                                                <div className="flex items-center gap-1.5 min-w-0">
+                                                    <input type="checkbox" checked={!!proficient} onClick={(e) => e.stopPropagation()} onChange={() => toggleSkill(key)} className="accent-[#00ff66] w-3 h-3 cursor-pointer shrink-0" />
+                                                    <span className="text-[13px] uppercase text-gray-300 leading-tight truncate">{info.name}</span>
+                                                </div>
+                                                <span className="text-[13px] font-black text-[#00ff66] ml-1 shrink-0">{fmtMod(total)}</span>
                                             </div>
-                                        ))}
-                                    </div>
+                                        );
+                                    })}
                                 </div>
                             </div>
 
-                            <div className="space-y-1.5">
-                                {draft.inventory?.length ? draft.inventory.map((item: InventoryItem) => {
-                                    const isExpanded = expandedItemId === item.id;
-                                    const cat = item.categoria || 'item';
-                                    return (
-                                        <div key={item.id} className="bg-black/40 rounded-lg border border-[#1a2a1a] overflow-hidden">
-                                            <div className="flex items-center gap-2 px-2 py-1.5">
-                                                <div className="flex-1 min-w-0 cursor-pointer" onClick={() => setExpandedItemId(isExpanded ? null : item.id)}>
-                                                    <div className="flex items-center gap-2">
-                                                        {categoriaIcons[cat]}
-                                                        <span className="text-[13px] font-black uppercase text-gray-200 truncate">{item.nome || item.name || 'Item sem nome'}</span>
-                                                    </div>
-                                                    <div className="flex items-center gap-1.5 mt-0.5">
-                                                        <span className="text-[11px] uppercase text-gray-500 ml-5">{item.tipo || item.categoria || 'Item'}</span>
-                                                        {item.categoria === 'consumivel' && item.quantidade !== undefined && (
-                                                            <span className="bg-purple-900/40 border border-purple-800/40 text-purple-300 px-1.5 rounded text-[10px] font-black">x{item.quantidade}</span>
-                                                        )}
-                                                        {item.categoria === 'armadura' && item.caBase !== undefined && (
-                                                            <span className="bg-blue-900/40 border border-blue-800/40 text-blue-300 px-1.5 rounded text-[10px] font-black">CA {item.caBase}</span>
-                                                        )}
-                                                    </div>
+                            {/* INVENTÁRIO E MOEDAS */}
+                            <div className={`bg-[#050a05] border border-[#1a2a1a] p-3 rounded-xl mt-3 ${readOnly ? 'pointer-events-none select-none' : ''}`}>
+                                <div className="flex items-center justify-between mb-2">
+                                    <h3 className="text-[#00ff66] text-[13px] font-black uppercase flex items-center gap-2">
+                                        <Box size={12} /> Inventário
+                                    </h3>
+                                    {!readOnly && (
+                                        <button onClick={() => { resetInventoryForm(); setShowInventoryForm(true); }} className="w-7 h-7 rounded-md bg-[#00ff66] text-black flex items-center justify-center text-base font-black transition-all hover:brightness-110 shadow-[0_0_8px_rgba(0,255,102,0.5)]" title="Adicionar item">
+                                            <Plus size={14} />
+                                        </button>
+                                    )}
+                                </div>
+
+                                <div className="bg-black/30 rounded-lg p-2 mb-3 border border-[#1a2a1a]">
+                                    <div className="flex items-center justify-between gap-2">
+                                        <span className="text-[10px] font-black uppercase text-[#f1e5ac] tracking-wider flex items-center gap-1"> Dinheiro</span>
+                                        <div className="flex gap-3">
+                                            {[
+                                                { key: 'pl', label: 'PL', color: 'text-[#e5e4e2]', title: 'Platina' },
+                                                { key: 'po', label: 'PO', color: 'text-[#f1e5ac]', title: 'Ouro' },
+                                                { key: 'pp', label: 'PP', color: 'text-[#c0c0c0]', title: 'Prata' },
+                                                { key: 'pc', label: 'PC', color: 'text-[#b87333]', title: 'Cobre' },
+                                            ].map(({ key, label, color, title }) => (
+                                                <div key={key} className="flex items-center gap-1" title={title}>
+                                                    <span className={`text-[11px] font-black ${color}`}>{label}</span>
+                                                    <input
+                                                        type="number"
+                                                        min={0}
+                                                        value={draft.currency?.[key as keyof typeof draft.currency] ?? 0}
+                                                        onChange={(e) => updateDraft('currency', { ...(draft.currency ?? { pl: 0, po: 0, pp: 0, pc: 0 }), [key]: Math.max(0, Number(e.target.value) || 0) })}
+                                                        className="w-12 bg-black/60 border border-[#1a2a1a] rounded px-1 py-0.5 text-[12px] text-white text-center outline-none focus:border-[#00ff66]/40"
+                                                    />
                                                 </div>
-                                                <div className="flex gap-1 shrink-0" onClick={e => e.stopPropagation()}>
-                                                    {item.ataque && (
-                                                        <button onClick={() => rollWeaponFormula(item.nome || item.name || 'arma', item.ataque ?? '', 'ataque', item.atributo)} className="bg-[#f1e5ac]/10 border border-[#f1e5ac]/20 text-[#f1e5ac] px-2 py-0.5 rounded text-[10px] font-black uppercase hover:bg-[#f1e5ac]/20 transition-colors">ATK</button>
-                                                    )}
-                                                    <button onClick={() => editInventoryItem(item)} className="text-gray-400 hover:text-white p-1"><Pencil size={12} /></button>
-                                                    <button onClick={() => removeInventoryItem(item.id)} className="text-red-500 hover:text-red-400 p-1"><Trash2 size={12} /></button>
-                                                </div>
-                                            </div>
-                                            {isExpanded && item.desc && (
-                                                <div className="px-3 pb-2 pt-1 border-t border-[#1a2a1a]/50 text-[12px] text-gray-400 bg-black/20 break-words whitespace-pre-line ml-5">
-                                                    {item.desc}
-                                                </div>
-                                            )}
+                                            ))}
                                         </div>
-                                    );
-                                }) : <div className="text-center text-[#4a5a4a] text-xs py-4 uppercase">Inventário Vazio</div>}
+                                    </div>
+                                </div>
+
+                                <div className="space-y-1.5">
+                                    {draft.inventory?.length ? draft.inventory.map((item: InventoryItem) => {
+                                        const isExpanded = expandedItemId === item.id;
+                                        const cat = item.categoria || 'item';
+                                        return (
+                                            <div key={item.id} className="bg-black/40 rounded-lg border border-[#1a2a1a] overflow-hidden">
+                                                <div className="flex items-center gap-2 px-2 py-1.5">
+                                                    <div className="flex-1 min-w-0 cursor-pointer" onClick={() => setExpandedItemId(isExpanded ? null : item.id)}>
+                                                        <div className="flex items-center gap-2">
+                                                            {categoriaIcons[cat]}
+                                                            <span className="text-[13px] font-black uppercase text-gray-200 truncate">{item.nome || item.name || 'Item sem nome'}</span>
+                                                        </div>
+                                                        <div className="flex items-center gap-1.5 mt-0.5">
+                                                            <span className="text-[11px] uppercase text-gray-500 ml-5">{item.tipo || item.categoria || 'Item'}</span>
+                                                            {item.categoria === 'consumivel' && item.quantidade !== undefined && (
+                                                                <span className="bg-purple-900/40 border border-purple-800/40 text-purple-300 px-1.5 rounded text-[10px] font-black">x{item.quantidade}</span>
+                                                            )}
+                                                            {item.categoria === 'armadura' && item.caBase !== undefined && (
+                                                                <span className="bg-blue-900/40 border border-blue-800/40 text-blue-300 px-1.5 rounded text-[10px] font-black">CA {item.caBase}</span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex gap-1 shrink-0" onClick={e => e.stopPropagation()}>
+                                                        {item.ataque && (
+                                                            <button onClick={() => rollWeaponFormula(item.nome || item.name || 'arma', item.ataque ?? '', 'ataque', item.atributo)} className="bg-[#f1e5ac]/10 border border-[#f1e5ac]/20 text-[#f1e5ac] px-2 py-0.5 rounded text-[10px] font-black uppercase hover:bg-[#f1e5ac]/20 transition-colors">ATK</button>
+                                                        )}
+                                                        <button onClick={() => editInventoryItem(item)} className="text-gray-400 hover:text-white p-1"><Pencil size={12} /></button>
+                                                        <button onClick={() => removeInventoryItem(item.id)} className="text-red-500 hover:text-red-400 p-1"><Trash2 size={12} /></button>
+                                                    </div>
+                                                </div>
+                                                {isExpanded && item.desc && (
+                                                    <div className="px-3 pb-2 pt-1 border-t border-[#1a2a1a]/50 text-[12px] text-gray-400 bg-black/20 break-words whitespace-pre-line ml-5">
+                                                        {item.desc}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    }) : <div className="text-center text-[#4a5a4a] text-xs py-4 uppercase">Inventário Vazio</div>}
+                                </div>
                             </div>
-                        </div>
-                    </>
-                )}
+                        </>
+                    )}
+                </div>
             </div>
         </div>
-    </div>
 
-            {/* MODAL DE ENQUADRAMENTO DA FOTO */}
-    {
-        framingOpen && (
+        {/* MODAL DE ENQUADRAMENTO DA FOTO */}
+        {framingOpen && (
             <div className="fixed inset-0 z-[250] flex items-center justify-center bg-black/80 backdrop-blur-md">
                 <div className="bg-[#0a120a] border border-[#1a2a1a] rounded-2xl p-6 w-[350px] space-y-4 shadow-[0_0_50px_rgba(0,0,0,0.95)]">
                     <h3 className="text-[#f1e5ac] text-sm font-black uppercase tracking-widest text-center">Ajustar Foto</h3>
@@ -1152,8 +1149,7 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
                     </div>
                 </div>
             </div>
-        )
-    }
+        )}
     </>
 );
 }

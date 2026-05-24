@@ -7,7 +7,7 @@ import Footer from '@/app/components/ui/footer';
 import Card from '@/app/components/ui/card';
 import CharacterGrimorioPanel from '@/app/components/ui/grimorio_ficha';
 import type { JSX } from 'react';
-import { Plus, ArrowLeft, ShieldAlert, Sparkles, Trash2, Save, Shield, Zap, BookOpen, Backpack, ScrollText, Sword, FlaskConical, Pencil, Coins } from 'lucide-react';
+import { Plus, ArrowLeft, ShieldAlert, Sparkles, Trash2, Save, Shield, Zap, BookOpen, Backpack, ScrollText, Sword, FlaskConical, Pencil, Coins, ChevronDown } from 'lucide-react';
 
 // --- DADOS DE RAÇAS (Adicionado) ---
 const RACE_DATA: Record<string, { stats: Record<string, number>, traits: string, note?: string }> = {
@@ -164,6 +164,10 @@ export default function PersonagensPage() {
   const [newItem, setNewItem] = useState<InventoryFormState>(EMPTY_INVENTORY_FORM);
   const [editingInventoryId, setEditingInventoryId] = useState<number | null>(null);
   const [expandedItemId, setExpandedItemId] = useState<number | null>(null);
+  const [expandedSpellId, setExpandedSpellId] = useState<number | null>(null);
+  const [editingSpellId, setEditingSpellId] = useState<number | null>(null);
+  const [spellForm, setSpellForm] = useState<{ name: string; level: string; desc?: string }>({ name: '', level: '', desc: '' });
+  const [showSpellForm, setShowSpellForm] = useState(false);
   const [showInventoryForm, setShowInventoryForm] = useState(false);
   const [sheetView, setSheetView] = useState<'ficha' | 'grimorio' | 'inventario'>('ficha');
   const [abaAtiva, setAbaAtiva] = useState<string>('personagens');
@@ -812,38 +816,37 @@ export default function PersonagensPage() {
                     </div>
                   ))}
 
-                  {activeCharacter.spells?.map((ability: { id: number; name: string }) => (
-                    <div
-                      key={ability.id}
-                      className="bg-black/60 p-2 rounded border border-[#1a2a1a] flex justify-between items-center group"
-                    >
-                      <span className="text-[14px] uppercase font-bold text-gray-300">{ability.name}</span>
-                      <button
-                        onClick={() => updateCharacter('spells', activeCharacter.spells.filter((s: { id: number }) => s.id !== ability.id))}
-                        className="text-red-900 group-hover:text-red-500"
-                      >
-                        <Trash2 size={12} />
-                      </button>
-                    </div>
-                  ))}
+                  {activeCharacter.spells?.map((ability: any) => {
+                    const isExpanded = expandedSpellId === ability.id;
+                    return (
+                      <div key={ability.id} className="bg-black/60 p-2 rounded border border-[#1a2a1a] flex justify-between items-center group">
+                        <div className="min-w-0 cursor-pointer" onClick={() => setExpandedSpellId(isExpanded ? null : ability.id)}>
+                          <span className="text-[14px] uppercase font-bold text-gray-300 block truncate">{ability.name}</span>
+                          {ability.level && <div className="text-[11px] text-gray-500 uppercase">{ability.level}</div>}
+                          {isExpanded && ability.desc && <div className="text-[13px] text-gray-400 mt-2 whitespace-pre-line">{ability.desc}</div>}
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            onClick={() => { setEditingSpellId(ability.id); setSpellForm({ name: ability.name ?? '', level: ability.level ?? '', desc: ability.desc ?? '' }); setShowSpellForm(true); }}
+                            className="text-gray-400 hover:text-white p-1"
+                            title="Editar"
+                          >
+                            <Pencil size={12} />
+                          </button>
+                          <button
+                            onClick={() => updateCharacter('spells', activeCharacter.spells.filter((s: { id: number }) => s.id !== ability.id))}
+                            className="text-red-900 group-hover:text-red-500 p-1"
+                            title="Remover"
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
                 <div className="flex gap-2">
-                  <input
-                    value={newAbilityName}
-                    onChange={(e) => setNewAbilityName(e.target.value)}
-                    placeholder="Nova habilidade..."
-                    className="flex-1 bg-black border border-[#1a2a1a] rounded p-2 text-base text-white"
-                  />
-                  <button
-                    onClick={() => {
-                      if (!newAbilityName) return;
-                      updateCharacter('spells', [...activeCharacter.spells, { id: Date.now(), name: newAbilityName, level: '0' }]);
-                      setNewAbilityName('');
-                    }}
-                    className="bg-[#00ff66] text-black px-3 rounded text-lg"
-                  >
-                    +
-                  </button>
+                  <button onClick={() => { setEditingSpellId(null); setSpellForm({ name: '', level: '', desc: '' }); setShowSpellForm(true); }} className="flex-1 bg-[#00ff66] text-black px-3 rounded text-base font-black uppercase py-2">Adicionar Habilidade</button>
                 </div>
               </div>
             </div>
@@ -969,7 +972,7 @@ export default function PersonagensPage() {
                           onClick={() => setExpandedItemId(isExpanded ? null : item.id)}
                           className="w-6 h-6 flex items-center justify-center rounded-md border border-[#1a2a1a] text-[#4a5a4a] hover:border-[#00ff66]/40 hover:text-[#00ff66] transition-all shrink-0"
                         >
-                          <span className={`text-[9px] transition-transform duration-200 inline-block ${isExpanded ? 'rotate-180' : 'rotate-0'}`}>▼</span>
+                          <ChevronDown size={12} className={`transition-transform duration-200 inline-block ${isExpanded ? 'rotate-180' : 'rotate-0'}`} />
                         </button>
                       </div>
                       <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isExpanded ? 'max-h-80' : 'max-h-0'}`}>
@@ -1036,7 +1039,8 @@ export default function PersonagensPage() {
                 onClick={() => setShowFramingSliders((v) => !v)}
                 className="w-full border border-[#1a2a1a] text-[#4a5a4a] hover:text-[#00ff66] hover:border-[#00ff66]/40 text-[14px] font-black uppercase py-2 rounded-lg transition-all flex items-center justify-center gap-2"
               >
-                {showFramingSliders ? '▲ Ocultar enquadramento' : '▼ Ajustar enquadramento'}
+                <ChevronDown size={12} className={`${showFramingSliders ? 'rotate-180' : 'rotate-0'} transition-transform`} />
+                {showFramingSliders ? 'Ocultar enquadramento' : 'Ajustar enquadramento'}
               </button>
 
               {/* Sliders (condicional) */}
@@ -1078,7 +1082,7 @@ export default function PersonagensPage() {
         )}
 
         {/* MODAL DE ADICIONAR/EDITAR ITEM (POPUP) */}
-        {showInventoryForm && (
+              {showInventoryForm && (
           <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80" onClick={(e) => e.target === e.currentTarget && setShowInventoryForm(false)}>
             <div className="bg-[#0a120a] border border-[#1a2a1a] rounded-2xl p-5 w-[450px] max-w-[90vw] space-y-3 shadow-[0_0_50px_rgba(0,0,0,0.9)]">
               <div className="flex justify-between items-center border-b border-[#1a2a1a] pb-2">
@@ -1146,6 +1150,46 @@ export default function PersonagensPage() {
             </div>
           </div>
         )}
+              {/* POPUP ADICIONAR/EDITAR HABILIDADE */}
+              {showSpellForm && (
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80" onClick={(e) => e.target === e.currentTarget && setShowSpellForm(false)}>
+                  <div className="bg-[#0a120a] border border-[#1a2a1a] rounded-2xl p-6 w-[400px] shadow-[0_0_50px_rgba(0,0,0,0.95)] space-y-4">
+                    <h3 className="text-[#f1e5ac] text-sm font-black uppercase tracking-widest text-center">
+                      {editingSpellId !== null ? 'Editar Habilidade' : 'Nova Habilidade'}
+                    </h3>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="text-[10px] text-[#4a5a4a] font-black uppercase tracking-widest block mb-1">Nome</label>
+                        <input type="text" className="w-full bg-black/40 border border-[#1a2a1a] px-2 py-1 text-white rounded" value={spellForm.name} onChange={(e) => setSpellForm(prev => ({ ...prev, name: e.target.value }))} />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-[#4a5a4a] font-black uppercase tracking-widest block mb-1">Nível / Custo</label>
+                        <input type="text" className="w-full bg-black/40 border border-[#1a2a1a] px-2 py-1 text-white rounded" value={spellForm.level} onChange={(e) => setSpellForm(prev => ({ ...prev, level: e.target.value }))} />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-[#4a5a4a] font-black uppercase tracking-widest block mb-1">Descrição</label>
+                        <textarea rows={4} className="w-full bg-black/40 border border-[#1a2a1a] px-2 py-1 text-white rounded resize-none" value={spellForm.desc} onChange={(e) => setSpellForm(prev => ({ ...prev, desc: e.target.value }))} />
+                      </div>
+                    </div>
+                    <div className="flex gap-2 pt-2">
+                      <button onClick={() => { setShowSpellForm(false); setEditingSpellId(null); setSpellForm({ name: '', level: '', desc: '' }); }} className="flex-1 bg-transparent border border-[#1a2a1a] text-[#4a5a4a] hover:text-white uppercase text-[11px] font-black tracking-widest py-2 rounded-xl">Cancelar</button>
+                      <button onClick={() => {
+                        if (!spellForm.name.trim()) return;
+                        if (editingSpellId !== null) {
+                          const updated = activeCharacter.spells.map((s: any) => s.id === editingSpellId ? { ...s, name: spellForm.name.trim(), level: spellForm.level.trim(), desc: spellForm.desc?.trim() } : s);
+                          updateCharacter('spells', updated);
+                        } else {
+                          const payload = { id: Date.now(), name: spellForm.name.trim(), level: spellForm.level.trim(), desc: spellForm.desc?.trim() };
+                          updateCharacter('spells', [...(activeCharacter.spells ?? []), payload]);
+                        }
+                        setShowSpellForm(false);
+                        setEditingSpellId(null);
+                        setSpellForm({ name: '', level: '', desc: '' });
+                      }} className="flex-1 bg-[#f1e5ac] text-black uppercase text-[11px] font-black tracking-widest py-2 rounded-xl">Salvar</button>
+                    </div>
+                  </div>
+                </div>
+              )}
       </div>
     );
   };
