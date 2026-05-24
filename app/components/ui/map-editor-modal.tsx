@@ -259,7 +259,7 @@ export default function MapEditorModal({
                       : 'bg-white/5 border border-white/10 text-white/70 hover:border-[#00ff66]/30'
                   }`}
                 >
-                  5 pes
+                  5 pes (1.5 m)
                 </button>
                 <button
                   onClick={() => setGridDimension('10 pes')}
@@ -269,27 +269,7 @@ export default function MapEditorModal({
                       : 'bg-white/5 border border-white/10 text-white/70 hover:border-[#00ff66]/30'
                   }`}
                 >
-                  10 pes
-                </button>
-                <button
-                  onClick={() => setGridDimension('1,5 m')}
-                  className={`px-3 py-2 rounded-lg text-[10px] font-bold transition-all ${
-                    gridDimension === '1,5 m'
-                      ? 'bg-[#00ff66] text-black'
-                      : 'bg-white/5 border border-white/10 text-white/70 hover:border-[#00ff66]/30'
-                  }`}
-                >
-                  1,5 m
-                </button>
-                <button
-                  onClick={() => setGridDimension('2 m')}
-                  className={`px-3 py-2 rounded-lg text-[10px] font-bold transition-all ${
-                    gridDimension === '2 m'
-                      ? 'bg-[#00ff66] text-black'
-                      : 'bg-white/5 border border-white/10 text-white/70 hover:border-[#00ff66]/30'
-                  }`}
-                >
-                  2 m
+                  10 pes (3 m)
                 </button>
               </div>
             </div>
