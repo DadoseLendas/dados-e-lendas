@@ -168,7 +168,7 @@ export default function Home() {
             >
               <div className="flex items-center gap-4 mb-4">
                 <span className="bg-[#00ff66] text-black text-[10px] font-black px-3 py-1 rounded-sm uppercase">Guia</span>
-                <span className="text-[#4a5a4a] text-[10px] font-bold uppercase">15 de Jan 2026</span>
+                <span className="text-[#4a5a4a] text-[10px] font-bold uppercase">25 de Maio 2026</span>
               </div>
               <h3 className="text-[#f1e5ac] text-xl font-serif mb-3 group-hover:text-white transition-colors uppercase italic">Tutorial Completo</h3>
               <p className="text-[#8a9a8a] text-sm leading-relaxed">
