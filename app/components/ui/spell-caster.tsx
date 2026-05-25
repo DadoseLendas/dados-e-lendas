@@ -300,21 +300,47 @@ export default function SpellCaster({
     }
   };
 
-  const resolverNomesAlvos = (resultados: EffectResult[]) => {
+  const resolverNomesAlvos = (resultados: EffectResult[], resolvedTokens?: Map<string, { nome: string | null; bonusPorAtributo: Record<string, number> }>) => {
     const nomes = resultados
-      .map((resultado) => tokens.find((token) => token.id === resultado.tokenId)?.nome || `Token-${resultado.tokenId.slice(0, 4)}`)
+      .map((resultado) => {
+        const rt = resolvedTokens?.get(resultado.tokenId);
+        return rt?.nome || tokens.find((token) => token.id === resultado.tokenId)?.nome || `Token-${resultado.tokenId.slice(0, 4)}`;
+      })
       .filter(Boolean);
 
     const unicos = Array.from(new Set(nomes));
-    if (unicos.length === 0) return 'Nenhum alvo identificado';
+    if (unicos.length === 0) return 'Nenhum alvo na área';
     if (unicos.length === 1) return unicos[0];
     if (unicos.length === 2) return `${unicos[0]} e ${unicos[1]}`;
     return `${unicos[0]}, ${unicos[1]} e mais ${unicos.length - 2}`;
   };
 
-  const salvarCastDoChatLog = async (spellToLog: SpellExecution, resultados: EffectResult[], kind: "dano" | "cura" | "efeito") => {
+  const salvarCastDoChatLog = async (spellToLog: SpellExecution, resultados: EffectResult[], kind: "dano" | "cura" | "efeito", resolvedTokens?: Map<string, { nome: string | null; bonusPorAtributo: Record<string, number> }>) => {
+    if (resultados.length === 0) {
+      const { data: authData } = await supabase.auth.getUser();
+      const userId = authData.user?.id ?? null;
+      const { data: profileData } = userId
+        ? await supabase.from('profiles').select('display_name').eq('id', userId).maybeSingle()
+        : { data: null };
+      await supabase.from("chat_messages").insert({
+        campaign_id: campaignId,
+        user_name: profileData?.display_name || authData.user?.user_metadata?.full_name || authData.user?.email?.split('@')[0] || 'Mestre',
+        sender_id: userId,
+        receiver_id: null,
+        text: [
+          `🎯 Magia lancada: ${spellToLog.spellName}`,
+          `Nenhum alvo estava na área de efeito.`,
+        ].join('\n'),
+        is_roll: false,
+        is_secret: false,
+        channel: 'campanha',
+      });
+      return;
+    }
+
     const linhas = resultados.map((resultado) => {
-      const nome = tokens.find((t) => t.id === resultado.tokenId)?.nome || `Token-${resultado.tokenId.slice(0, 4)}`;
+      const rt = resolvedTokens?.get(resultado.tokenId);
+      const nome = rt?.nome || tokens.find((t) => t.id === resultado.tokenId)?.nome || `Token-${resultado.tokenId.slice(0, 4)}`;
       if (kind === "cura") {
         return `- ${nome}: curou ${Math.abs(resultado.danoRecebido)} PV`;
       }
@@ -324,12 +350,16 @@ export default function SpellCaster({
       if (!resultado.salvou && resultado.danoRecebido > 0 && resultado.descricaoEfeito.includes("CRÍTICA")) {
         return `- ${nome}: 💥 falha crítica — ${resultado.danoRecebido} de dano`;
       }
+      if (kind === "efeito") {
+        const desc = spellToLog.beneficioConcedido || spellToLog.efeitoPrincipal || spellToLog.restricaoConcedida || spellToLog.descricao || "Efeito aplicado";
+        return `- ${nome}: ${desc}`;
+      }
       return `- ${nome}: ${resultado.danoRecebido} de dano${resultado.salvou ? " (salvou, metade)" : ""}`;
     });
 
     const mensagem = [
-      `Magia lancada: ${spellToLog.spellName}`,
-      `Alvo(s): ${resolverNomesAlvos(resultados)}`,
+      `🎯 Magia lancada: ${spellToLog.spellName}`,
+      `Alvo(s): ${resolverNomesAlvos(resultados, resolvedTokens)}`,
       spellToLog.alcanceTexto ? `Alcance: ${spellToLog.alcanceTexto}` : null,
       spellToLog.areaTexto ? `Area: ${spellToLog.areaTexto}` : null,
       kind === "cura"
@@ -620,7 +650,7 @@ export default function SpellCaster({
       });
 
       if (!sentPerTargetMessages) {
-        await salvarCastDoChatLog(spellExecution, resultados, healing ? "cura" : spellExecution.danoRolagem ? "dano" : "efeito");
+        await salvarCastDoChatLog(spellExecution, resultados, healing ? "cura" : spellExecution.danoRolagem ? "dano" : "efeito", resolvedTokens);
       }
 
       setRecentCasts((prev) => [...prev, { spell: spellExecution, time: Date.now() }].slice(-10));
