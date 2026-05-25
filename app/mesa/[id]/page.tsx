@@ -215,6 +215,7 @@ export default function TelaDeMesa() {
   const [rulerEnd, setRulerEnd] = useState<{ x: number; y: number } | null>(null);
   const [rulerLocked, setRulerLocked] = useState(false);
   const [isRulerDragging, setIsRulerDragging] = useState(false);
+  const [rulerOwnerId, setRulerOwnerId] = useState<string | null>(null);
   const [zoom, setZoom] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [isDraggingMap, setIsDraggingMap] = useState(false);
@@ -295,11 +296,12 @@ export default function TelaDeMesa() {
     rulerEnd: { x: number; y: number } | null;
     rulerLocked: boolean;
     isRulerDragging: boolean;
+    ownerId?: string | null;
   }) => {
     realtimeChannelRef.current?.send({
       type: 'broadcast',
       event: 'ruler-change',
-      payload,
+      payload: { ...payload, ownerId: payload.ownerId !== undefined ? payload.ownerId : currentUserId },
     });
   };
 
@@ -336,7 +338,7 @@ export default function TelaDeMesa() {
       const token = tokensRef.current.find(t => t.id === tokenId);
       if (token) draggingPosRef.current = { x: token.x, y: token.y };
       e.stopPropagation();
-    } else if (showRuler && !rulerLocked && e.button === 0) {
+    } else if (showRuler && !rulerLocked && e.button === 0 && (rulerOwnerId === null || rulerOwnerId === currentUserId)) {
       const point = getLocalPointFromMouse(e.clientX, e.clientY);
       if (!point) return;
       setRulerStart(point);
@@ -379,7 +381,7 @@ export default function TelaDeMesa() {
           payload: { tokenId: tokenSelecionado, x, y },
         });
       }
-    } else if (showRuler && rulerStart && isRulerDragging && !rulerLocked) {
+    } else if (showRuler && rulerStart && isRulerDragging && !rulerLocked && rulerOwnerId === currentUserId) {
       const point = getLocalPointFromMouse(e.clientX, e.clientY);
       if (point) {
         setRulerEnd(point);
@@ -668,6 +670,7 @@ export default function TelaDeMesa() {
         setRulerEnd(payload?.rulerEnd ?? null);
         setRulerLocked(Boolean(payload?.rulerLocked));
         setIsRulerDragging(Boolean(payload?.isRulerDragging));
+        if (payload?.ownerId !== undefined) setRulerOwnerId(payload.ownerId ?? null);
       })
       .on(
         'postgres_changes',
@@ -1573,40 +1576,55 @@ export default function TelaDeMesa() {
             setZoom(prev => Math.min(Math.max(0.1, prev + delta), 5));
           }}
         >
-          <div className="absolute right-6 top-6 z-40 flex items-center gap-2 rounded-2xl border border-white/10 bg-black/70 px-3 py-2 backdrop-blur-md shadow-[0_0_24px_rgba(0,0,0,0.5)]">
+          {/* ── Régua — barra bottom-center ── */}
+          <div className="absolute bottom-6 left-1/2 z-40 -translate-x-1/2 flex items-center gap-2 rounded-2xl border border-white/10 bg-black/80 px-4 py-2.5 backdrop-blur-md shadow-[0_0_32px_rgba(0,0,0,0.7)]">
             <button
               type="button"
               onClick={() => {
-                setShowRuler((prev) => !prev);
+                const next = !showRuler;
+                setShowRuler(next);
+                if (!next) {
+                  setRulerStart(null); setRulerEnd(null);
+                  setRulerLocked(false); setIsRulerDragging(false);
+                  setRulerOwnerId(null);
+                  broadcastRulerState({ showRuler: false, rulerStart: null, rulerEnd: null, rulerLocked: false, isRulerDragging: false, ownerId: null });
+                }
               }}
-              className={`rounded-lg px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.18em] transition-all ${showRuler ? 'bg-[#00ff66] text-black' : 'bg-white/5 text-white/70 hover:bg-white/10 hover:text-[#00ff66]'}`}
+              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.18em] transition-all ${showRuler ? 'bg-[#00ff66] text-black shadow-[0_0_12px_rgba(0,255,102,0.35)]' : 'bg-white/5 text-white/55 hover:bg-white/10 hover:text-[#00ff66]'}`}
+              title="Ativar/desativar régua de medição"
             >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.4 2.4 0 0 1 0-3.4l2.6-2.6a2.4 2.4 0 0 1 3.4 0Z"/><path d="m14.5 12.5 2-2"/><path d="m11.5 9.5 2-2"/><path d="m8.5 6.5 2-2"/><path d="m17.5 15.5 2-2"/></svg>
               Régua
             </button>
-            <button
-              type="button"
-              onClick={() => {
-                setRulerStart(null);
-                setRulerEnd(null);
-                setRulerLocked(false);
-                setIsRulerDragging(false);
-                broadcastRulerState({
-                  showRuler: false,
-                  rulerStart: null,
-                  rulerEnd: null,
-                  rulerLocked: false,
-                  isRulerDragging: false,
-                });
-              }}
-              className="rounded-lg border border-white/10 px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.18em] text-white/50 hover:border-[#00ff66]/40 hover:text-[#00ff66]"
-            >
-              Limpar
-            </button>
-            {getRulerDistance() && (
-              <div className="ml-2 rounded-lg border border-[#00ff66]/20 bg-[#00ff66]/10 px-3 py-1.5 text-[11px] font-bold text-[#d7ffd6]">
-                {getRulerDistance()!.meters.toFixed(1)} metros • {getRulerDistance()!.feet.toFixed(1)} pés
+
+            {getRulerDistance() ? (
+              <div className="flex items-center gap-2.5 border-l border-white/10 pl-3">
+                <span className="text-[13px] font-black text-[#00ff66] tabular-nums tracking-tight">
+                  {getRulerDistance()!.meters.toFixed(1)} m
+                </span>
+                <span className="text-[9px] text-white/20 font-black">·</span>
+                <span className="text-[11px] font-bold text-white/40 tabular-nums">
+                  {getRulerDistance()!.feet.toFixed(1)} pés
+                </span>
+                {rulerOwnerId === currentUserId && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRulerStart(null); setRulerEnd(null);
+                      setRulerLocked(false); setIsRulerDragging(false);
+                      setRulerOwnerId(null);
+                      broadcastRulerState({ showRuler, rulerStart: null, rulerEnd: null, rulerLocked: false, isRulerDragging: false, ownerId: null });
+                    }}
+                    title="Limpar medição"
+                    className="ml-0.5 flex items-center justify-center w-5 h-5 rounded text-white/25 hover:text-red-400 transition-colors"
+                  >
+                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                  </button>
+                )}
               </div>
-            )}
+            ) : showRuler ? (
+              <span className="text-[10px] text-white/25 font-bold pl-2.5 border-l border-white/10 uppercase tracking-wider whitespace-nowrap">Clique para medir</span>
+            ) : null}
           </div>
 
           <div 

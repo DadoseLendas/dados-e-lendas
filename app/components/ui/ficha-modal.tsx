@@ -2,7 +2,7 @@
 import { useEffect, useState, useRef, useMemo } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import {
-    ArrowLeft, Shield, Zap, ShieldAlert, Sparkles, Box, Save, Trash2, Pencil, Sword, ShieldHalf, FlaskConical, Backpack, Wand2, Eye, EyeOff, Plus, X
+    ArrowLeft, Shield, Zap, ShieldAlert, Sparkles, Save, Trash2, Pencil, Sword, ShieldHalf, FlaskConical, Backpack, Wand2, Eye, EyeOff, Plus, X
 } from 'lucide-react';
 
 // ─── Dados estáticos (espelho de personagens/page.tsx) ────────────────────────
@@ -188,7 +188,7 @@ const categoriaIcons: Record<ItemCategoria, React.ReactNode> = {
     arma: <Sword size={14} className="text-[#00ff66]" />,
     armadura: <Shield size={14} className="text-[#4a9eff]" />,
     consumivel: <FlaskConical size={14} className="text-[#e5acff]" />,
-    item: <Box size={14} className="text-[#f1e5ac]" />,
+    item: <Backpack size={14} className="text-[#f1e5ac]" />,
 };
 
 export default function FichaModal({ isOpen, onClose, characterId, onUpdate, campaignId, onRollDice, readOnly = false }: FichaModalProps) {
@@ -569,50 +569,75 @@ return (
     <>
         {/* POPUP ROLAGEM DE DADOS */}
         {rollPopup && (
-            <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 backdrop-blur-sm">
-                <div className="bg-[#0a120a] border border-[#1a2a1a] rounded-2xl p-6 w-[350px] shadow-[0_0_50px_rgba(0,0,0,0.95)]">
-                    <div className="flex justify-between items-center mb-1">
-                        <div className="w-8"></div>
-                        <h3 className="text-[#f1e5ac] text-sm font-black uppercase tracking-widest text-center">
-                            {rollPopup.label}
-                        </h3>
+            <div
+                className="fixed inset-0 z-[200] flex items-center justify-center bg-black/75 backdrop-blur-sm"
+                onClick={(e) => e.target === e.currentTarget && setRollPopup(null)}
+            >
+                <div className="bg-[#080f08] border border-[#1a2a1a] rounded-2xl w-[320px] shadow-[0_0_60px_rgba(0,0,0,0.95)] overflow-hidden">
+
+                    {/* Header */}
+                    <div className="relative flex items-center justify-center px-5 pt-5 pb-3">
+                        <div className="text-center">
+                            <p className="text-[10px] text-[#4a5a4a] font-black uppercase tracking-[0.25em] mb-1">Rolagem</p>
+                            <h3 className="text-white text-[18px] font-black uppercase tracking-wider leading-none">
+                                {rollPopup.label}
+                            </h3>
+                            <p className="text-[#00ff66] text-[12px] font-black mt-1.5 tabular-nums">
+                                D20 {rollPopup.modifier >= 0 ? `+${rollPopup.modifier}` : rollPopup.modifier}
+                            </p>
+                        </div>
+                        {/* Secret toggle */}
                         <button
                             onClick={() => setRollPopup(prev => prev ? { ...prev, isSecret: !prev.isSecret } : null)}
-                            className={`p-1.5 rounded-lg border transition-colors flex items-center justify-center
+                            className={`absolute right-4 top-4 p-2 rounded-lg border transition-all flex items-center justify-center
                                 ${rollPopup.isSecret
-                                    ? 'bg-red-900/30 border-red-500 text-red-500 shadow-[0_0_10px_rgba(239,68,68,0.3)]'
-                                    : 'bg-transparent border-[#1a2a1a] text-[#4a5a4a] hover:border-[#00ff66] hover:text-[#00ff66]'}`}
+                                    ? 'bg-red-900/30 border-red-500/60 text-red-400'
+                                    : 'bg-transparent border-[#1a2a1a] text-[#3a4a3a] hover:border-[#00ff66]/40 hover:text-[#00ff66]'}`}
                             title={rollPopup.isSecret ? 'Desativar rolagem secreta' : 'Ativar rolagem secreta'}
                         >
-                            {rollPopup.isSecret ? <EyeOff size={14} /> : <Eye size={14} />}
+                            {rollPopup.isSecret ? <EyeOff size={13} /> : <Eye size={13} />}
                         </button>
                     </div>
-                    <p className="text-[#4a5a4a] text-[10px] uppercase tracking-widest text-center mb-1">
-                        d20 {rollPopup.modifier >= 0 ? `+${rollPopup.modifier}` : rollPopup.modifier}
-                    </p>
-                    <div className="h-4 mb-4 flex items-center justify-center">
+
+                    {/* Secret warning */}
+                    <div className="h-6 flex items-center justify-center mb-1">
                         {rollPopup.isSecret && (
-                            <p className="text-[9px] font-bold tracking-widest text-red-400/80 uppercase flex items-center gap-1 animate-pulse">
-                                <EyeOff size={10} /> Apenas o Mestre verá
-                            </p>
+                            <span className="flex items-center gap-1.5 text-[9px] font-black tracking-[0.2em] text-red-400/80 uppercase animate-pulse">
+                                <EyeOff size={9} /> Apenas o Mestre verá
+                            </span>
                         )}
                     </div>
-                    <div className="flex gap-2">
-                        <button onClick={() => executeRoll('disadvantage')}
-                            className="flex-1 bg-red-700 hover:bg-red-600 text-white font-black text-[10px] sm:text-[11px] uppercase tracking-wide py-3 px-1 rounded-xl transition-all">
-                            Desvantagem
+
+                    {/* Roll mode buttons */}
+                    <div className="px-4 pb-2 grid grid-cols-3 gap-2">
+                        <button
+                            onClick={() => executeRoll('disadvantage')}
+                            className="group flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl border-2 border-red-900/40 bg-red-900/10 hover:bg-red-900/25 hover:border-red-600/60 transition-all"
+                        >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-red-500"><path d="m7 10-5 5 5 5"/><path d="M2 15h15a4 4 0 0 0 0-8h-1"/></svg>
+                            <span className="text-[10px] font-black uppercase tracking-wide text-red-400 group-hover:text-red-300 leading-none">Desvant.</span>
                         </button>
-                        <button onClick={() => executeRoll('normal')}
-                            className="flex-1 bg-[#00ff66] text-black font-black text-[10px] sm:text-[11px] uppercase tracking-wide py-3 px-1 rounded-xl hover:brightness-110 transition-all">
-                            Normal
+                        <button
+                            onClick={() => executeRoll('normal')}
+                            className="group flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl border-2 border-[#00ff66]/40 bg-[#00ff66]/10 hover:bg-[#00ff66]/20 hover:border-[#00ff66]/70 transition-all"
+                        >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-[#00ff66]"><rect x="2" y="2" width="20" height="20" rx="4"/><circle cx="8" cy="12" r="1.5" fill="currentColor"/><circle cx="16" cy="12" r="1.5" fill="currentColor"/></svg>
+                            <span className="text-[10px] font-black uppercase tracking-wide text-[#00ff66] group-hover:text-[#00ff66] leading-none">Normal</span>
                         </button>
-                        <button onClick={() => executeRoll('advantage')}
-                            className="flex-1 bg-green-700 hover:bg-green-600 text-white font-black text-[10px] sm:text-[11px] uppercase tracking-wide py-3 px-1 rounded-xl transition-all">
-                            Vantagem
+                        <button
+                            onClick={() => executeRoll('advantage')}
+                            className="group flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl border-2 border-emerald-700/40 bg-emerald-900/10 hover:bg-emerald-900/25 hover:border-emerald-500/60 transition-all"
+                        >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-400"><path d="m17 10 5 5-5 5"/><path d="M22 15H7a4 4 0 0 1 0-8h1"/></svg>
+                            <span className="text-[10px] font-black uppercase tracking-wide text-emerald-400 group-hover:text-emerald-300 leading-none">Vantagem</span>
                         </button>
                     </div>
-                    <button onClick={() => setRollPopup(null)}
-                        className="w-full mt-4 text-[10px] text-[#4a5a4a] hover:text-white uppercase tracking-widest transition-colors">
+
+                    {/* Cancel */}
+                    <button
+                        onClick={() => setRollPopup(null)}
+                        className="w-full py-3 text-[10px] text-[#2a3a2a] hover:text-[#4a5a4a] uppercase tracking-[0.25em] font-black transition-colors border-t border-[#1a2a1a]/50"
+                    >
                         Cancelar
                     </button>
                 </div>
@@ -1050,7 +1075,7 @@ return (
                             <div className={`bg-[#050a05] border border-[#1a2a1a] p-3 rounded-xl mt-3 ${readOnly ? 'pointer-events-none select-none' : ''}`}>
                                 <div className="flex items-center justify-between mb-2">
                                     <h3 className="text-[#00ff66] text-[13px] font-black uppercase flex items-center gap-2">
-                                        <Box size={12} /> Inventário
+                                        <Backpack size={12} /> Inventário
                                     </h3>
                                     {!readOnly && (
                                         <button onClick={() => { resetInventoryForm(); setShowInventoryForm(true); }} className="w-7 h-7 rounded-md bg-[#00ff66] text-black flex items-center justify-center text-base font-black transition-all hover:brightness-110 shadow-[0_0_8px_rgba(0,255,102,0.5)]" title="Adicionar item">
