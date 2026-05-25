@@ -1,6 +1,6 @@
 "use client";
-import { useState, useEffect } from 'react';
-import { User, LogOut, LogIn, UserPlus } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { User, LogOut, LogIn, UserPlus, ChevronDown } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import Image from 'next/image';
@@ -18,6 +18,18 @@ export default function Navbar({ abaAtiva = '', setAbaAtiva = () => {} }: Navbar
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [novidadesOpen, setNovidadesOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setNovidadesOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   useEffect(() => {
     const checkUser = async () => {
@@ -58,6 +70,11 @@ export default function Navbar({ abaAtiva = '', setAbaAtiva = () => {} }: Navbar
     router.refresh();
   };
 
+  const handleNovidadesClick = (subItem: string) => {
+    setNovidadesOpen(false);
+    router.push(`/novidades/${subItem}`);
+  };
+
   return (
     <nav className="w-full bg-[#050a05] border-b border-[#1a2a1a] py-4 sticky top-0 z-50 backdrop-blur-md bg-opacity-90">
       <div className="max-w-[1400px] mx-auto flex justify-between items-center px-6">
@@ -80,16 +97,46 @@ export default function Navbar({ abaAtiva = '', setAbaAtiva = () => {} }: Navbar
           <div className="flex items-center gap-6 md:gap-10">
             
             {isUserLoggedIn && (
-              <div className="hidden md:flex gap-10 text-xs font-bold uppercase tracking-widest">
+              <div className="hidden md:flex gap-10 text-xs font-bold uppercase tracking-widest items-center">
                 <button onClick={() => { setAbaAtiva('campanhas'); router.push('/campanhas'); }} className={`${abaAtiva === 'campanhas' ? 'text-[#00ff66] border-b-2 border-[#00ff66] pb-1' : 'text-[#8a9a8a] hover:text-[#00ff66]'} transition-all`}>
                   Campanhas
                 </button>
                 <button onClick={() => { setAbaAtiva('personagens'); router.push('/personagens'); }} className={`${abaAtiva === 'personagens' ? 'text-[#00ff66] border-b-2 border-[#00ff66] pb-1' : 'text-[#8a9a8a] hover:text-[#00ff66]'} transition-all`}>
                   Personagens
                 </button>
-                <button onClick={() => { setAbaAtiva('novidades'); router.push('/novidades/tutorial'); }} className={`${abaAtiva === 'novidades' ? 'text-[#00ff66] border-b-2 border-[#00ff66] pb-1' : 'text-[#8a9a8a] hover:text-[#00ff66]'} transition-all`}>
-                  Novidades
-                </button>
+                
+                <div className="relative" ref={dropdownRef}>
+                  <button
+                    onClick={() => setNovidadesOpen(!novidadesOpen)}
+                    className={`flex items-center gap-1 transition-all ${abaAtiva === 'novidades' ? 'text-[#00ff66] border-b-2 border-[#00ff66] pb-1' : 'text-[#8a9a8a] hover:text-[#00ff66]'}`}
+                  >
+                    Novidades
+                    <ChevronDown size={12} className={`transition-transform ${novidadesOpen ? 'rotate-180' : ''}`} />
+                  </button>
+                  
+                  {novidadesOpen && (
+                    <div className="absolute top-full left-0 mt-2 w-52 bg-[#0a120a] border border-[#1a2a1a] rounded-lg shadow-xl z-50 overflow-hidden">
+                      <button
+                        onClick={() => handleNovidadesClick('beta')}
+                        className="w-full text-left px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider text-[#8a9a8a] hover:bg-[#00ff66]/10 hover:text-[#00ff66] transition-colors"
+                      >
+                        Beta Aberto
+                      </button>
+                      <button
+                        onClick={() => handleNovidadesClick('dicas')}
+                        className="w-full text-left px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider text-[#8a9a8a] hover:bg-[#00ff66]/10 hover:text-[#00ff66] transition-colors border-t border-[#1a2a1a]"
+                      >
+                        Dicas para Mestres
+                      </button>
+                      <button
+                        onClick={() => handleNovidadesClick('tutorial')}
+                        className="w-full text-left px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider text-[#8a9a8a] hover:bg-[#00ff66]/10 hover:text-[#00ff66] transition-colors border-t border-[#1a2a1a]"
+                      >
+                        Tutorial
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
