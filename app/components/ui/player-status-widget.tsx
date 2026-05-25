@@ -381,7 +381,7 @@ export default function PlayerStatusWidget({
     <div
       ref={widgetRef}
       className="fixed z-50 select-none"
-      style={{ top: '80px', left: '72px', minWidth: '220px' }}
+      style={{ top: '24px', left: '15px', minWidth: '220px' }}
     >
       {/* ── Painel aberto ── */}
       <div
