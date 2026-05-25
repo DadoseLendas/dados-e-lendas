@@ -20,6 +20,7 @@ import { EffectResult, SpellExecution } from '@/utils/spell-executor';
 import { parseMonsterSheetFromClipboardText, parseMonsterSheetFromText } from '@/utils/monster-sheet-parser';
 import { registerMesaCharacterShortcuts } from '@/utils/mesa-keyboard-shortcuts';
 import TokenSheetPanel, { TokenSheet } from '@/app/components/ui/token-sheet-panel';
+import PlayerStatusWidget from '@/app/components/ui/player-status-widget';
 interface Token {
   id: string;
   url: string;
@@ -1758,6 +1759,12 @@ export default function TelaDeMesa() {
             onRollDice={rollDiceFunc ? (type, secret, mode) => rollDiceFunc(type, secret, mode) : (async () => null)} 
           />
         </div>
+        
+        <PlayerStatusWidget
+          campaignId={campaignId}
+          isDM={isDM}
+          currentUserId={currentUserId}
+        />
 
       </div>
 
