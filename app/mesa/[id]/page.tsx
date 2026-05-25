@@ -1666,6 +1666,7 @@ export default function TelaDeMesa() {
                     onDoubleClick={(e) => {
                       e.stopPropagation();
                       if (token.characterId) return;
+                      if (!isDM) return;
                       openTokenSheet(token.id);
                     }}
                     style={{
