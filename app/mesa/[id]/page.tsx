@@ -3,7 +3,7 @@ import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { 
   UserRound, Users, Home, BookOpen, Map as MapIcon, 
-  ShieldCheck, ChevronLeft, ChevronRight, X, Upload, HelpCircle 
+  ShieldCheck, ChevronLeft, ChevronRight, X, Upload, HelpCircle, Ruler, Trash2
 } from 'lucide-react'; 
 import { FiBook } from 'react-icons/fi';
 import { GiSpellBook } from 'react-icons/gi';
@@ -21,6 +21,7 @@ import { parseMonsterSheetFromClipboardText, parseMonsterSheetFromText } from '@
 import { registerMesaCharacterShortcuts } from '@/utils/mesa-keyboard-shortcuts';
 import TokenSheetPanel, { TokenSheet } from '@/app/components/ui/token-sheet-panel';
 import PlayerStatusWidget from '@/app/components/ui/player-status-widget';
+
 interface Token {
   id: string;
   url: string;
@@ -36,6 +37,30 @@ interface Token {
   maxHp?: number;
   sizeCategory?: 'Tiny' | 'Small' | 'Medium' | 'Large' | 'Huge' | 'Gargantuan';
 }
+
+// Interface para régua de um usuário
+interface UserRuler {
+  userId: string;
+  userName: string;
+  showRuler: boolean;
+  rulerStart: { x: number; y: number } | null;
+  rulerEnd: { x: number; y: number } | null;
+  rulerLocked: boolean;
+  isRulerDragging: boolean;
+  color: string; // Cor única para cada usuário
+}
+
+// Cores para diferenciar as réguas dos usuários
+const USER_COLORS = [
+  '#00ff66', // verde
+  '#ff4444', // vermelho
+  '#4488ff', // azul
+  '#ffaa44', // laranja
+  '#ff44ff', // rosa
+  '#44ffaa', // turquesa
+  '#ffff44', // amarelo
+  '#aa44ff', // roxo
+];
 
 const EMPTY_ABILITIES = {
   str: "",
@@ -88,13 +113,6 @@ const toLeadingNumberOrNull = (value: unknown) => {
   return Number.isFinite(num) ? num : null;
 };
 
-const toNumberOrString = (value: unknown) => {
-  const normalized = toStringValue(value).replace(',', '.').trim();
-  if (!normalized) return null;
-  const num = Number(normalized);
-  return Number.isFinite(num) ? num : normalized;
-};
-
 const toList = (value: unknown) =>
   toStringValue(value)
     .split(',')
@@ -136,64 +154,53 @@ const normalizeTokenSheet = (sheet: Partial<TokenSheet> | null | undefined): Tok
   abilitiesText: toStringValue(sheet?.abilitiesText),
   actionsText: toStringValue(sheet?.actionsText),
 });
-// Nota: removido o mapeamento para o SpellCasterMap; mantemos tokens simples
+
 const CONDICOES_RPG = [
-  { 
-  nome: "Confuso", 
-  desc: "Role um d10 no início de cada um de seus turnos para determinar seu comportamento.",
-  tabela: [
-    { dado: "1", efeito: "Move-se em direção aleatória (d8). Não realiza ação." },
-    { dado: "2-6", efeito: "Não se move nem realiza ações neste turno." },
-    { dado: "7-8", efeito: "Ataque corpo a corpo contra alvo aleatório ao alcance." },
-    { dado: "9-10", efeito: "Pode agir e se mover normalmente." }
-  ]
-},
-  { 
-    nome: "Exaustão", 
-    desc: "Medida em 6 níveis. Uma criatura sofre o efeito do seu nível atual e de todos os anteriores.",
-    niveis: [
-      "1: Desvantagem em testes de atributo",
-      "2: Deslocamento reduzido pela metade",
-      "3: Desvantagem em jogadas de ataque e salvaguardas",
-      "4: Pontos de vida máximos reduzidos pela metade",
-      "5: Deslocamento reduzido para 0",
-      "6: Morte"
-   ],
-  // Novo campo de notas extras formatado
-  notas: [
-    { titulo: "Acúmulo", texto: "Se um personagem já exausto sofre outro efeito que induz exaustão, o nível atual de exaustão do personagem aumenta conforme especificado pelo novo efeito." },
-    { titulo: "Recuperação", texto: "Efetuar um descanso longo reduz o nível de exaustão em 1, desde que o personagem também se alimente e hidrate adequadamente durante o descanso." },
-    { titulo: "", texto: "Algumas magias e habilidades também podem eliminar ou aliviar os efeitos da exaustão." }
-  ]
-  },
-  { nome: "Agarrado", desc: "Seu deslocamento se torna 0, e você não pode se beneficiar de bônus de deslocamento. A condição encerra caso a criatura que a agarrou fique incapacitada. A condição se encerra se um efeito remover a ciatura agarrada do alcance da criatura que a agarrou ou do efeito que causa a condição" },
-  { nome: "Amedrontado", desc: "Uma criatura amedrontada tem desvantagem em testes de atributo e jogadas de ataque enquanto a fonte de seu medo estiver em sua linha de visão. A criatura não pode se mover por vontade própria para perto da fonte de seu medo." },
-  { nome: "Atordoado", desc: "Você está incapacitado, não pode se mover e somente fala balbuciando. Jogadas de ataque contra você possuem vantagem. Você falha automaticamente em testes de resistência de Força e Destreza." },
-  { nome: "Caído", desc: " Sua única opção de movimento é rastejar, a menos que se levante. Você tem desvantagem em jogadas de ataque. Jogadas de ataque contra você possuem vantagens se o atacante estiver a 1,5 metros de você. De outra maneira, a jogada de ataque possui desvantagem."},
-  { nome: "Cego", desc: "Você não pode enxergar e automaticamente falha em testes de Percepção que dependam da visão. Jogadas de ataque contra você possuem vantagem, e suas jogadas de ataque possuem desvantagem." },
-  { nome: "Enfeitiçado", desc: "Você não pode atacar qurm tr rnfeitiçõu ou tê-lo como alvo de habilidades ou efeitos mágicos nocivos. Quem o enfeitiçou possui vantagem em testes de habilidade feitos para interagir socialmente com a criatura." },
+  { nome: "Confuso", desc: "Role um d10 no início de cada um de seus turnos para determinar seu comportamento.", tabela: [{ dado: "1", efeito: "Move-se em direção aleatória (d8). Não realiza ação." }, { dado: "2-6", efeito: "Não se move nem realiza ações neste turno." }, { dado: "7-8", efeito: "Ataque corpo a corpo contra alvo aleatório ao alcance." }, { dado: "9-10", efeito: "Pode agir e se mover normalmente." }] },
+  { nome: "Exaustão", desc: "Medida em 6 níveis. Uma criatura sofre o efeito do seu nível atual e de todos os anteriores.", niveis: ["1: Desvantagem em testes de atributo", "2: Deslocamento reduzido pela metade", "3: Desvantagem em jogadas de ataque e salvaguardas", "4: Pontos de vida máximos reduzidos pela metade", "5: Deslocamento reduzido para 0", "6: Morte"], notas: [{ titulo: "Acúmulo", texto: "Se um personagem já exausto sofre outro efeito que induz exaustão, o nível atual de exaustão do personagem aumenta conforme especificado pelo novo efeito." }, { titulo: "Recuperação", texto: "Efetuar um descanso longo reduz o nível de exaustão em 1, desde que o personagem também se alimente e hidrate adequadamente durante o descanso." }, { titulo: "", texto: "Algumas magias e habilidades também podem eliminar ou aliviar os efeitos da exaustão." }] },
+  { nome: "Agarrado", desc: "Seu deslocamento se torna 0, e você não pode se beneficiar de bônus de deslocamento." },
+  { nome: "Amedrontado", desc: "Uma criatura amedrontada tem desvantagem em testes de atributo e jogadas de ataque enquanto a fonte de seu medo estiver em sua linha de visão." },
+  { nome: "Atordoado", desc: "Você está incapacitado, não pode se mover e somente fala balbuciando." },
+  { nome: "Caído", desc: "Sua única opção de movimento é rastejar, a menos que se levante. Você tem desvantagem em jogadas de ataque." },
+  { nome: "Cego", desc: "Você não pode enxergar e automaticamente falha em testes de Percepção que dependam da visão." },
+  { nome: "Enfeitiçado", desc: "Você não pode atacar quem te enfeitiçou ou tê-lo como alvo de habilidades ou efeitos mágicos nocivos." },
   { nome: "Envenenado", desc: "Você possui desvantagem em jogadas de ataque e testes de atributos." },
-  { nome: "Impedido", desc: "Seu deslocamento se torna 0, e você não pode se beneficiar de qualquer bônus em seu deslocamento. Jogadas de ataque contra você possuem vantagem. Você sofre desvantagem em jogadas de ataque. Você sofre desvantagem em testes de resistência de Destreza."},
+  { nome: "Impedido", desc: "Seu deslocamento se torna 0, e você não pode se beneficiar de qualquer bônus em seu deslocamento." },
   { nome: "Incapacitado", desc: "Você não pode realizar ações ou reações." },
-  { nome: "Inconsciente", desc: "Você está incapacitado, não pode se mover ou falar e não tem ciência de seus arredores. Você larga tudo que estiver segurando e fica caído. Você falha automaticamente em testes de resistência de Força ou Destreza. Jogadas de ataque contra você póssuem vantagem. Qualquer ataque que o atinja é um acerto crítico, se o atacante estiver a 1,5 metros de você."},
-  { nome:" Invisível", desc: "Uma criatura invisível é impossível de ser vista sem ajuda de magia ou um sentido especial. Para propósitos de esconder-se, a criatura está Totalmente obscurecida.A localização da criatura pode ser detectada por qualquer som que ela faça ou qualquer rastro que ela deixe. Jogadas de ataque contra a criatura têm desvantagem, e as jogadas de ataque da criatura têm vantagem"},
-  { nome: "Paralisado", desc: "Você está incapacitado e não pode se mover ou falar. Você falha automaticamente em testes de resistência de Força e Destreza. Jogadas de ataque contra você possuem vantagem. Qualquer ataque que atinja você é um acerto crítico, se o atacante estiver a 1,5 metros de você."},
-  { nome: " Petrificado", desc: "Você é transformado, juntamente com todos os objetos não-mágicos que estiver vestindo ou carregando, em uma substância sólida e inanimada (geralmente pedra). Seu peso é multiplicado por dez, e para de envelhecer. você está incapacitado, não pode se mover ou falar e não tem ciência de seus arredores. Jogadas de ataque contra você possuem vantagem. Você falha automaticamente em testes de resistência de Força e Destreza. Você tem resistência a todos os tipos de dano. Você fica imune a veneno e doenças, embora um veneno ou doença previamente presentes em seu sistema seja apenas suspenso, não neutralizado."},
-  { nome: "Surdo", desc: "Você falha automatizamente em qualquer teste de habilidade que requeira o uso da audição"},
-  { nome: "Dominado", desc: "Uma criatura dominada é controlada por outra criatura. Uma criatura dominada só realiza ações que a fonte dominante escolher, e não faz nada que o dominante não permita."},
-  { nome: "Possuído", desc: "Uma criatura possuída fica incapacitada e perde o controle sobre seu corpo para a criatura que a possuiu."}
+  { nome: "Inconsciente", desc: "Você está incapacitado, não pode se mover ou falar e não tem ciência de seus arredores." },
+  { nome: "Invisível", desc: "Uma criatura invisível é impossível de ser vista sem ajuda de magia ou um sentido especial." },
+  { nome: "Paralisado", desc: "Você está incapacitado e não pode se mover ou falar." },
+  { nome: "Petrificado", desc: "Você é transformado em uma substância sólida e inanimada (geralmente pedra)." },
+  { nome: "Surdo", desc: "Você falha automaticamente em qualquer teste de habilidade que requeira o uso da audição." },
 ];
 
 export default function TelaDeMesa() {
   const supabase = useMemo(() => createClient(), []);
   const router = useRouter();
   
-  // A MÁGICA: Pega o ID que estiver na URL (ex: /mesa/123-abc vira '123-abc')
   const params = useParams();
   const campaignId = params.id as string;
   
+  // Estado do usuário
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [currentUserName, setCurrentUserName] = useState<string>('Aventureiro');
+  const [isDM, setIsDM] = useState(false);
+  
+  // Réguas de todos os usuários (key = userId)
+  const [rulers, setRulers] = useState<Map<string, UserRuler>>(new Map());
+  
+  // Réguas visíveis (todos veem todas)
+  const visibleRulers = useMemo(() => {
+    const result: { userId: string; ruler: UserRuler }[] = [];
+    rulers.forEach((ruler, userId) => {
+      if (ruler.showRuler && ruler.rulerStart && ruler.rulerEnd) {
+        result.push({ userId, ruler });
+      }
+    });
+    return result;
+  }, [rulers]);
+
   //interface e Mapa
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null); // <-- Adicione esta linha
   const [sidebarAberta, setSidebarAberta] = useState(true);
   const [modalAtivo, setModalAtivo] = useState<'Mapa' | null>(null);
   const [showTokenLibrary, setShowTokenLibrary] = useState(false);
@@ -206,20 +213,15 @@ export default function TelaDeMesa() {
   const [gridThickness, setGridThickness] = useState<number>(1);
   const [gridDashed, setGridDashed] = useState<boolean>(false);
   const [gridDashFrequency, setGridDashFrequency] = useState<number>(5);
-  const [gridDimension, setGridDimension] = useState<string>('5 pes'); // NOVO: dimensão do grid
+  const [gridDimension, setGridDimension] = useState<string>('5 pes');
   const [campaignLoaded, setCampaignLoaded] = useState(false);
   const [showMapEditor, setShowMapEditor] = useState(false);
   const [mapPreviewUrl, setMapPreviewUrl] = useState<string | null>(null);
-  const [showRuler, setShowRuler] = useState(false);
-  const [rulerStart, setRulerStart] = useState<{ x: number; y: number } | null>(null);
-  const [rulerEnd, setRulerEnd] = useState<{ x: number; y: number } | null>(null);
-  const [rulerLocked, setRulerLocked] = useState(false);
-  const [isRulerDragging, setIsRulerDragging] = useState(false);
-  const [rulerOwnerId, setRulerOwnerId] = useState<string | null>(null);
   const [zoom, setZoom] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [isDraggingMap, setIsDraggingMap] = useState(false);
   const [activeSpellCast, setActiveSpellCast] = useState<SpellExecution | null>(null);
+  const [userColorMap, setUserColorMap] = useState<Map<string, string>>(new Map());
 
   //tokens
   const [tokens, setTokens] = useState<Token[]>([]);
@@ -232,13 +234,12 @@ export default function TelaDeMesa() {
   const draggingPosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const lastBroadcastRef = useRef<number>(0);
   const realtimeChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
-  const dragMovedRef = useRef(false); // detecta se foi drag ou click
+  const dragMovedRef = useRef(false);
+  const isDraggingRulerRef = useRef(false);
 
-  // Keep tokensRef in sync with state (for use inside event handlers)
   useEffect(() => { tokensRef.current = tokens; }, [tokens]);
   
   const gridSize = mapGridPx;
-  const tokenSizeBase = Math.min(gridSize, 60); // base cap
   const gridDistanceInfo = useMemo(() => {
     const match = gridDimension.trim().match(/^([\d.,]+)\s*(.*)$/);
     const value = match ? Number.parseFloat(match[1].replace(',', '.')) : 5;
@@ -249,9 +250,10 @@ export default function TelaDeMesa() {
       unit,
     };
   }, [gridDimension]);
+  
   const footprintForCategory = (cat?: string) => {
     switch (cat) {
-      case 'Tiny': return 0.5; // 1/4 area -> side = 0.5
+      case 'Tiny': return 0.5;
       case 'Small': return 1;
       case 'Medium': return 1;
       case 'Large': return 2;
@@ -260,8 +262,7 @@ export default function TelaDeMesa() {
       default: return 1;
     }
   };
-  const mapScalePercent = mapScale / 100;
-  const rulerIsActive = Boolean(rulerStart);
+  
   const getLocalPointFromMouse = (clientX: number, clientY: number) => {
     const rect = mapContentRef.current?.getBoundingClientRect();
     if (!rect) return null;
@@ -275,10 +276,11 @@ export default function TelaDeMesa() {
 
     return { x, y };
   };
-  const getRulerDistance = () => {
-    if (!rulerStart || !rulerEnd) return null;
-    const dx = rulerEnd.x - rulerStart.x;
-    const dy = rulerEnd.y - rulerStart.y;
+  
+  const getRulerDistance = (ruler: UserRuler) => {
+    if (!ruler.rulerStart || !ruler.rulerEnd) return null;
+    const dx = ruler.rulerEnd.x - ruler.rulerStart.x;
+    const dy = ruler.rulerEnd.y - ruler.rulerStart.y;
     const pixelDistance = Math.sqrt(dx * dx + dy * dy);
     const squares = pixelDistance / gridSize;
     const baseDistance = squares * gridDistanceInfo.value;
@@ -286,22 +288,90 @@ export default function TelaDeMesa() {
     const feet = gridDistanceInfo.unit === 'm' ? baseDistance * 3.28084 : baseDistance;
     return { pixelDistance, squares, baseDistance, meters, feet };
   };
+  
   const normalizeRotation = (value: number) => {
     const normalized = value % 360;
     return normalized < 0 ? normalized + 360 : normalized;
   };
-  const broadcastRulerState = (payload: {
-    showRuler: boolean;
-    rulerStart: { x: number; y: number } | null;
-    rulerEnd: { x: number; y: number } | null;
-    rulerLocked: boolean;
-    isRulerDragging: boolean;
-    ownerId?: string | null;
-  }) => {
-    realtimeChannelRef.current?.send({
-      type: 'broadcast',
-      event: 'ruler-change',
-      payload: { ...payload, ownerId: payload.ownerId !== undefined ? payload.ownerId : currentUserId },
+  
+  // Função para obter cor do usuário
+  const getUserColor = (userId: string): string => {
+    if (userColorMap.has(userId)) return userColorMap.get(userId)!;
+    const index = Array.from(userColorMap.keys()).length % USER_COLORS.length;
+    const color = USER_COLORS[index];
+    setUserColorMap(prev => new Map(prev).set(userId, color));
+    return color;
+  };
+  
+  const updateMyRuler = (updates: Partial<UserRuler>) => {
+    if (!currentUserId) return;
+    setRulers(prev => {
+      const newMap = new Map(prev);
+      const currentRuler = newMap.get(currentUserId) || {
+        userId: currentUserId,
+        userName: currentUserName,
+        showRuler: false,
+        rulerStart: null,
+        rulerEnd: null,
+        rulerLocked: false,
+        isRulerDragging: false,
+        color: getUserColor(currentUserId),
+      };
+      const updated = { ...currentRuler, ...updates };
+      newMap.set(currentUserId, updated);
+      
+      // Broadcast para outros usuários
+      realtimeChannelRef.current?.send({
+        type: 'broadcast',
+        event: 'ruler-change',
+        payload: updated,
+      });
+      
+      return newMap;
+    });
+  };
+  
+  const clearMyRuler = () => {
+    updateMyRuler({
+      showRuler: false,
+      rulerStart: null,
+      rulerEnd: null,
+      rulerLocked: false,
+      isRulerDragging: false,
+    });
+  };
+  
+  const toggleMyRuler = () => {
+    const current = rulers.get(currentUserId || '');
+    if (current?.showRuler) {
+      clearMyRuler();
+    } else {
+      updateMyRuler({ showRuler: true });
+    }
+  };
+  
+  // Limpar régua de outro usuário (apenas Mestre)
+  const clearUserRuler = (userId: string) => {
+    if (!isDM) return;
+    setRulers(prev => {
+      const newMap = new Map(prev);
+      const userRuler = newMap.get(userId);
+      if (userRuler) {
+        newMap.set(userId, {
+          ...userRuler,
+          showRuler: false,
+          rulerStart: null,
+          rulerEnd: null,
+          rulerLocked: false,
+          isRulerDragging: false,
+        });
+        realtimeChannelRef.current?.send({
+          type: 'broadcast',
+          event: 'ruler-change',
+          payload: { ...userRuler, showRuler: false, rulerStart: null, rulerEnd: null, rulerLocked: false, isRulerDragging: false },
+        });
+      }
+      return newMap;
     });
   };
 
@@ -327,10 +397,12 @@ export default function TelaDeMesa() {
         backgroundSize: `${gridSize}px ${gridSize}px`
       };
     }
-  }; 
+  };
 
   //movimento do mapa
   const handleMouseDown = (e: React.MouseEvent, tokenId?: string) => {
+    const myRuler = rulers.get(currentUserId || '');
+    
     if (tokenId) {
       setTokenSelecionado(tokenId);
       setIsDraggingToken(true);
@@ -338,16 +410,11 @@ export default function TelaDeMesa() {
       const token = tokensRef.current.find(t => t.id === tokenId);
       if (token) draggingPosRef.current = { x: token.x, y: token.y };
       e.stopPropagation();
-    } else if (showRuler && !rulerLocked && e.button === 0 && (rulerOwnerId === null || rulerOwnerId === currentUserId)) {
+    } else if (myRuler?.showRuler && !myRuler.rulerLocked && e.button === 0) {
       const point = getLocalPointFromMouse(e.clientX, e.clientY);
       if (!point) return;
-      setRulerStart(point);
-      setRulerEnd(point);
-      setIsRulerDragging(true);
-      setRulerLocked(false);
-      setIsDraggingMap(false);
-      broadcastRulerState({
-        showRuler: true,
+      isDraggingRulerRef.current = true;
+      updateMyRuler({
         rulerStart: point,
         rulerEnd: point,
         rulerLocked: false,
@@ -361,6 +428,8 @@ export default function TelaDeMesa() {
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
+    const myRuler = rulers.get(currentUserId || '');
+    
     if (isDraggingMap) {
       setOffset(prev => ({ x: prev.x + e.movementX, y: prev.y + e.movementY }));
     } else if (isDraggingToken && tokenSelecionado) {
@@ -371,7 +440,6 @@ export default function TelaDeMesa() {
       setTokens(prev => prev.map(t =>
         t.id === tokenSelecionado ? { ...t, x, y } : t
       ));
-      // Broadcast ~30fps throttled
       const now = Date.now();
       if (now - lastBroadcastRef.current > 33 && realtimeChannelRef.current) {
         lastBroadcastRef.current = now;
@@ -381,25 +449,19 @@ export default function TelaDeMesa() {
           payload: { tokenId: tokenSelecionado, x, y },
         });
       }
-    } else if (showRuler && rulerStart && isRulerDragging && !rulerLocked && rulerOwnerId === currentUserId) {
+    } else if (myRuler?.showRuler && myRuler.rulerStart && myRuler.isRulerDragging && !myRuler.rulerLocked && isDraggingRulerRef.current) {
       const point = getLocalPointFromMouse(e.clientX, e.clientY);
       if (point) {
-        setRulerEnd(point);
-        broadcastRulerState({
-          showRuler: true,
-          rulerStart,
-          rulerEnd: point,
-          rulerLocked: false,
-          isRulerDragging: true,
-        });
+        updateMyRuler({ rulerEnd: point });
       }
     }
   };
 
   const handleMouseUp = () => {
+    const myRuler = rulers.get(currentUserId || '');
+    
     if (isDraggingToken && tokenSelecionado) {
       if (!dragMovedRef.current) {
-        // Foi clique (sem arrastar): abre ficha se token tem personagem
         const token = tokensRef.current.find(t => t.id === tokenSelecionado);
         if (token?.characterId) {
           if (isDM) {
@@ -408,10 +470,8 @@ export default function TelaDeMesa() {
           } else if (String(token.characterId) === String(fichaCharacterId)) {
             setShowFicha(true);
           }
-          // jogador clicando em token alheio → não faz nada
         }
       } else {
-        // Foi arrasto: snappa e salva posição
         const snappedX = Math.round(draggingPosRef.current.x / gridSize) * gridSize;
         const snappedY = Math.round(draggingPosRef.current.y / gridSize) * gridSize;
         const capturedId = tokenSelecionado;
@@ -433,17 +493,15 @@ export default function TelaDeMesa() {
           .then(() => {});
       }
     }
-    if (isRulerDragging && rulerStart) {
-      setRulerLocked(true);
-      setIsRulerDragging(false);
-      broadcastRulerState({
-        showRuler: true,
-        rulerStart,
-        rulerEnd: rulerEnd ?? rulerStart,
+    
+    if (myRuler?.isRulerDragging && myRuler.rulerStart) {
+      updateMyRuler({
         rulerLocked: true,
         isRulerDragging: false,
       });
+      isDraggingRulerRef.current = false;
     }
+    
     setIsDraggingMap(false);
     setIsDraggingToken(false);
   };
@@ -519,12 +577,10 @@ export default function TelaDeMesa() {
     if (tipo === 'Mapa') {
       const ext = file.name.split('.').pop() ?? 'png';
       const fileName = `maps/${campaignId}-map.${ext}`;
-      console.log('[MAPA] Iniciando upload:', fileName);
       const { error } = await supabase.storage
         .from('campaign-assets')
         .upload(fileName, file, { contentType: file.type, upsert: true });
       if (error) {
-        console.error('[MAPA] Erro no upload:', error.message);
         alert('Erro ao fazer upload do mapa: ' + error.message);
         return;
       }
@@ -552,21 +608,8 @@ export default function TelaDeMesa() {
     setShowMapEditor(false);
     setMapPreviewUrl(null);
     
-    // Salvar no banco com tratamento de erro
     try {
-      console.log('[MAPA] Salvando no banco com parâmetros:', {
-        map_url: mapPreviewUrl,
-        map_grid_px: gridPx,
-        map_scale: mapScale,
-        map_grid_color: gridColor,
-        map_grid_opacity: gridOpacity,
-        map_grid_thickness: gridThickness,
-        map_grid_dashed: gridDashed,
-        map_grid_dash_frequency: gridDashFrequency,
-        map_grid_dimension: gridDimension
-      });
-
-      const { data, error } = await supabase.from('campaigns').update({ 
+      await supabase.from('campaigns').update({ 
         map_url: mapPreviewUrl, 
         map_grid_px: gridPx,
         map_scale: mapScale,
@@ -576,22 +619,11 @@ export default function TelaDeMesa() {
         map_grid_dashed: gridDashed,
         map_grid_dash_frequency: gridDashFrequency,
         map_grid_dimension: gridDimension
-      }).eq('id', campaignId).select();
-
-      if (error) {
-        console.error('[MAPA] Erro ao salvar no banco:', error);
-        alert('⚠️ Erro ao salvar mapa: ' + error.message);
-        return;
-      }
-
-      console.log('[MAPA] Salvo com sucesso! Dados:', data);
+      }).eq('id', campaignId);
     } catch (err) {
       console.error('[MAPA] Erro ao salvar:', err);
-      alert('⚠️ Erro inesperado ao salvar mapa');
-      return;
     }
     
-    // Broadcast do mapa para outros jogadores
     realtimeChannelRef.current?.send({
       type: 'broadcast',
       event: 'map-change',
@@ -604,7 +636,7 @@ export default function TelaDeMesa() {
     const defaultSize = t.sizeCategory ?? 'Medium';
     const newToken: Token = { id: newId, url: t.url, x: 0, y: 0, rotation: 0, name: t.name, isMonster: true, sizeCategory: defaultSize };
     setTokens(prev => [...prev, newToken]);
-    const { data, error } = await supabase.from('campaign_tokens').insert({
+    await supabase.from('campaign_tokens').insert({
       id: newId,
       campaign_id: campaignId,
       url: t.url,
@@ -613,8 +645,7 @@ export default function TelaDeMesa() {
       y: 0,
       is_monster: true,
       size_category: defaultSize,
-    }).select();
-    if (error) console.error('[TOKEN] Erro ao inserir token:', error);
+    });
     realtimeChannelRef.current?.send({ type: 'broadcast', event: 'token-add', payload: { token: newToken } });
   };
 
@@ -629,11 +660,11 @@ export default function TelaDeMesa() {
     await addTokenToMap({ name: file.name.replace(/\.[^.]+$/, ''), url: publicUrl });
   };
 
-  // Subscription realtime de tokens
+  // Subscription realtime
   useEffect(() => {
     if (!campaignId) return;
     const channel = supabase
-      .channel(`mesa-tokens-${campaignId}`)
+      .channel(`mesa-${campaignId}`)
       .on('broadcast', { event: 'token-move' }, ({ payload }) => {
         setTokens(prev => prev.map(t =>
           t.id === payload.tokenId ? { ...t, x: payload.x, y: payload.y, rotation: payload.rotation ?? t.rotation ?? 0 } : t
@@ -665,12 +696,14 @@ export default function TelaDeMesa() {
         if (payload.gridDimension) setGridDimension(payload.gridDimension);
       })
       .on('broadcast', { event: 'ruler-change' }, ({ payload }) => {
-        setShowRuler(Boolean(payload?.showRuler));
-        setRulerStart(payload?.rulerStart ?? null);
-        setRulerEnd(payload?.rulerEnd ?? null);
-        setRulerLocked(Boolean(payload?.rulerLocked));
-        setIsRulerDragging(Boolean(payload?.isRulerDragging));
-        if (payload?.ownerId !== undefined) setRulerOwnerId(payload.ownerId ?? null);
+        const ruler = payload as UserRuler;
+        if (ruler.userId !== currentUserId) {
+          setRulers(prev => {
+            const newMap = new Map(prev);
+            newMap.set(ruler.userId, ruler);
+            return newMap;
+          });
+        }
       })
       .on(
         'postgres_changes',
@@ -704,54 +737,18 @@ export default function TelaDeMesa() {
       )
       .subscribe();
     realtimeChannelRef.current = channel;
-    // Subscription para novos membros (atualiza lista de jogadores do Mestre e cria token)
+    
     const membersChannel = supabase
       .channel(`mesa-members-${campaignId}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'campaign_members', filter: `campaign_id=eq.${campaignId}` },
-        async ({ new: row }) => {
+        async () => {
           await fetchPlayerCharacters();
-          // Se o membro tem personagem vinculado, cria token caso não exista
-          const charId = (row as any)?.current_character_id;
-          if (!charId) return;
-          const alreadyExists = tokensRef.current.some(t => String(t.characterId) === String(charId));
-          if (alreadyExists) return;
-          const { data: char } = await supabase
-            .from('characters')
-            .select('id, name, img, imgOffsetX, imgOffsetY')
-            .eq('id', charId)
-            .maybeSingle();
-          if (!char) return;
-          const newId = crypto.randomUUID();
-          const newToken: Token = {
-            id: newId,
-            url: (char as any).img || '',
-            x: 0, y: 0,
-            rotation: 0,
-            name: (char as any).name,
-            characterId: (char as any).id,
-            imgOffsetX: (char as any).imgOffsetX ?? 50,
-            imgOffsetY: (char as any).imgOffsetY ?? 50,
-            isMonster: false,
-            sizeCategory: 'Medium',
-          };
-          setTokens(prev => [...prev, newToken]);
-          await supabase.from('campaign_tokens').insert({
-            id: newId,
-            campaign_id: campaignId,
-            character_id: newToken.characterId,
-            url: newToken.url,
-            x: 0, y: 0,
-            size_category: newToken.sizeCategory ?? 'Medium',
-            is_monster: false,
-          });
-          realtimeChannelRef.current?.send({
-            type: 'broadcast', event: 'token-add', payload: { token: newToken },
-          });
         }
       )
       .subscribe();
+      
     return () => { supabase.removeChannel(channel); supabase.removeChannel(membersChannel); };
   }, [campaignId]);
 
@@ -759,7 +756,6 @@ export default function TelaDeMesa() {
   const [showFicha, setShowFicha] = useState(false);
   const [showSpellModal, setShowSpellModal] = useState(false);
   const [fichaCharacterId, setFichaCharacterId] = useState<number | string | null>(null);
-  const [isDM, setIsDM] = useState(false);
   const [showTokenSheet, setShowTokenSheet] = useState(false);
   const [tokenSheetTokenId, setTokenSheetTokenId] = useState<string | null>(null);
   const [tokenSheetLoading, setTokenSheetLoading] = useState(false);
@@ -769,8 +765,14 @@ export default function TelaDeMesa() {
   const [tokenSheetAutoFillError, setTokenSheetAutoFillError] = useState<string | null>(null);
   const [tokenSheet, setTokenSheet] = useState<TokenSheet>(buildEmptySheet());
   const tokenSheetRef = useRef<TokenSheet>(buildEmptySheet());
-  // DM visualizando ficha de jogador
   const [showPlayerList, setShowPlayerList] = useState(false);
+  const [showFichaDM, setShowFichaDM] = useState(false);
+  const [fichaCharacterIdDM, setFichaCharacterIdDM] = useState<number | string | null>(null);
+  const [playerCharacters, setPlayerCharacters] = useState<{ id: number; name: string; img: string | null; imgOffsetX: number; imgOffsetY: number }[]>([]);
+  const [modalAjuda, setModalAjuda] = useState(false);
+  const [buscaCondicao, setBuscaCondicao] = useState("");
+  const [itemExpandido, setItemExpandido] = useState<string | null>(null);
+  const [rollDiceFunc, setRollDiceFunc] = useState<((formula: string, isSecret: boolean, mode: 'normal' | 'advantage' | 'disadvantage') => Promise<any | null>) | null>(null);
 
   const openCharacterSheet = useCallback(() => {
     if (!fichaCharacterId) {
@@ -795,19 +797,11 @@ export default function TelaDeMesa() {
       onOpenSpellBook: openSpellBook,
     });
   }, [isDM, openCharacterSheet, openSpellBook]);
-  const [showFichaDM, setShowFichaDM] = useState(false);
-  const [fichaCharacterIdDM, setFichaCharacterIdDM] = useState<number | string | null>(null);
-  const [playerCharacters, setPlayerCharacters] = useState<{ id: number; name: string; img: string | null; imgOffsetX: number; imgOffsetY: number }[]>([]);
-
-  const [modalAjuda, setModalAjuda] = useState(false);
-  const [buscaCondicao, setBuscaCondicao] = useState("");
-  const [itemExpandido, setItemExpandido] = useState<string | null>(null);
 
   useEffect(() => {
     tokenSheetRef.current = tokenSheet;
   }, [tokenSheet]);
 
-  // Busca e atualiza personagens dos jogadores da campanha (usado pelo Mestre)
   const fetchPlayerCharacters = async () => {
     const { data: membersData } = await supabase
       .from('campaign_members')
@@ -823,9 +817,6 @@ export default function TelaDeMesa() {
       .in('id', charIds);
     if (charsData) setPlayerCharacters(charsData.map((c: any) => ({ ...c, imgOffsetX: c.imgOffsetX ?? 50, imgOffsetY: c.imgOffsetY ?? 50 })) as any);
   };
-  
-  // Função de rolagem que virá do componente DiceRoller
-  const [rollDiceFunc, setRollDiceFunc] = useState<((formula: string, isSecret: boolean, mode: 'normal' | 'advantage' | 'disadvantage') => Promise<any | null>) | null>(null);
 
   const casterToken = useMemo(() => {
     const ownToken = tokens.find((token) => String(token.characterId) === String(fichaCharacterId));
@@ -895,20 +886,16 @@ export default function TelaDeMesa() {
   useEffect(() => {
     if (!showTokenSheet || !tokenSheetTokenId) return;
     let active = true;
-    setTokenSheetAutoFillError(null);
-    setTokenSheetAutoFillSource(null);
     const loadSheet = async () => {
       setTokenSheetLoading(true);
       const { data, error } = await supabase
-          .from('campaign_tokens')
-            .select('name, size_category, type, alignment, armor_class, hit_points, speed, abilities, saving_throws, skills, damage_resistances, condition_immunities, senses, languages, challenge_rating, xp, abilities_text, actions_text')
+        .from('campaign_tokens')
+        .select('name, size_category, type, alignment, armor_class, hit_points, speed, abilities, saving_throws, damage_resistances, condition_immunities, senses, languages, challenge_rating, xp, abilities_text, actions_text')
         .eq('id', tokenSheetTokenId)
         .maybeSingle();
 
       if (!active) return;
-
       if (error || !data) {
-        console.error('[token-sheet-load] failed, keeping current sheet state:', { tokenSheetTokenId, error: error?.message ?? null, hasData: Boolean(data) });
         setTokenSheetLoading(false);
         return;
       }
@@ -926,7 +913,7 @@ export default function TelaDeMesa() {
 
       setTokenSheet({
         name: (data as any).name ?? selectedToken?.name ?? "",
-        size_category: (data as any).size_category ?? (data as any).size ?? selectedToken?.sizeCategory ?? "",
+        size_category: (data as any).size_category ?? selectedToken?.sizeCategory ?? "",
         type: (data as any).type ?? "",
         alignment: (data as any).alignment ?? "",
         armorClass: (data as any).armor_class != null ? String((data as any).armor_class) : "",
@@ -948,9 +935,7 @@ export default function TelaDeMesa() {
     };
 
     loadSheet();
-    return () => {
-      active = false;
-    };
+    return () => { active = false; };
   }, [showTokenSheet, tokenSheetTokenId, selectedToken?.name, supabase]);
 
   useEffect(() => {
@@ -1003,51 +988,15 @@ export default function TelaDeMesa() {
         updated_at: new Date().toISOString(),
       };
 
-      console.log('[token-sheet-save] sheetToSave:', sheetToSave);
-      console.log('[token-sheet-save] safeSheet:', safeSheet);
-      console.log('[token-sheet-save] payload:', payload);
-
-      const record = {
-        id: tokenSheetTokenId,
-        campaign_id: campaignId,
-        ...payload,
-      };
-
-      const { data: savedToken, error } = await supabase
+      const { error } = await supabase
         .from('campaign_tokens')
-        .update(record)
+        .update({ ...payload, id: tokenSheetTokenId, campaign_id: campaignId })
         .eq('id', tokenSheetTokenId)
-        .eq('campaign_id', campaignId)
-        .select('*')
-        .single();
+        .eq('campaign_id', campaignId);
 
       if (error) {
         alert(`Erro ao salvar ficha: ${error.message}`);
         return false;
-      }
-
-      if (savedToken) {
-        const nextSheet = normalizeTokenSheet({
-          name: (savedToken as any).name ?? safeSheet.name,
-          size_category: (savedToken as any).size_category ?? fallbackSizeCategory,
-          type: (savedToken as any).type ?? safeSheet.type,
-          alignment: (savedToken as any).alignment ?? safeSheet.alignment,
-          armorClass: (savedToken as any).armor_class != null ? String((savedToken as any).armor_class) : safeSheet.armorClass,
-          hitPoints: (savedToken as any).hit_points != null ? String((savedToken as any).hit_points) : safeSheet.hitPoints,
-          speed: (savedToken as any).speed ?? safeSheet.speed,
-          abilities: (savedToken as any).abilities ?? safeSheet.abilities,
-          saves: (savedToken as any).saving_throws ?? safeSheet.saves,
-          damageResistances: Array.isArray((savedToken as any).damage_resistances) ? (savedToken as any).damage_resistances.join(', ') : safeSheet.damageResistances,
-          conditionImmunities: Array.isArray((savedToken as any).condition_immunities) ? (savedToken as any).condition_immunities.join(', ') : safeSheet.conditionImmunities,
-          senses: (savedToken as any).senses ?? safeSheet.senses,
-          languages: (savedToken as any).languages ?? safeSheet.languages,
-          challengeRating: (savedToken as any).challenge_rating ?? safeSheet.challengeRating,
-          xp: (savedToken as any).xp != null ? String((savedToken as any).xp) : safeSheet.xp,
-          abilitiesText: (savedToken as any).abilities_text ?? safeSheet.abilitiesText,
-          actionsText: (savedToken as any).actions_text ?? safeSheet.actionsText,
-        });
-        tokenSheetRef.current = nextSheet;
-        setTokenSheet(nextSheet);
       }
 
       if (safeSheet.name) {
@@ -1094,7 +1043,6 @@ export default function TelaDeMesa() {
     setTokenSheet(mergedSheet);
     setTokenSheetAutoFillSource(sourceLabel ?? null);
     setTokenSheetAutoFillError(null);
-    console.log('[token-sheet-autofill] source:', sourceLabel, 'sheetFromSource:', sheetFromSource, 'mergedSheet:', mergedSheet);
     return true;
   };
 
@@ -1109,17 +1057,13 @@ export default function TelaDeMesa() {
     setTokenSheetAutoFillLoading(true);
     setTokenSheetAutoFillError(null);
     try {
-      console.log('[token-sheet-autofill] request:', { campaignId, tokenName: currentTokenName });
       const response = await fetch('/api/monster-sheet-autofill', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ campaignId, tokenName: currentTokenName }),
       });
 
-      console.log('[token-sheet-autofill] response status:', response.status);
-
       const data = await response.json().catch(() => null);
-      console.log('[token-sheet-autofill] response body:', data);
 
       if (!response.ok) {
         throw new Error(data?.error || 'Falha ao ler o PDF');
@@ -1165,158 +1109,85 @@ export default function TelaDeMesa() {
       if (!user || !campaignId) return;
 
       setCurrentUserId(user.id);
+      setCurrentUserName(user.user_metadata?.name || user.email?.split('@')[0] || 'Aventureiro');
+      
+      // Inicializa régua do usuário
+      setRulers(prev => {
+        const newMap = new Map(prev);
+        if (!newMap.has(user.id)) {
+          newMap.set(user.id, {
+            userId: user.id,
+            userName: user.user_metadata?.name || user.email?.split('@')[0] || 'Aventureiro',
+            showRuler: false,
+            rulerStart: null,
+            rulerEnd: null,
+            rulerLocked: false,
+            isRulerDragging: false,
+            color: getUserColor(user.id),
+          });
+        }
+        return newMap;
+      });
 
-      // Busca dm_id, map_url e map_grid_px da campanha
-      // Nota: Tenta carregar as colunas novas, mas faz fallback se não existirem
+      // Busca campanha
       let campaign: any = null;
-      let campaignError: any = null;
-
       try {
-        // Tenta com TODAS as colunas (após migrations)
         const result = await supabase
           .from('campaigns')
           .select('dm_id, map_url, map_grid_px, map_scale, map_grid_color, map_grid_opacity, map_grid_thickness, map_grid_dashed, map_grid_dash_frequency, map_grid_dimension')
           .eq('id', campaignId)
           .maybeSingle();
-        
         campaign = result.data;
-        campaignError = result.error;
-
-        console.log('[MAPA] Query completa - Dados:', campaign, 'Erro:', campaignError?.message);
-
-        // Se falhar, tenta só as colunas antigas
-        if (!campaign || campaignError) {
-          console.log('[MAPA] Tentando fallback com colunas antigas...');
-          const fallbackResult = await supabase
-            .from('campaigns')
-            .select('dm_id, map_url, map_grid_px')
-            .eq('id', campaignId)
-            .maybeSingle();
-          
-          campaign = fallbackResult.data;
-          campaignError = fallbackResult.error;
-          console.log('[MAPA] Fallback - Dados:', campaign, 'Erro:', campaignError?.message);
-        }
       } catch (err) {
         console.error('[MAPA] Erro ao carregar campanha:', err);
       }
 
-      // Debug: Mostra cada campo individualmente
-      if (campaign) {
-        console.log('[MAPA] Campos carregados:');
-        console.log('  map_url:', (campaign as any).map_url ? '✓' : '✗');
-        console.log('  map_grid_px:', (campaign as any).map_grid_px);
-        console.log('  map_scale:', (campaign as any).map_scale);
-        console.log('  map_grid_color:', (campaign as any).map_grid_color);
-        console.log('  map_grid_opacity:', (campaign as any).map_grid_opacity);
-        console.log('  map_grid_thickness:', (campaign as any).map_grid_thickness);
-        console.log('  map_grid_dashed:', (campaign as any).map_grid_dashed);
-        console.log('  map_grid_dash_frequency:', (campaign as any).map_grid_dash_frequency);
-        console.log('  map_grid_dimension:', (campaign as any).map_grid_dimension);
-      }
+      if (campaign?.map_url) setMapaUrl(campaign.map_url);
+      if (campaign?.map_grid_px) setMapGridPx(campaign.map_grid_px);
+      if (campaign?.map_scale) setMapScale(campaign.map_scale);
+      if (campaign?.map_grid_color) setGridColor(campaign.map_grid_color);
+      if (campaign?.map_grid_opacity) setGridOpacity(campaign.map_grid_opacity);
+      if (campaign?.map_grid_thickness) setGridThickness(campaign.map_grid_thickness);
+      if (campaign?.map_grid_dashed !== undefined) setGridDashed(campaign.map_grid_dashed);
+      if (campaign?.map_grid_dash_frequency) setGridDashFrequency(campaign.map_grid_dash_frequency);
+      if (campaign?.map_grid_dimension) setGridDimension(campaign.map_grid_dimension);
 
-      // Carrega mapa (coluna antiga, sempre existe)
-      if ((campaign as any)?.map_url) {
-        console.log('[MAPA] 🎯 Carregando mapa_url:', (campaign as any).map_url);
-        setMapaUrl((campaign as any).map_url);
-      } else {
-        console.log('[MAPA] ⚠️ map_url vazio ou nulo');
-      }
-      
-      // Carrega grid configs (colunas novas, podem não existir ainda)
-      if ((campaign as any)?.map_grid_px) {
-        console.log('[MAPA] Carregando map_grid_px:', (campaign as any).map_grid_px);
-        setMapGridPx((campaign as any).map_grid_px);
-      }
-      if ((campaign as any)?.map_scale) {
-        console.log('[MAPA] Carregando map_scale:', (campaign as any).map_scale);
-        setMapScale((campaign as any).map_scale);
-      }
-      if ((campaign as any)?.map_grid_color) {
-        console.log('[MAPA] Carregando map_grid_color:', (campaign as any).map_grid_color);
-        setGridColor((campaign as any).map_grid_color);
-      }
-      if ((campaign as any)?.map_grid_opacity) {
-        console.log('[MAPA] Carregando map_grid_opacity:', (campaign as any).map_grid_opacity);
-        setGridOpacity((campaign as any).map_grid_opacity);
-      }
-      if ((campaign as any)?.map_grid_thickness) {
-        console.log('[MAPA] Carregando map_grid_thickness:', (campaign as any).map_grid_thickness);
-        setGridThickness((campaign as any).map_grid_thickness);
-      }
-      if ((campaign as any)?.map_grid_dashed !== undefined) {
-        console.log('[MAPA] Carregando map_grid_dashed:', (campaign as any).map_grid_dashed);
-        setGridDashed((campaign as any).map_grid_dashed);
-      }
-      if ((campaign as any)?.map_grid_dash_frequency) {
-        console.log('[MAPA] Carregando map_grid_dash_frequency:', (campaign as any).map_grid_dash_frequency);
-        setGridDashFrequency((campaign as any).map_grid_dash_frequency);
-      }
-      if ((campaign as any)?.map_grid_dimension) {
-        console.log('[MAPA] Carregando map_grid_dimension:', (campaign as any).map_grid_dimension);
-        setGridDimension((campaign as any).map_grid_dimension);
-      }
-
-      console.log('[DM] user.id:', user.id, '| campaignId:', campaignId);
-      console.log('[DM] campaign:', campaign, '| error:', campaignError?.message);
-
-      // Verifica se o usuário é o mestre, 
+      // Verifica se é DM
       let userIsDM = campaign?.dm_id === user.id;
-
       if (!userIsDM) {
-        // Fallback: query filtrada por dm_id (funciona mesmo com RLS restritivo)
-        const { data: ownedCampaign, error: ownedError } = await supabase
+        const { data: ownedCampaign } = await supabase
           .from('campaigns')
           .select('id')
           .eq('id', campaignId)
           .eq('dm_id', user.id)
           .maybeSingle();
-
-        console.log('[DM] fallback ownedCampaign:', ownedCampaign, '| error:', ownedError?.message);
         if (ownedCampaign) userIsDM = true;
       }
 
-      console.log('[DM] isDM final:', userIsDM);
+      setIsDM(userIsDM);
 
-      if (userIsDM) {
-        setIsDM(true);
-        await fetchPlayerCharacters();
-      } else {
+      if (!userIsDM) {
         const { data: member } = await supabase
           .from('campaign_members')
           .select('current_character_id')
           .eq('campaign_id', campaignId)
           .eq('user_id', user.id)
           .maybeSingle();
-
         if (member?.current_character_id) {
           setFichaCharacterId(member.current_character_id);
         }
+      } else {
+        await fetchPlayerCharacters();
       }
 
-      // Carrega tokens do banco de dados (inclui categoria de tamanho)
-      let dbTokens: any[] | null = null;
-      const { data: dbTokensWithRotation, error: dbTokensWithRotationError } = await supabase
+      // Carrega tokens
+      const { data: dbTokens } = await supabase
         .from('campaign_tokens')
         .select('id, url, name, x, y, rotation, character_id, is_monster, size_category')
         .eq('campaign_id', campaignId);
 
-      if (dbTokensWithRotationError) {
-        const { data: dbTokensFallback } = await supabase
-          .from('campaign_tokens')
-          .select('id, url, name, x, y, character_id, is_monster, size_category')
-          .eq('campaign_id', campaignId);
-        dbTokens = dbTokensFallback;
-      } else {
-        dbTokens = dbTokensWithRotation;
-      }
-
       if (dbTokens && dbTokens.length > 0) {
-        // Para tokens com personagem, busca dados visuais na tabela characters
-        const charIds = dbTokens
-          .filter((t: any) => t.character_id)
-          .map((t: any) => t.character_id);
-
+        const charIds = dbTokens.filter((t: any) => t.character_id).map((t: any) => t.character_id);
         let charMap: Record<number, { name: string; img: string; imgOffsetX: number; imgOffsetY: number }> = {};
         if (charIds.length > 0) {
           const { data: chars } = await supabase
@@ -1346,101 +1217,6 @@ export default function TelaDeMesa() {
             sizeCategory: t.size_category ?? 'Medium',
           };
         }));
-
-        // Verifica se algum membro com personagem não tem token e cria
-        const { data: members } = await supabase
-          .from('campaign_members')
-          .select('current_character_id')
-          .eq('campaign_id', campaignId)
-          .not('current_character_id', 'is', null);
-
-        if (members && members.length > 0) {
-          const existingCharIds = new Set(dbTokens.filter((t: any) => t.character_id).map((t: any) => String(t.character_id)));
-          const missingCharIds = members
-            .map((m: any) => m.current_character_id)
-            .filter((id: any) => id && !existingCharIds.has(String(id)));
-
-          if (missingCharIds.length > 0) {
-            const { data: missingChars } = await supabase
-              .from('characters')
-              .select('id, name, img, imgOffsetX, imgOffsetY')
-              .in('id', missingCharIds);
-
-            if (missingChars && missingChars.length > 0) {
-              const newTokens: Token[] = missingChars.map((c: any, i: number) => ({
-                id: crypto.randomUUID(),
-                url: c.img || '',
-                name: c.name,
-                characterId: c.id,
-                imgOffsetX: c.imgOffsetX ?? 50,
-                imgOffsetY: c.imgOffsetY ?? 50,
-                x: i * gridSize * 2,
-                y: 0,
-                rotation: 0,
-                isMonster: false,
-                sizeCategory: 'Medium',
-              }));
-              setTokens(prev => [...prev, ...newTokens]);
-              await supabase.from('campaign_tokens').insert(
-                newTokens.map(t => ({
-                  id: t.id,
-                  campaign_id: campaignId,
-                  character_id: t.characterId,
-                  url: t.url,
-                  x: t.x,
-                  y: t.y,
-                  size_category: t.sizeCategory ?? 'Medium',
-                  is_monster: false,
-                }))
-              );
-            }
-          }
-        }
-      } else {
-        // Se não há tokens salvos, cria a partir dos membros da campanha
-        const { data: members } = await supabase
-          .from('campaign_members')
-          .select('current_character_id')
-          .eq('campaign_id', campaignId)
-          .not('current_character_id', 'is', null);
-
-        if (members && members.length > 0) {
-          const charIds = members.map((m: any) => m.current_character_id);
-          const { data: chars } = await supabase
-            .from('characters')
-            .select('id, name, img, imgOffsetX, imgOffsetY')
-            .in('id', charIds);
-
-          if (chars && chars.length > 0) {
-            const initialTokens: Token[] = chars.map((c: any, i: number) => ({
-              id: crypto.randomUUID(),
-              url: c.img || '',
-              name: c.name,
-              characterId: c.id,
-              imgOffsetX: c.imgOffsetX ?? 50,
-              imgOffsetY: c.imgOffsetY ?? 50,
-              x: i * gridSize * 2,
-              y: 0,
-              rotation: 0,
-              isMonster: false,
-              sizeCategory: 'Medium',
-            }));
-            setTokens(initialTokens);
-            // Persiste tokens iniciais no banco (apenas colunas que existem)
-            await supabase.from('campaign_tokens').insert(
-              initialTokens.map(t => ({
-                id: t.id,
-                campaign_id: campaignId,
-                character_id: t.characterId,
-                url: t.url,
-                x: t.x,
-                y: t.y,
-                size_category: t.sizeCategory ?? 'Medium',
-                is_monster: false,
-              }))
-            );
-          }
-        }
       }
 
       setCampaignLoaded(true);
@@ -1470,7 +1246,6 @@ export default function TelaDeMesa() {
             <Home size={22} />
           </button>
 
-          {/* Jogador */}
           {!isDM && (
             <button
               onClick={openCharacterSheet}
@@ -1491,7 +1266,6 @@ export default function TelaDeMesa() {
             </button>
           )}
 
-          {/* Mestre */}
           {isDM && (
             <>
               <button
@@ -1518,8 +1292,6 @@ export default function TelaDeMesa() {
                 <MapIcon size={22} />
               </button>
 
-              
-
               <button
                 onClick={() => setShowTokenLibrary(true)}
                 className="p-2 text-white/30 hover:text-[#00ff66] hover:drop-shadow-[0_0_8px_#00ff66] transition-all duration-300"
@@ -1538,13 +1310,9 @@ export default function TelaDeMesa() {
           {sidebarAberta ? <ChevronLeft size={18} /> : <ChevronRight size={18} />}
         </button>
 
-        {/* COMPONENTE AUTÔNOMO DE LIVROS DA CAMPANHA — apenas Mestre */}
         {isDM && <CampaignBooksWidget campaignId={campaignId} isOpen={showBooks} onToggle={() => setShowBooks(v => !v)} />}
-
-        {/* Biblioteca de Tokens — apenas Mestre */}
         {isDM && <TokenLibraryWidget isOpen={showTokenLibrary} onToggle={() => setShowTokenLibrary(v => !v)} onAddToken={addTokenToMap} onUpload={handleTokenUpload} />}
 
-        {/* Painel de fichas dos jogadores — apenas Mestre */}
         {isDM && showPlayerList && (
           <div className="absolute left-20 top-1/2 -translate-y-1/2 z-50 bg-[#0a120a]/90 backdrop-blur-xl border border-white/10 rounded-2xl p-4 flex flex-col gap-2 min-w-[180px] shadow-[0_0_30px_rgba(0,0,0,0.6)]">
             <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#4a5a4a] mb-1">Fichas dos Jogadores</span>
@@ -1576,55 +1344,47 @@ export default function TelaDeMesa() {
             setZoom(prev => Math.min(Math.max(0.1, prev + delta), 5));
           }}
         >
-          {/* ── Régua — barra bottom-center ── */}
+          {/* Botão da Régua - barra bottom-center */}
           <div className="absolute bottom-6 left-1/2 z-40 -translate-x-1/2 flex items-center gap-2 rounded-2xl border border-white/10 bg-black/80 px-4 py-2.5 backdrop-blur-md shadow-[0_0_32px_rgba(0,0,0,0.7)]">
             <button
               type="button"
-              onClick={() => {
-                const next = !showRuler;
-                setShowRuler(next);
-                if (!next) {
-                  setRulerStart(null); setRulerEnd(null);
-                  setRulerLocked(false); setIsRulerDragging(false);
-                  setRulerOwnerId(null);
-                  broadcastRulerState({ showRuler: false, rulerStart: null, rulerEnd: null, rulerLocked: false, isRulerDragging: false, ownerId: null });
-                }
-              }}
-              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.18em] transition-all ${showRuler ? 'bg-[#00ff66] text-black shadow-[0_0_12px_rgba(0,255,102,0.35)]' : 'bg-white/5 text-white/55 hover:bg-white/10 hover:text-[#00ff66]'}`}
-              title="Ativar/desativar régua de medição"
+              onClick={toggleMyRuler}
+              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.18em] transition-all ${rulers.get(currentUserId || '')?.showRuler ? 'bg-[#00ff66] text-black shadow-[0_0_12px_rgba(0,255,102,0.35)]' : 'bg-white/5 text-white/55 hover:bg-white/10 hover:text-[#00ff66]'}`}
+              title="Ativar/desativar sua régua de medição"
             >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.4 2.4 0 0 1 0-3.4l2.6-2.6a2.4 2.4 0 0 1 3.4 0Z"/><path d="m14.5 12.5 2-2"/><path d="m11.5 9.5 2-2"/><path d="m8.5 6.5 2-2"/><path d="m17.5 15.5 2-2"/></svg>
+              <Ruler size={12} />
               Régua
             </button>
 
-            {getRulerDistance() ? (
-              <div className="flex items-center gap-2.5 border-l border-white/10 pl-3">
-                <span className="text-[13px] font-black text-[#00ff66] tabular-nums tracking-tight">
-                  {getRulerDistance()!.meters.toFixed(1)} m
-                </span>
-                <span className="text-[9px] text-white/20 font-black">·</span>
-                <span className="text-[11px] font-bold text-white/40 tabular-nums">
-                  {getRulerDistance()!.feet.toFixed(1)} pés
-                </span>
-                {rulerOwnerId === currentUserId && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setRulerStart(null); setRulerEnd(null);
-                      setRulerLocked(false); setIsRulerDragging(false);
-                      setRulerOwnerId(null);
-                      broadcastRulerState({ showRuler, rulerStart: null, rulerEnd: null, rulerLocked: false, isRulerDragging: false, ownerId: null });
-                    }}
-                    title="Limpar medição"
-                    className="ml-0.5 flex items-center justify-center w-5 h-5 rounded text-white/25 hover:text-red-400 transition-colors"
-                  >
-                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
-                  </button>
-                )}
-              </div>
-            ) : showRuler ? (
-              <span className="text-[10px] text-white/25 font-bold pl-2.5 border-l border-white/10 uppercase tracking-wider whitespace-nowrap">Clique para medir</span>
-            ) : null}
+            {/* Exibe a distância da régua do usuário atual */}
+            {(() => {
+              const myRuler = rulers.get(currentUserId || '');
+              const distance = myRuler ? getRulerDistance(myRuler) : null;
+              if (distance && myRuler?.showRuler) {
+                return (
+                  <div className="flex items-center gap-2.5 border-l border-white/10 pl-3">
+                    <span className="text-[13px] font-black text-[#00ff66] tabular-nums tracking-tight">
+                      {distance.meters.toFixed(1)} m
+                    </span>
+                    <span className="text-[9px] text-white/20 font-black">·</span>
+                    <span className="text-[11px] font-bold text-white/40 tabular-nums">
+                      {distance.feet.toFixed(1)} pés
+                    </span>
+                    <button
+                      type="button"
+                      onClick={clearMyRuler}
+                      className="ml-0.5 flex items-center justify-center w-5 h-5 rounded text-white/25 hover:text-red-400 transition-colors"
+                      title="Limpar medição"
+                    >
+                      <Trash2 size={10} />
+                    </button>
+                  </div>
+                );
+              }
+              return rulers.get(currentUserId || '')?.showRuler ? (
+                <span className="text-[10px] text-white/25 font-bold pl-2.5 border-l border-white/10 uppercase tracking-wider whitespace-nowrap">Clique para medir</span>
+              ) : null;
+            })()}
           </div>
 
           <div 
@@ -1644,35 +1404,59 @@ export default function TelaDeMesa() {
                 <img src={mapaUrl} className="max-w-none block opacity-80 shadow-2xl" alt="Map" />
               )}
 
-              {rulerStart && rulerEnd && (() => {
-                const dx = rulerEnd.x - rulerStart.x;
-                const dy = rulerEnd.y - rulerStart.y;
+              {/* Renderiza TODAS as réguas visíveis de TODOS os usuários */}
+              {visibleRulers.map(({ userId, ruler }) => {
+                if (!ruler.rulerStart || !ruler.rulerEnd) return null;
+                const dx = ruler.rulerEnd.x - ruler.rulerStart.x;
+                const dy = ruler.rulerEnd.y - ruler.rulerStart.y;
                 const length = Math.sqrt(dx * dx + dy * dy);
                 const angle = Math.atan2(dy, dx) * (180 / Math.PI);
-                const distance = getRulerDistance();
-                const midX = (rulerStart.x + rulerEnd.x) / 2;
-                const midY = (rulerStart.y + rulerEnd.y) / 2;
+                const distance = getRulerDistance(ruler);
+                const midX = (ruler.rulerStart.x + ruler.rulerEnd.x) / 2;
+                const midY = (ruler.rulerStart.y + ruler.rulerEnd.y) / 2;
+                const isMyRuler = userId === currentUserId;
+                const rulerColor = ruler.color || (isMyRuler ? '#00ff66' : USER_COLORS[Array.from(rulers.keys()).indexOf(userId) % USER_COLORS.length]);
 
                 return (
-                  <>
+                  <div key={userId}>
                     <div
                       className="absolute left-0 top-0 pointer-events-none"
                       style={{
-                        transform: `translate(${rulerStart.x}px, ${rulerStart.y}px) rotate(${angle}deg)`,
+                        transform: `translate(${ruler.rulerStart.x}px, ${ruler.rulerStart.y}px) rotate(${angle}deg)`,
                         transformOrigin: '0 0',
                       }}
                     >
-                      <div className="h-[3px] rounded-full bg-[#00ff66] shadow-[0_0_12px_rgba(0,255,102,0.8)]" style={{ width: `${length}px` }} />
+                      <div 
+                        className="h-[2px] rounded-full shadow-[0_0_8px_rgba(0,0,0,0.5)]" 
+                        style={{ width: `${length}px`, backgroundColor: rulerColor, opacity: isMyRuler ? 1 : 0.6 }}
+                      />
                     </div>
                     <div
-                      className="absolute pointer-events-none rounded-full border border-[#00ff66]/30 bg-black/80 px-2 py-1 text-[10px] font-bold text-[#00ff66] shadow-[0_0_16px_rgba(0,0,0,0.5)]"
-                      style={{ left: midX, top: midY, transform: 'translate(-50%, -50%)' }}
+                      className="absolute pointer-events-none rounded-full bg-black/80 px-2 py-0.5 text-[9px] font-bold shadow-[0_0_16px_rgba(0,0,0,0.5)] whitespace-nowrap"
+                      style={{ left: midX, top: midY, transform: 'translate(-50%, -50%)', border: `1px solid ${rulerColor}`, color: rulerColor }}
                     >
-                      {distance ? `${distance.meters.toFixed(1)} m • ${distance.feet.toFixed(1)} pés` : ''}
+                      {distance ? `${distance.meters.toFixed(1)}m (${distance.feet.toFixed(0)}pés)` : ''}
+                      {!isMyRuler && isDM && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); clearUserRuler(userId); }}
+                          className="ml-1.5 text-white/40 hover:text-red-400 transition-colors inline-flex"
+                          title="Limpar régua deste jogador"
+                        >
+                          <Trash2 size={8} />
+                        </button>
+                      )}
                     </div>
-                  </>
+                    {!isMyRuler && isDM && (
+                      <div
+                        className="absolute pointer-events-none text-[8px] font-black uppercase"
+                        style={{ left: ruler.rulerStart.x, top: ruler.rulerStart.y - 15, transform: 'translateX(-50%)', color: rulerColor }}
+                      >
+                        {ruler.userName}
+                      </div>
+                    )}
+                  </div>
                 );
-              })()}
+              })}
               
               <div 
                 className="absolute inset-0 pointer-events-none" 
@@ -1786,7 +1570,6 @@ export default function TelaDeMesa() {
 
       </div>
 
-      {/* COMPONENTE EXTRAÍDO DOS DADOS FÍSICOS */}
       <DiceRoller 
         campaignId={campaignId}
         isDM={isDM}
@@ -1794,7 +1577,6 @@ export default function TelaDeMesa() {
         onReady={(func) => setRollDiceFunc(() => func)} 
       />
       
-      {/* Modal para upload de mapa (simples) */}
       {modalAtivo === 'Mapa' && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 backdrop-blur-sm p-6">
           <div className="bg-[#0a0a0a] border border-[#00ff66]/20 p-10 rounded-[24px] w-full max-w-md relative shadow-[0_0_50px_rgba(0,255,102,0.1)]">
@@ -1817,7 +1599,6 @@ export default function TelaDeMesa() {
         </div>
       )}
 
-      {/* Editor de Mapa (modal grande com preview e controles) */}
       <MapEditorModal
         isOpen={showMapEditor}
         mapUrl={mapPreviewUrl || ''}
@@ -1834,7 +1615,7 @@ export default function TelaDeMesa() {
         onClose={() => setShowFicha(false)}
         characterId={fichaCharacterId}
         campaignId={campaignId}
-       onRollDice={async (formula: string, isSecret: boolean, mode: 'normal' | 'advantage' | 'disadvantage' = 'normal') => {
+        onRollDice={async (formula: string, isSecret: boolean, mode: 'normal' | 'advantage' | 'disadvantage' = 'normal') => {
           if (rollDiceFunc) {
             return await rollDiceFunc(formula, isSecret, mode);
           }
@@ -1873,7 +1654,6 @@ export default function TelaDeMesa() {
         }}
       />
 
-      {/* Ficha de jogador — visualização do Mestre */}
       <FichaModal
         isOpen={showFichaDM}
         onClose={() => setShowFichaDM(false)}
@@ -1888,7 +1668,6 @@ export default function TelaDeMesa() {
         readOnly
       />
 
-      {/* Botão para abrir */}
       <button 
         onClick={() => setModalAjuda(!modalAjuda)}
         className="fixed bottom-6 left-6 z-[9999] w-12 h-12 bg-[#0a0a0a] border-2 border-[#00ff66] rounded-full flex items-center justify-center text-[#00ff66] shadow-[0_0_15px_rgba(0,255,102,0.3)] hover:scale-110 transition-all"
@@ -1897,18 +1676,12 @@ export default function TelaDeMesa() {
         <HelpCircle size={24} />
       </button>
 
-      
       {modalAjuda && (
-        <div 
-          className="fixed bottom-20 left-6 z-[9998] w-80 sm:w-96 bg-[#0a0a0a]/95 border border-white/10 rounded-2xl shadow-2xl backdrop-blur-xl flex flex-col resize overflow-auto min-h-[300px] max-h-[70vh]"
-        >
-          {/* Header */}
+        <div className="fixed bottom-20 left-6 z-[9998] w-80 sm:w-96 bg-[#0a0a0a]/95 border border-white/10 rounded-2xl shadow-2xl backdrop-blur-xl flex flex-col resize overflow-auto min-h-[300px] max-h-[70vh]">
           <div className="p-4 border-b border-white/5 flex justify-between items-center bg-[#00ff66]/5">
             <span className="text-[#00ff66] font-bold text-xs uppercase tracking-tighter">Manual de Condições</span>
             <button onClick={() => setModalAjuda(false)} className="text-white/20 hover:text-white"><X size={18}/></button>
           </div>
-
-          {/* Busca */}
           <div className="p-3">
             <input 
               type="text" 
@@ -1918,8 +1691,6 @@ export default function TelaDeMesa() {
               onChange={(e) => setBuscaCondicao(e.target.value)}
             />
           </div>
-
-          {/* Lista Expansível */}
           <div className="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar">
             {CONDICOES_RPG
               .filter(c => c.nome.toLowerCase().includes(buscaCondicao.toLowerCase()))
@@ -1934,12 +1705,9 @@ export default function TelaDeMesa() {
                       <span className={`text-xs font-bold uppercase ${isExpanded ? 'text-[#00ff66]' : 'text-white/60'}`}>{c.nome}</span>
                       <ChevronRight size={14} className={`text-white/20 transition-transform ${isExpanded ? 'rotate-90 text-[#00ff66]' : ''}`} />
                     </button>
-
                     {isExpanded && (
                       <div className="p-3 pt-0 text-[11px] text-white/70 leading-relaxed border-t border-white/5">
                         <p className="mb-3 text-white/80">{c.desc}</p>
-                        
-                        {/* Tabela (Apenas números) */}
                         {c.tabela && (
                           <div className="space-y-1 mt-2">
                             {c.tabela.map((t, idx) => (
@@ -1950,8 +1718,6 @@ export default function TelaDeMesa() {
                             ))}
                           </div>
                         )}
-
-                        {/* Níveis */}
                         {c.niveis && (
                           <div className="space-y-1 mt-2">
                             {c.niveis.map((n, idx) => (
@@ -1961,8 +1727,6 @@ export default function TelaDeMesa() {
                             ))}
                           </div>
                         )}
-
-                        {/* Notas Extras */}
                         {c.notas && (
                           <div className="mt-3 pt-2 border-t border-white/5 text-[10px]">
                             {c.notas.map((n, idx) => (

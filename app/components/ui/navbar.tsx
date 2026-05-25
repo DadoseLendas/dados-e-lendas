@@ -96,6 +96,44 @@ export default function Navbar({ abaAtiva = '', setAbaAtiva = () => {} }: Navbar
         ) : (
           <div className="flex items-center gap-6 md:gap-10">
             
+            {/* MENU PARA TODOS (inclusive usuários NÃO logados) */}
+            <div className="hidden md:flex gap-10 text-xs font-bold uppercase tracking-widest items-center">
+              {/* DROPDOWN NOVIDADES - AGORA FORA DA CONDIÇÃO DE LOGIN */}
+              <div className="relative" ref={dropdownRef}>
+                <button
+                  onClick={() => setNovidadesOpen(!novidadesOpen)}
+                  className={`flex items-center gap-1 transition-all ${abaAtiva === 'novidades' ? 'text-[#00ff66] border-b-2 border-[#00ff66] pb-1' : 'text-[#8a9a8a] hover:text-[#00ff66]'}`}
+                >
+                  Novidades
+                  <ChevronDown size={12} className={`transition-transform ${novidadesOpen ? 'rotate-180' : ''}`} />
+                </button>
+                
+                {novidadesOpen && (
+                  <div className="absolute top-full left-0 mt-2 w-52 bg-[#0a120a] border border-[#1a2a1a] rounded-lg shadow-xl z-50 overflow-hidden">
+                    <button
+                      onClick={() => handleNovidadesClick('beta')}
+                      className="w-full text-left px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider text-[#8a9a8a] hover:bg-[#00ff66]/10 hover:text-[#00ff66] transition-colors"
+                    >
+                      Beta Aberto
+                    </button>
+                    <button
+                      onClick={() => handleNovidadesClick('dicas')}
+                      className="w-full text-left px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider text-[#8a9a8a] hover:bg-[#00ff66]/10 hover:text-[#00ff66] transition-colors border-t border-[#1a2a1a]"
+                    >
+                      Dicas para Mestres
+                    </button>
+                    <button
+                      onClick={() => handleNovidadesClick('tutorial')}
+                      className="w-full text-left px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider text-[#8a9a8a] hover:bg-[#00ff66]/10 hover:text-[#00ff66] transition-colors border-t border-[#1a2a1a]"
+                    >
+                      Tutorial
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* MENU EXCLUSIVO PARA USUÁRIOS LOGADOS */}
             {isUserLoggedIn && (
               <div className="hidden md:flex gap-10 text-xs font-bold uppercase tracking-widest items-center">
                 <button onClick={() => { setAbaAtiva('campanhas'); router.push('/campanhas'); }} className={`${abaAtiva === 'campanhas' ? 'text-[#00ff66] border-b-2 border-[#00ff66] pb-1' : 'text-[#8a9a8a] hover:text-[#00ff66]'} transition-all`}>
@@ -104,39 +142,6 @@ export default function Navbar({ abaAtiva = '', setAbaAtiva = () => {} }: Navbar
                 <button onClick={() => { setAbaAtiva('personagens'); router.push('/personagens'); }} className={`${abaAtiva === 'personagens' ? 'text-[#00ff66] border-b-2 border-[#00ff66] pb-1' : 'text-[#8a9a8a] hover:text-[#00ff66]'} transition-all`}>
                   Personagens
                 </button>
-                
-                <div className="relative" ref={dropdownRef}>
-                  <button
-                    onClick={() => setNovidadesOpen(!novidadesOpen)}
-                    className={`flex items-center gap-1 transition-all ${abaAtiva === 'novidades' ? 'text-[#00ff66] border-b-2 border-[#00ff66] pb-1' : 'text-[#8a9a8a] hover:text-[#00ff66]'}`}
-                  >
-                    Novidades
-                    <ChevronDown size={12} className={`transition-transform ${novidadesOpen ? 'rotate-180' : ''}`} />
-                  </button>
-                  
-                  {novidadesOpen && (
-                    <div className="absolute top-full left-0 mt-2 w-52 bg-[#0a120a] border border-[#1a2a1a] rounded-lg shadow-xl z-50 overflow-hidden">
-                      <button
-                        onClick={() => handleNovidadesClick('beta')}
-                        className="w-full text-left px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider text-[#8a9a8a] hover:bg-[#00ff66]/10 hover:text-[#00ff66] transition-colors"
-                      >
-                        Beta Aberto
-                      </button>
-                      <button
-                        onClick={() => handleNovidadesClick('dicas')}
-                        className="w-full text-left px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider text-[#8a9a8a] hover:bg-[#00ff66]/10 hover:text-[#00ff66] transition-colors border-t border-[#1a2a1a]"
-                      >
-                        Dicas para Mestres
-                      </button>
-                      <button
-                        onClick={() => handleNovidadesClick('tutorial')}
-                        className="w-full text-left px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider text-[#8a9a8a] hover:bg-[#00ff66]/10 hover:text-[#00ff66] transition-colors border-t border-[#1a2a1a]"
-                      >
-                        Tutorial
-                      </button>
-                    </div>
-                  )}
-                </div>
               </div>
             )}
 
