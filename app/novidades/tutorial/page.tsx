@@ -2,7 +2,7 @@
 import { useRouter } from 'next/navigation';
 import Navbar from '@/app/components/ui/navbar';
 import Footer from '@/app/components/ui/footer';
-import { ChevronLeft, Sword, Crown, Keyboard, MessageSquare, Dice1, Map, BookOpen, Users, Shield, Zap, Eye } from 'lucide-react';
+import { ChevronLeft, Sword, Crown, Keyboard, MessageSquare, Dice1, Map, BookOpen, Users, Shield, Ruler, Eye } from 'lucide-react';
 
 type Section = {
   id: string;
@@ -115,7 +115,7 @@ export default function TutorialPage() {
             </h1>
             <div className="w-20 h-1 bg-[#00ff66] shadow-[0_0_12px_#00ff66] mb-7" />
             <p className="text-[#6a7a6a] text-lg leading-relaxed font-serif italic max-w-2xl">
-              Tudo que você precisa saber para jogar D&amp;D 5e na plataforma — de jogadores iniciantes a mestres experientes.
+              Tudo que você precisa saber para jogar D&amp;D 5e na plataforma, de jogadores iniciantes a mestres experientes!
             </p>
           </header>
 
@@ -234,7 +234,7 @@ export default function TutorialPage() {
                 { icon: <Map size={15} />,    t: 'Mapa',    d: 'Mapa de fundo com grade personalizável. Faça zoom com scroll e navegue arrastando com o botão do mouse.' },
                 { icon: <Users size={15} />,  t: 'Tokens',  d: 'Representações visuais de personagens e criaturas. Cada jogador controla o próprio token.' },
                 { icon: <Shield size={15} />, t: 'Fichas',  d: 'Abra a ficha do seu personagem sem sair da mesa. Atualizações de HP são salvas em tempo real.' },
-                { icon: <Zap size={15} />,    t: 'Régua',   d: 'Meça distâncias no mapa em pés e metros. Ative na barra inferior e clique+arraste para medir.' },
+                { icon: <Ruler size={15} />,    t: 'Régua',   d: 'Meça distâncias no mapa em pés e metros. Ative na barra inferior e clique+arraste para medir.' },
               ].map(item => (
                 <Card key={item.t}>
                   <div className="flex items-center gap-2 mb-2">
