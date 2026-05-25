@@ -206,6 +206,7 @@ export default function TelaDeMesa() {
   const [gridDashed, setGridDashed] = useState<boolean>(false);
   const [gridDashFrequency, setGridDashFrequency] = useState<number>(5);
   const [gridDimension, setGridDimension] = useState<string>('5 pes'); // NOVO: dimensão do grid
+  const [campaignLoaded, setCampaignLoaded] = useState(false);
   const [showMapEditor, setShowMapEditor] = useState(false);
   const [mapPreviewUrl, setMapPreviewUrl] = useState<string | null>(null);
   const [showRuler, setShowRuler] = useState(false);
@@ -838,9 +839,11 @@ export default function TelaDeMesa() {
       x: token.x,
       y: token.y,
       raio: gridSize * footprintForCategory(token.sizeCategory) * 0.5,
-      nome: token.name || token.id,
+      nome: token.name || `Token-${token.id.slice(0, 4)}`,
       pvAtuais: token.hp,
       pvMax: token.maxHp,
+      characterId: token.characterId,
+      isMonster: token.isMonster,
     }));
   }, [gridSize, tokens]);
 
@@ -1435,6 +1438,8 @@ export default function TelaDeMesa() {
           }
         }
       }
+
+      setCampaignLoaded(true);
     };
     fetchUserRole();
   }, [campaignId]);
@@ -1725,7 +1730,7 @@ export default function TelaDeMesa() {
               })}
 
               <SpellCaster
-                isOpen={Boolean(activeSpellCast)}
+                isOpen={Boolean(activeSpellCast) && campaignLoaded}
                 spell={activeSpellCast}
                 campaignId={campaignId}
                 tokens={spellCasterTokens}
@@ -1737,6 +1742,10 @@ export default function TelaDeMesa() {
                 casterModificador={3}
                 onClose={() => setActiveSpellCast(null)}
                 onSpellCast={handleSpellCast}
+                onRollDice={async (formula, secret, mode) => {
+                  if (rollDiceFunc) return rollDiceFunc(formula, secret, mode);
+                  return null;
+                }}
               />
             </div>
           </div>

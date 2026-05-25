@@ -144,7 +144,7 @@ export default function SpellCasterMap({
         raio: t.size,
       }));
 
-      const resultados = aplicarEfeitoMagia(spellExecution, tokenPositions, 3);
+      const resultados = aplicarEfeitoMagia(spellExecution, tokenPositions, 3, previewArea.affectedTokens);
 
       // Aplicar dano aos tokens
       const updatedTokens = tokens.map((token) => {

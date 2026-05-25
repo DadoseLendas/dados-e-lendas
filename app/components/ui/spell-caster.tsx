@@ -12,7 +12,7 @@ import {
   parseDistanciaTexto,
   rolarDano,
 } from "@/utils/spell-executor";
-import { Zap, X } from "lucide-react";
+import { Zap, X, Crosshair, Circle, Square, ArrowRight, Shield } from "lucide-react";
 
 interface Token {
   id: string;
@@ -22,6 +22,8 @@ interface Token {
   nome: string;
   pvAtuais?: number;
   pvMax?: number;
+  characterId?: number | null;
+  isMonster?: boolean;
 }
 
 interface SpellCasterProps {
@@ -37,6 +39,7 @@ interface SpellCasterProps {
   casterModificador: number;
   onClose: () => void;
   onSpellCast?: (resultado: EffectResult[]) => void;
+  onRollDice?: (formula: string, isSecret: boolean, mode: 'normal' | 'advantage' | 'disadvantage') => Promise<any | null>;
 }
 
 export default function SpellCaster({
@@ -52,6 +55,7 @@ export default function SpellCaster({
   casterModificador,
   onClose,
   onSpellCast,
+  onRollDice,
 }: SpellCasterProps) {
   const supabase = createClient();
   const overlayRef = useRef<HTMLDivElement | null>(null);
@@ -98,6 +102,11 @@ export default function SpellCaster({
     if (!spell || !casterPoint) return null;
 
     const formatoTexto = ((spell as any).formato || "").toString().toLowerCase();
+    const areaTextoStr = (spell.areaTexto || "").toLowerCase();
+    const alcanceTextoStr = (spell.alcanceTexto || "").toLowerCase();
+
+    // Combine formato + area for shape keyword detection
+    const shapeText = formatoTexto || areaTextoStr;
 
     const areaUnits =
       parseDistanciaTexto(spell.areaTexto || null, gridUnit) ??
@@ -142,15 +151,51 @@ export default function SpellCaster({
       return Math.abs(px - cx) <= halfSide && Math.abs(py - cy) <= halfSide;
     };
 
-    // Determine shape
-    const isAura = formatoTexto.includes("aura");
-    const isCube = formatoTexto.includes("cubo") || formatoTexto.includes("quadrado") || formatoTexto.includes("caixa");
-    const isLine = formatoTexto.includes("linha") || formatoTexto.includes("line") || formatoTexto.includes("raio");
-    const isCircle = formatoTexto.includes("circulo") || formatoTexto.includes("círculo") || formatoTexto === "";
+    // Determine range type
+    const isPessoal = alcanceTextoStr.includes("pessoal") || alcanceTextoStr.includes("self");
+    const isToque = alcanceTextoStr.includes("toque") || alcanceTextoStr.includes("touch");
+
+    // Determine shape from formato + area combined
+    const isAura = shapeText.includes("aura");
+    const isCube = shapeText.includes("cubo") || shapeText.includes("quadrado") || shapeText.includes("caixa");
+    const isLine = shapeText.includes("linha") || shapeText.includes("line");
+    const isCircle = shapeText.includes("circulo") || shapeText.includes("círculo") || shapeText.includes("esfera");
+    // Single target: formato vazio + area sem palavra-chave de formato + não é pessoal
+    const isAlvo = !isAura && !isCube && !isLine && !isCircle && (formatoTexto === "" || shapeText.includes("alvo") || shapeText.includes("único") || shapeText.includes("unico"));
+
+    // Pessoal (self): caster is the target
+    if (isPessoal) {
+      const selfToken = tokens.find((t) => {
+        const dx = t.x - casterPoint.x;
+        const dy = t.y - casterPoint.y;
+        return Math.sqrt(dx * dx + dy * dy) < gs * 0.5;
+      });
+      if (isAura || isCircle) {
+        // Self-centered area effect
+        const raioPreview = areaUnits == null ? gs * 1.5 : (areaUnits / gv) * gs;
+        const atingidos = tokens.filter((token) => {
+          const distancia = Math.sqrt(Math.pow(token.x - casterPoint.x, 2) + Math.pow(token.y - casterPoint.y, 2));
+          return distancia <= token.raio + raioPreview;
+        });
+        return { x: casterPoint.x, y: casterPoint.y, raioPreview, inRange: true, atingidos };
+      }
+      // Self single target
+      const atingidos = selfToken ? [selfToken] : [];
+      return { x: casterPoint.x, y: casterPoint.y, raioPreview: gs * 0.5, inRange: true, atingidos };
+    }
+
+    // Touch: hits all tokens in the 8 adjacent squares around caster
+    if (isToque) {
+      const raioPreview = gs * 1.5;
+      const atingidos = tokens.filter((token) => {
+        const distancia = Math.sqrt(Math.pow(token.x - casterPoint.x, 2) + Math.pow(token.y - casterPoint.y, 2));
+        return distancia <= token.raio + raioPreview;
+      });
+      return { x: casterPoint.x, y: casterPoint.y, raioPreview, inRange: true, atingidos };
+    }
 
     // Aura: centered on caster
     if (isAura) {
-      if (!casterPoint) return null;
       const raioPreview = areaUnits == null ? gridSize * 1.5 : (areaUnits / gridValue) * gridSize;
       const atingidos = tokens.filter((token) => {
         const distancia = Math.sqrt(Math.pow(token.x - casterPoint.x, 2) + Math.pow(token.y - casterPoint.y, 2));
@@ -159,36 +204,47 @@ export default function SpellCaster({
       return { x: casterPoint.x, y: casterPoint.y, raioPreview, inRange: true, atingidos };
     }
 
-    // For other shapes compute inRange based on distance (in units) from caster to the target point
+    // Single target (alvo unico): closest token to click point
+    if (isAlvo) {
+      const inRange = rangeUnitsParsed == null ? true : distanceFromCasterUnits <= rangeUnitsParsed;
+      let closest: Token | null = null;
+      let closestDist = Infinity;
+      for (const token of tokens) {
+        const dist = Math.sqrt(Math.pow(token.x - point.x, 2) + Math.pow(token.y - point.y, 2));
+        if (dist < closestDist) {
+          closestDist = dist;
+          closest = token;
+        }
+      }
+      const atingidos = closest ? [closest] : [];
+      return { x: point.x, y: point.y, raioPreview: gs * 0.5, inRange, atingidos };
+    }
+
+    // For area shapes compute inRange based on distance from caster to target point
     const inRange = rangeUnitsParsed == null ? true : distanceFromCasterUnits <= rangeUnitsParsed;
 
-    // Circle (default)
-    if (isCircle || areaUnits == null) {
-      const raioPreview = areaUnits == null ? gs * 1.5 : (areaUnits / gv) * gs;
-      const atingidos = areaUnits == null
-        ? tokens.filter((token) => {
-            const distancia = Math.sqrt(Math.pow(token.x - point.x, 2) + Math.pow(token.y - point.y, 2));
-            return distancia <= token.raio + gs * 0.35;
-          })
-        : detectarTokensNaArea(tokens.map((t) => ({ id: t.id, x: t.x, y: t.y, raio: t.raio })), point, raioPreview).map((tokenId) => tokens.find((t) => t.id === tokenId)).filter(Boolean) as Token[];
-
+    // Circle / esfera
+    if (isCircle) {
+      if (areaUnits == null) return null;
+      const raioPreview = (areaUnits / gv) * gs;
+      const atingidos = detectarTokensNaArea(tokens.map((t) => ({ id: t.id, x: t.x, y: t.y, raio: t.raio })), point, raioPreview).map((tokenId) => tokens.find((t) => t.id === tokenId)).filter(Boolean) as Token[];
       return { x: point.x, y: point.y, raioPreview, inRange, atingidos };
     }
 
     // Cube / square
     if (isCube) {
       if (areaUnits == null) return null;
-      const sidePx = (areaUnits / gv) * gs; // side in px
+      const sidePx = (areaUnits / gv) * gs;
       const halfSide = sidePx / 2;
       const atingidos = tokens.filter((token) => isPointInsideSquare(token.x, token.y, point.x, point.y, halfSide + token.raio));
       return { x: point.x, y: point.y, raioPreview: halfSide, inRange, atingidos };
     }
 
-    // Line / ray
+    // Line / ray (from caster to target point)
     if (isLine) {
       if (!casterPoint) return null;
       const lengthPx = Math.sqrt(Math.pow(point.x - casterPoint.x, 2) + Math.pow(point.y - casterPoint.y, 2));
-      const widthPx = gs; // one square thick by default
+      const widthPx = gs;
       const atingidos = tokens.filter((token) => {
         const distToSeg = pointToSegmentDistance(token.x, token.y, casterPoint.x, casterPoint.y, point.x, point.y);
         return distToSeg <= token.raio + widthPx / 2;
@@ -196,10 +252,7 @@ export default function SpellCaster({
       return { x: (casterPoint.x + point.x) / 2, y: (casterPoint.y + point.y) / 2, raioPreview: lengthPx / 2, inRange, atingidos };
     }
 
-    // Fallback to circular
-    const raioPreview = areaUnits == null ? gs * 1.5 : (areaUnits / gv) * gs;
-    const atingidos = detectarTokensNaArea(tokens.map((t) => ({ id: t.id, x: t.x, y: t.y, raio: t.raio })), point, raioPreview).map((tokenId) => tokens.find((t) => t.id === tokenId)).filter(Boolean) as Token[];
-    return { x: point.x, y: point.y, raioPreview, inRange, atingidos };
+    return null;
   }, [casterPoint, gridSize, gridUnit, gridValue, spell, tokens]);
 
   useEffect(() => {
@@ -212,42 +265,44 @@ export default function SpellCaster({
   const atualizarPVsToken = async (tokenId: string, deltaPV: number) => {
     const token = tokens.find((t) => t.id === tokenId);
     if (!token) return;
+    try {
+      const { data, error } = await supabase
+        .from("campaign_tokens")
+        .select("data")
+        .eq("id", tokenId)
+        .single();
 
-    const { data, error } = await supabase
-      .from("campaign_tokens")
-      .select("data")
-      .eq("id", tokenId)
-      .single();
+      if (error || !data) {
+        console.warn("[PV] coluna data nao encontrada, HP salvo apenas localmente");
+        return;
+      }
 
-    if (error) {
-      console.error("Erro ao buscar dados do token:", error);
-      return;
+      const currentData = typeof data?.data === "string"
+        ? JSON.parse(data.data || "{}")
+        : (data?.data || {});
+
+      const currentPV = Number(token.pvAtuais ?? currentData.pvAtuais ?? token.pvMax ?? currentData.pvMax ?? 0);
+      const maxPV = Number(token.pvMax ?? currentData.pvMax ?? currentPV);
+      const nextPV = Math.max(0, Math.min(maxPV || 0, currentPV + deltaPV));
+
+      await supabase
+        .from("campaign_tokens")
+        .update({
+          data: JSON.stringify({
+            ...currentData,
+            pvAtuais: nextPV,
+            pvMax: maxPV,
+          }),
+        })
+        .eq("id", tokenId);
+    } catch (e) {
+      console.warn("[PV] erro ao persistir HP:", e);
     }
-
-    const currentData = typeof data?.data === "string"
-      ? JSON.parse(data.data || "{}")
-      : (data?.data || {});
-
-    const currentPV = Number(token.pvAtuais ?? currentData.pvAtuais ?? token.pvMax ?? currentData.pvMax ?? 0);
-    const maxPV = Number(token.pvMax ?? currentData.pvMax ?? currentPV);
-    const nextPV = Math.max(0, Math.min(maxPV || 0, currentPV + deltaPV));
-
-    await supabase
-      .from("campaign_tokens")
-      .update({
-        data: JSON.stringify({
-          ...currentData,
-          pvAtuais: nextPV,
-          pvMax: maxPV,
-        }),
-      })
-      .eq("id", tokenId);
-
   };
 
   const resolverNomesAlvos = (resultados: EffectResult[]) => {
     const nomes = resultados
-      .map((resultado) => tokens.find((token) => token.id === resultado.tokenId)?.nome || resultado.tokenId)
+      .map((resultado) => tokens.find((token) => token.id === resultado.tokenId)?.nome || `Token-${resultado.tokenId.slice(0, 4)}`)
       .filter(Boolean);
 
     const unicos = Array.from(new Set(nomes));
@@ -259,10 +314,17 @@ export default function SpellCaster({
 
   const salvarCastDoChatLog = async (spellToLog: SpellExecution, resultados: EffectResult[], kind: "dano" | "cura" | "efeito") => {
     const linhas = resultados.map((resultado) => {
+      const nome = tokens.find((t) => t.id === resultado.tokenId)?.nome || `Token-${resultado.tokenId.slice(0, 4)}`;
       if (kind === "cura") {
-        return `- ${resultado.tokenId}: curou ${Math.abs(resultado.danoRecebido)} PV`;
+        return `- ${nome}: curou ${Math.abs(resultado.danoRecebido)} PV`;
       }
-      return `- ${resultado.tokenId}: ${resultado.danoRecebido} de dano${resultado.salvou ? " (salvacao bem-sucedida)" : ""}`;
+      if (resultado.salvou && resultado.danoRecebido === 0) {
+        return `- ${nome}: 🛡️ sucesso crítico — nenhum dano`;
+      }
+      if (!resultado.salvou && resultado.danoRecebido > 0 && resultado.descricaoEfeito.includes("CRÍTICA")) {
+        return `- ${nome}: 💥 falha crítica — ${resultado.danoRecebido} de dano`;
+      }
+      return `- ${nome}: ${resultado.danoRecebido} de dano${resultado.salvou ? " (salvou, metade)" : ""}`;
     });
 
     const mensagem = [
@@ -304,6 +366,73 @@ export default function SpellCaster({
     });
   };
 
+  const mapSalvacaoParaAtributo = useCallback((tipo: string): string => {
+    const map: Record<string, string> = {
+      "força": "str", "for": "str", "strength": "str", "str": "str",
+      "destreza": "dex", "dex": "dex", "dexterity": "dex",
+      "constituição": "con", "constituicao": "con", "con": "con", "constitution": "con",
+      "inteligência": "int", "inteligencia": "int", "int": "int", "intelligence": "int",
+      "sabedoria": "wis", "sab": "wis", "wis": "wis", "wisdom": "wis",
+      "carisma": "cha", "car": "cha", "cha": "cha", "charisma": "cha",
+    };
+    return map[tipo.trim().toLowerCase()] || "dex";
+  }, []);
+
+  const safeJson = (v: any): Record<string, any> => {
+    if (typeof v === 'object' && v !== null) return v;
+    if (typeof v === 'string') try { return JSON.parse(v); } catch { return {}; }
+    return {};
+  };
+
+  const buscaDadosToken = useCallback(async (tokenId: string, characterId?: number | null): Promise<{ nome: string | null; bonusPorAtributo: Record<string, number> }> => {
+    const abbrs = ['str', 'dex', 'con', 'int', 'wis', 'cha'];
+    const zeroBonus = () => {
+      const b: Record<string, number> = {};
+      for (const a of abbrs) b[a] = 0;
+      return b;
+    };
+    try {
+      if (characterId) {
+        const { data: char } = await supabase
+          .from('characters')
+          .select('*')
+          .eq('id', characterId)
+          .maybeSingle();
+        if (char) {
+          const c = char as any;
+          const stats = safeJson(c.stats);
+          const st = safeJson(c.savingThrows);
+          const pb = Number(c.proficiencyBonus ?? 2);
+          const bonusPorAtributo: Record<string, number> = {};
+          for (const a of abbrs) {
+            const statVal = Number(stats[a]) || 10;
+            const mod = Math.floor((statVal - 10) / 2);
+            const proficient = st[a] === true;
+            bonusPorAtributo[a] = mod + (proficient ? pb : 0);
+          }
+          return { nome: c.name || null, bonusPorAtributo };
+        }
+      }
+      const { data: tok } = await supabase
+        .from('campaign_tokens')
+        .select('name, saving_throws')
+        .eq('id', tokenId)
+        .maybeSingle();
+      if (tok) {
+        const t = tok as any;
+        const saves = safeJson(t.saving_throws);
+        const bonusPorAtributo: Record<string, number> = {};
+        for (const a of abbrs) {
+          bonusPorAtributo[a] = Number(saves[a]) || 0;
+        }
+        return { nome: t.name || null, bonusPorAtributo };
+      }
+    } catch (e) {
+      console.error('[dadosToken] erro:', e);
+    }
+    return { nome: null, bonusPorAtributo: zeroBonus() };
+  }, [supabase]);
+
   const executeSpell = useCallback(async (point: { x: number; y: number }) => {
     if (!spell || !casterPoint) return;
 
@@ -313,10 +442,24 @@ export default function SpellCaster({
     try {
       setLoading(true);
 
+      // Determine if spell has an area or is single target
+      const formatoTexto = ((spell as any).formato || "").toString().toLowerCase();
+      const areaTextoStr = (spell.areaTexto || "").toLowerCase();
+      const alcanceTextoStr = (spell.alcanceTexto || "").toLowerCase();
+      const shapeText = formatoTexto || areaTextoStr;
+      const isPessoal = alcanceTextoStr.includes("pessoal") || alcanceTextoStr.includes("self");
+      const isToque = alcanceTextoStr.includes("toque") || alcanceTextoStr.includes("touch");
+      const isAura = shapeText.includes("aura");
+      const isCube = shapeText.includes("cubo") || shapeText.includes("quadrado") || shapeText.includes("caixa");
+      const isLine = shapeText.includes("linha") || shapeText.includes("line");
+      const isCircle = shapeText.includes("circulo") || shapeText.includes("círculo") || shapeText.includes("esfera");
+      const isSingleTarget = !isAura && !isCube && !isLine && !isCircle && (formatoTexto === "" || shapeText.includes("alvo") || shapeText.includes("único") || shapeText.includes("unico"));
+
       const areaUnits =
-        parseDistanciaTexto(spell.areaTexto || null, gridUnit) ??
-        (spell.areaRaio ? (spell.areaRaio / gs) * gv : null);
-      const areaRadiusPx = areaUnits == null ? gs * 1.5 : (areaUnits / gv) * gs;
+        isSingleTarget ? null :
+        (parseDistanciaTexto(spell.areaTexto || null, gridUnit) ??
+        (spell.areaRaio ? (spell.areaRaio / gs) * gv : null));
+      const areaRadiusPx = areaUnits == null ? undefined : (areaUnits / gv) * gs;
       const spellExecution: SpellExecution = {
         ...spell,
         posicao: point,
@@ -331,37 +474,142 @@ export default function SpellCaster({
         raio: t.raio,
       }));
 
+      // Resolve real names (and save bonuses) for all affected tokens from DB
+      const resolvedTokens = new Map<string, { nome: string | null; bonusPorAtributo: Record<string, number> }>();
+      const resolvePromises = preview.atingidos.map(async (t) => {
+        const tokenData = await buscaDadosToken(t.id, t.characterId);
+        resolvedTokens.set(t.id, tokenData);
+      });
+      await Promise.all(resolvePromises);
+
       const healing = isHealingSpell(spellExecution);
       const resultados: EffectResult[] = [];
+      let sentPerTargetMessages = false;
 
       if (healing) {
         const healParsed = parsearDano(spellExecution.danoRolagem || null);
         const healAmount = healParsed ? rolarDano(healParsed) : 0;
         for (const token of preview.atingidos) {
+          const realNome = resolvedTokens.get(token.id)?.nome || token.nome;
           resultados.push({
             tokenId: token.id,
             danoRecebido: -healAmount,
             salvou: false,
             condicoes: [],
-            descricaoEfeito: `Cura de ${healAmount} PV`,
+            descricaoEfeito: `${realNome} curou ${healAmount} PV`,
           });
           await atualizarPVsToken(token.id, healAmount);
         }
       } else if (spellExecution.danoRolagem) {
-        const damageResults = aplicarEfeitoMagia(spellExecution, tokenPositions, casterModificador);
-        resultados.push(...damageResults);
+        let danoTotal = 0;
+        const danoParsed = parsearDano(spellExecution.danoRolagem);
+        if (danoParsed) {
+          if (onRollDice) {
+            const rollResult = await onRollDice(spellExecution.danoRolagem!, false, 'normal');
+            danoTotal = rollResult?.finalValue ?? rolarDano(danoParsed);
+          } else {
+            danoTotal = rolarDano(danoParsed);
+          }
+        }
 
-        for (const resultado of damageResults) {
-          await atualizarPVsToken(resultado.tokenId, -resultado.danoRecebido);
+        // Save logic
+        if (spellExecution.salvacao && onRollDice) {
+          const saveAbil = mapSalvacaoParaAtributo(spellExecution.salvacao);
+          const cd = typeof spellExecution.cdSalvacao === 'number'
+            ? spellExecution.cdSalvacao
+            : 8 + (spellExecution.casterLevel || 1) + casterModificador;
+
+          for (const token of preview.atingidos) {
+            const td = resolvedTokens.get(token.id);
+            const realNome = td?.nome || token.nome;
+            const saveBonus = td?.bonusPorAtributo[saveAbil] ?? 0;
+
+            let rollTotal = 0;
+            let naturalRoll = 0;
+            const diceResult = await onRollDice('d20', false, 'normal');
+            if (diceResult) {
+              naturalRoll = diceResult.values[0] ?? diceResult.finalValue;
+              rollTotal = diceResult.finalValue;
+            } else {
+              naturalRoll = Math.floor(Math.random() * 20) + 1;
+              rollTotal = naturalRoll;
+            }
+            const totalWithBonus = rollTotal + saveBonus;
+
+            const isNat1 = naturalRoll === 1;
+            const isNat20 = naturalRoll === 20;
+            const salvou = isNat20 || (totalWithBonus >= cd && !isNat1);
+
+            let danoFinal = danoTotal;
+            if (isNat20) danoFinal = 0;
+            else if (isNat1) danoFinal = danoTotal * 2;
+            else if (salvou) danoFinal = Math.ceil(danoTotal / 2);
+
+            resultados.push({
+              tokenId: token.id,
+              danoRecebido: danoFinal,
+              salvou,
+              condicoes: [],
+              descricaoEfeito: isNat1
+                ? `${realNome}: 💥 FALHA CRÍTICA! Dano dobrado (${danoFinal})`
+                : isNat20
+                  ? `${realNome}: 🛡️ SUCESSO CRÍTICO! Nenhum dano`
+                  : salvou
+                    ? `${realNome}: Salvou! Metade do dano (${danoFinal})`
+                    : `${realNome}: Falhou! Dano total (${danoFinal})`,
+            });
+
+            await atualizarPVsToken(token.id, -danoFinal);
+
+            // Send save chat message
+            sentPerTargetMessages = true;
+            const { data: authData } = await supabase.auth.getUser();
+            const profileName = authData.user?.user_metadata?.full_name || authData.user?.email?.split('@')[0] || 'Mestre';
+            const saveLabel = spellExecution.salvacao.charAt(0).toUpperCase() + spellExecution.salvacao.slice(1).toLowerCase();
+            const saveSign = saveBonus >= 0 ? '+' : '';
+            const resultLabel = isNat1 ? '💥 FALHA CRÍTICA' : isNat20 ? '🛡️ SUCESSO CRÍTICO' : totalWithBonus >= cd ? '✅ Sucesso' : '❌ Falha';
+            await supabase.from('chat_messages').insert({
+              campaign_id: campaignId,
+              user_name: profileName,
+              sender_id: authData.user?.id ?? null,
+              receiver_id: null,
+              text: [
+                `🎲 Teste de Resistência — ${spellExecution.spellName}`,
+                `**Alvo:** ${realNome}`,
+                `**${saveLabel}:** d20 **${naturalRoll}** ${saveSign}${saveBonus} = **${totalWithBonus}** vs CD **${cd}** — ${resultLabel}`,
+                `**Dano recebido:** ${danoFinal} PV`,
+              ].join('\n'),
+              is_roll: true,
+              is_secret: false,
+              channel: 'campanha',
+              dice_type: 'd20',
+              roll_values: [naturalRoll],
+              final_value: totalWithBonus,
+            });
+          }
+        } else {
+          // No save: apply full damage to all targets
+          for (const token of preview.atingidos) {
+            const realNome = resolvedTokens.get(token.id)?.nome || token.nome;
+            resultados.push({
+              tokenId: token.id,
+              danoRecebido: danoTotal,
+              salvou: false,
+              condicoes: [],
+              descricaoEfeito: `${realNome} recebeu ${danoTotal} de dano`,
+            });
+            await atualizarPVsToken(token.id, -danoTotal);
+          }
         }
       } else {
         for (const token of preview.atingidos) {
+          const realNome = resolvedTokens.get(token.id)?.nome || token.nome;
           resultados.push({
             tokenId: token.id,
             danoRecebido: 0,
             salvou: false,
             condicoes: [],
-            descricaoEfeito: spellExecution.efeitoPrincipal || spellExecution.beneficioConcedido || spellExecution.restricaoConcedida || spellExecution.descricao || "Efeito sem dano.",
+            descricaoEfeito: `${realNome}: ${spellExecution.efeitoPrincipal || spellExecution.beneficioConcedido || spellExecution.restricaoConcedida || spellExecution.descricao || "Efeito sem dano."}`,
           });
         }
       }
@@ -371,7 +619,9 @@ export default function SpellCaster({
         areaRaio: areaRadiusPx,
       });
 
-      await salvarCastDoChatLog(spellExecution, resultados, healing ? "cura" : spellExecution.danoRolagem ? "dano" : "efeito");
+      if (!sentPerTargetMessages) {
+        await salvarCastDoChatLog(spellExecution, resultados, healing ? "cura" : spellExecution.danoRolagem ? "dano" : "efeito");
+      }
 
       setRecentCasts((prev) => [...prev, { spell: spellExecution, time: Date.now() }].slice(-10));
 
@@ -413,14 +663,27 @@ export default function SpellCaster({
 
   if (!isOpen || !spell) return null;
 
-  const areaLabel = spell.areaTexto || (spell.areaRaio ? `${spell.areaRaio}px` : "Alvo");
+  const formatoLabel = ((spell as any).formato || "").toString().toLowerCase();
+  const areaLabel = formatoLabel
+    ? `${formatoLabel}${spell.areaTexto ? ` (${spell.areaTexto})` : ""}`
+    : (spell.areaTexto || "Alvo único");
   const rangeLabel = spell.alcanceTexto || "Sem alcance definido";
   const previewColor = previewArea?.inRange ? "border-gray-300 bg-gray-500/20" : "border-red-400 bg-red-500/20";
 
   return (
     <div className="absolute inset-0 z-[120] bg-black/55 backdrop-blur-[2px]">
       <div className="absolute right-4 top-4 z-[121] flex items-center gap-2 rounded-2xl border border-white/10 bg-black/80 px-3 py-2 text-[11px] font-black uppercase tracking-[0.15em] text-white/75">
-        <Zap className="h-4 w-4 text-[#00ff66]" />
+        {formatoLabel.includes("aura") ? (
+          <Shield className="h-4 w-4 text-[#00ff66]" />
+        ) : formatoLabel.includes("linha") || formatoLabel.includes("line") ? (
+          <ArrowRight className="h-4 w-4 text-[#00ff66]" />
+        ) : formatoLabel.includes("cubo") || formatoLabel.includes("quadrado") ? (
+          <Square className="h-4 w-4 text-[#00ff66]" />
+        ) : formatoLabel.includes("alvo") || formatoLabel === "" ? (
+          <Crosshair className="h-4 w-4 text-[#00ff66]" />
+        ) : (
+          <Circle className="h-4 w-4 text-[#00ff66]" />
+        )}
         {spell.spellName}
         <button
           type="button"
@@ -449,17 +712,38 @@ export default function SpellCaster({
         {previewArea && (
           (() => {
             const formatoTexto = ((spell as any).formato || "").toString().toLowerCase();
-            const isCube = formatoTexto.includes("cubo") || formatoTexto.includes("quadrado") || formatoTexto.includes("caixa");
-            const isLine = formatoTexto.includes("linha") || formatoTexto.includes("line") || formatoTexto.includes("raio");
-            const isAura = formatoTexto.includes("aura");
+            const areaTextoStr = (spell.areaTexto || "").toLowerCase();
+            const alcanceTextoStr = (spell.alcanceTexto || "").toLowerCase();
+            const shapeText = formatoTexto || areaTextoStr;
+
+            const isPessoal = alcanceTextoStr.includes("pessoal") || alcanceTextoStr.includes("self");
+            const isToque = alcanceTextoStr.includes("toque") || alcanceTextoStr.includes("touch");
+            const isAura = shapeText.includes("aura");
+            const isCube = shapeText.includes("cubo") || shapeText.includes("quadrado") || shapeText.includes("caixa");
+            const isLine = shapeText.includes("linha") || shapeText.includes("line");
+            const isCircle = shapeText.includes("circulo") || shapeText.includes("círculo") || shapeText.includes("esfera");
+            const isAlvo = !isAura && !isCube && !isLine && !isCircle && (formatoTexto === "" || shapeText.includes("alvo") || shapeText.includes("único") || shapeText.includes("unico"));
+
+            if (isPessoal && !isAura && !isCircle) {
+              return (
+                <div className="absolute pointer-events-none" style={{ left: previewArea.x - 12, top: previewArea.y - 12 }}>
+                  <Shield className={`h-6 w-6 ${previewArea.inRange ? "text-[#00ff66]" : "text-red-400"}`} />
+                  {previewArea.atingidos.length > 0 && (
+                    <div className={`absolute -bottom-7 left-1/2 -translate-x-1/2 whitespace-nowrap rounded px-2 py-1 text-xs ${previewArea.inRange ? "bg-black/80 text-gray-100" : "bg-black/80 text-red-300"}`}>
+                      {previewArea.atingidos[0].nome} (você)
+                    </div>
+                  )}
+                </div>
+              );
+            }
 
             if (isCube) {
-              const size = previewArea.raioPreview * 2; // here raioPreview is halfSide
+              const size = previewArea.raioPreview * 2;
               return (
                 <div className="absolute pointer-events-none" style={{ left: previewArea.x - size / 2, top: previewArea.y - size / 2 }}>
                   <div className={`border-2 border-dashed ${previewColor.replace('rounded-full','')}`} style={{ width: size, height: size }} />
                   <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
-                    <Zap className={`h-7 w-7 ${previewArea.inRange ? "text-gray-100" : "text-red-300"}`} />
+                    <Square className={`h-6 w-6 ${previewArea.inRange ? "text-gray-100" : "text-red-300"}`} />
                   </div>
                   <div className={`absolute -bottom-6 left-1/2 -translate-x-1/2 rounded px-2 py-1 text-xs ${previewArea.inRange ? "bg-black/80 text-gray-100" : "bg-black/80 text-red-300"}`}>
                     {previewArea.atingidos.length} alvo(s)
@@ -485,7 +769,7 @@ export default function SpellCaster({
                     }}
                   />
                   <div className="absolute left-0 top-0 -translate-x-1/2 -translate-y-1/2">
-                    <Zap className={`h-7 w-7 ${previewArea.inRange ? "text-gray-100" : "text-red-300"}`} />
+                    <ArrowRight className={`h-6 w-6 ${previewArea.inRange ? "text-gray-100" : "text-red-300"}`} />
                   </div>
                   <div className={`absolute -bottom-6 left-1/2 -translate-x-1/2 rounded px-2 py-1 text-xs ${previewArea.inRange ? "bg-black/80 text-gray-100" : "bg-black/80 text-red-300"}`}>
                     {previewArea.atingidos.length} alvo(s)
@@ -494,7 +778,20 @@ export default function SpellCaster({
               );
             }
 
-            // Circle / Aura / Fallback
+            if (isAlvo) {
+              return (
+                <div className="absolute pointer-events-none" style={{ left: previewArea.x - 12, top: previewArea.y - 12 }}>
+                  <Crosshair className={`h-6 w-6 ${previewArea.inRange ? "text-[#00ff66]" : "text-red-400"}`} />
+                  {previewArea.atingidos.length > 0 && (
+                    <div className={`absolute -bottom-7 left-1/2 -translate-x-1/2 whitespace-nowrap rounded px-2 py-1 text-xs ${previewArea.inRange ? "bg-black/80 text-gray-100" : "bg-black/80 text-red-300"}`}>
+                      {previewArea.atingidos[0].nome}
+                    </div>
+                  )}
+                </div>
+              );
+            }
+
+            // Circle / Aura (centered)
             const size = previewArea.raioPreview * 2;
             const left = previewArea.x - previewArea.raioPreview;
             const top = previewArea.y - previewArea.raioPreview;
@@ -509,7 +806,11 @@ export default function SpellCaster({
                 />
 
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
-                  <Zap className={`h-7 w-7 ${previewArea.inRange ? "text-gray-100" : "text-red-300"}`} />
+                  {isAura ? (
+                    <Shield className={`h-7 w-7 ${previewArea.inRange ? "text-gray-100" : "text-red-300"}`} />
+                  ) : (
+                    <Circle className={`h-7 w-7 ${previewArea.inRange ? "text-gray-100" : "text-red-300"}`} />
+                  )}
                 </div>
 
                 <div className={`absolute -bottom-6 left-1/2 -translate-x-1/2 rounded px-2 py-1 text-xs ${previewArea.inRange ? "bg-black/80 text-gray-100" : "bg-black/80 text-red-300"}`}>

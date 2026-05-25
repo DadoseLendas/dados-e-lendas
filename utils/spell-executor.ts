@@ -165,25 +165,21 @@ export interface EffectResult {
 export function aplicarEfeitoMagia(
   spell: SpellExecution,
   tokenPosicoes: Array<{ id: string; x: number; y: number; raio: number }>,
-  casterModificador: number = 3
+  casterModificador: number = 3,
+  tokenIdsAlvos?: string[]
 ): EffectResult[] {
   const resultados: EffectResult[] = [];
 
-  // Detectar tokens atingidos
-  const tokensPosicao = tokenPosicoes.find(
-    (t) => t.x === spell.posicao?.x && t.y === spell.posicao?.y
-  );
-  if (!tokensPosicao) return resultados;
-
-  const raioExplosao = spell.areaRaio && spell.areaRaio > 0
-    ? spell.areaRaio
-    : calcularRaioExplosao(
-        spell.casterLevel || 0,
-        spell.areaFormato || "esfera",
-        casterModificador
-      );
-
-  const atingidos = detectarTokensNaArea(tokenPosicoes, spell.posicao!, raioExplosao);
+  const atingidos = tokenIdsAlvos ?? (() => {
+    const raioExplosao = spell.areaRaio && spell.areaRaio > 0
+      ? spell.areaRaio
+      : calcularRaioExplosao(
+          spell.casterLevel || 0,
+          spell.areaFormato || "esfera",
+          casterModificador
+        );
+    return detectarTokensNaArea(tokenPosicoes, spell.posicao!, raioExplosao);
+  })();
 
   // Calcular dano
   const danoParsed = parsearDano(spell.danoRolagem ?? null);
