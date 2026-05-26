@@ -89,6 +89,7 @@ type InventoryItem = {
   quantidade?: number;
   efeito?: string;
   desc?: string;
+  proficiente?: boolean;
 };
 
 type ItemCategoria = 'arma' | 'armadura' | 'consumivel' | 'item';
@@ -126,6 +127,7 @@ type InventoryFormState = {
   quantidade: string;
   efeito: string;
   desc: string;
+  proficiente: boolean;
 };
 
 const EMPTY_INVENTORY_FORM: InventoryFormState = {
@@ -140,6 +142,7 @@ const EMPTY_INVENTORY_FORM: InventoryFormState = {
   quantidade: '1',
   efeito: '',
   desc: '',
+  proficiente: false,
 };
 
 export default function PersonagensPage() {
@@ -317,6 +320,7 @@ export default function PersonagensPage() {
       quantidade: item.quantidade?.toString() || '1',
       efeito: item.efeito || '',
       desc: item.desc || '',
+      proficiente: item.proficiente || false,
     });
     setShowInventoryForm(true);
   };
@@ -329,6 +333,7 @@ export default function PersonagensPage() {
       name: newItem.nome.trim(),
       categoria: newItem.categoria,
       desc: newItem.desc.trim(),
+      proficiente: newItem.proficiente,
     };
 
     let normalizedItem: InventoryItem;
@@ -663,7 +668,11 @@ export default function PersonagensPage() {
                     min={1}
                     max={20}
                     value={activeCharacter.level ?? 1}
-                    onChange={(e) => updateCharacter('level', Math.min(20, Math.max(1, Number(e.target.value) || 1)))}
+                    onChange={(e) => {
+                      const nextValue = Math.min(20, Math.max(1, Number(e.target.value) || 1));
+                      const profBonus = Math.ceil(nextValue / 4) + 1;
+                      setActiveCharacter((prev) => prev ? { ...prev, level: nextValue, proficiencyBonus: profBonus } : prev);
+                    }}
                     className="w-full bg-black/40 border border-[#1a2a1a] p-1.5 text-base rounded text-[#00ff66] font-bold text-center"
                   />
                 </div>
@@ -1110,6 +1119,10 @@ export default function PersonagensPage() {
 
               {newItem.categoria === 'arma' && (
                 <>
+                  <div className="flex items-center gap-2 mb-1 mt-2">
+                    <input type="checkbox" id="proficiente_inv" checked={newItem.proficiente} onChange={(e) => setNewItem(prev => ({ ...prev, proficiente: e.target.checked }))} className="accent-[#00ff66] w-4 h-4 cursor-pointer" />
+                    <label htmlFor="proficiente_inv" className="text-[11px] text-[#4a5a4a] font-black uppercase tracking-widest cursor-pointer">Proficiente com esta arma</label>
+                  </div>
                   <select className="w-full bg-[#050a05] border border-[#1a2a1a] px-2 py-1.5 text-[14px] rounded text-white outline-none focus:border-[#00ff66]/50 transition-colors cursor-pointer" value={newItem.atributo} onChange={(e) => setNewItem(prev => ({ ...prev, atributo: e.target.value as WeaponAttribute }))}>
                     <option value="">Sem atributo</option>
                     {WEAPON_ATTRIBUTE_OPTIONS.map((opt) => <option key={opt} value={opt}>{weaponAttributeLabels[opt]}</option>)}
@@ -1158,26 +1171,26 @@ export default function PersonagensPage() {
         )}
               {/* POPUP ADICIONAR/EDITAR HABILIDADE */}
               {showSpellForm && (
-                <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80" onClick={(e) => e.target === e.currentTarget && setShowSpellForm(false)}>
-                  <div className="bg-[#0a120a] border border-[#1a2a1a] rounded-2xl p-6 w-[400px] shadow-[0_0_50px_rgba(0,0,0,0.95)] space-y-4">
-                    <h3 className="text-[#f1e5ac] text-sm font-black uppercase tracking-widest text-center">
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 p-4" onClick={(e) => e.target === e.currentTarget && setShowSpellForm(false)}>
+                  <div className="bg-[#0a120a] border border-[#1a2a1a] rounded-2xl p-6 w-full max-w-[600px] shadow-[0_0_50px_rgba(0,0,0,0.95)] space-y-4 max-h-[90vh] overflow-y-auto flex flex-col">
+                    <h3 className="text-[#f1e5ac] text-sm font-black uppercase tracking-widest text-center shrink-0">
                       {editingSpellId !== null ? 'Editar Habilidade' : 'Nova Habilidade'}
                     </h3>
-                    <div className="space-y-3">
-                      <div>
+                    <div className="space-y-3 flex-1 flex flex-col min-h-0">
+                      <div className="shrink-0">
                         <label className="text-[10px] text-[#4a5a4a] font-black uppercase tracking-widest block mb-1">Nome</label>
                         <input type="text" className="w-full bg-black/40 border border-[#1a2a1a] px-2 py-1 text-white rounded" value={spellForm.name} onChange={(e) => setSpellForm(prev => ({ ...prev, name: e.target.value }))} />
                       </div>
-                      <div>
+                      <div className="shrink-0">
                         <label className="text-[10px] text-[#4a5a4a] font-black uppercase tracking-widest block mb-1">Nível / Custo</label>
                         <input type="text" className="w-full bg-black/40 border border-[#1a2a1a] px-2 py-1 text-white rounded" value={spellForm.level} onChange={(e) => setSpellForm(prev => ({ ...prev, level: e.target.value }))} />
                       </div>
-                      <div>
-                        <label className="text-[10px] text-[#4a5a4a] font-black uppercase tracking-widest block mb-1">Descrição</label>
-                        <textarea rows={4} className="w-full bg-black/40 border border-[#1a2a1a] px-2 py-1 text-white rounded resize-none" value={spellForm.desc} onChange={(e) => setSpellForm(prev => ({ ...prev, desc: e.target.value }))} />
+                      <div className="flex-1 flex flex-col min-h-[150px]">
+                        <label className="text-[10px] text-[#4a5a4a] font-black uppercase tracking-widest block mb-1 shrink-0">Descrição</label>
+                        <textarea className="w-full bg-black/40 border border-[#1a2a1a] px-2 py-1 text-white rounded resize-y flex-1 min-h-[100px]" value={spellForm.desc} onChange={(e) => setSpellForm(prev => ({ ...prev, desc: e.target.value }))} />
                       </div>
                     </div>
-                    <div className="flex gap-2 pt-2">
+                    <div className="flex gap-2 pt-2 shrink-0">
                       <button onClick={() => { setShowSpellForm(false); setEditingSpellId(null); setSpellForm({ name: '', level: '', desc: '', tipo: 'Habilidade' }); }} className="flex-1 bg-transparent border border-[#1a2a1a] text-[#4a5a4a] hover:text-white uppercase text-[11px] font-black tracking-widest py-2 rounded-xl">Cancelar</button>
                       <button onClick={() => {
                         if (!spellForm.name.trim()) return;

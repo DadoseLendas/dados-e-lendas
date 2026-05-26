@@ -130,6 +130,7 @@ type InventoryItem = {
     quantidade?: number;
     efeito?: string;
     desc?: string;
+    proficiente?: boolean;
 };
 
 type InventoryFormState = {
@@ -144,6 +145,7 @@ type InventoryFormState = {
     quantidade: string;
     efeito: string;
     desc: string;
+    proficiente: boolean;
 };
 
 const EMPTY_FORM: InventoryFormState = {
@@ -158,6 +160,7 @@ const EMPTY_FORM: InventoryFormState = {
     quantidade: '1',
     efeito: '',
     desc: '',
+    proficiente: false,
 };
 
 type SpellFormState = {
@@ -271,7 +274,7 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
         }
     };
 
-    const buildWeaponFormula = (formula: string, attribute?: WeaponAttribute) => {
+    const buildWeaponFormula = (formula: string, attribute?: WeaponAttribute, isProficient?: boolean) => {
         const cleaned = formula.toLowerCase().replace(/\s+/g, '');
         const normalized = cleaned || '1d20';
         const match = normalized.match(/^(\d*)d(\d+)([+-]\d+)?$/);
@@ -281,13 +284,14 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
         const faces = parseInt(match[2]);
         const baseModifier = match[3] ? parseInt(match[3]) : 0;
         const attributeModifier = attribute ? getModifier(draft?.stats?.[attribute] ?? 0) : 0;
-        const totalModifier = baseModifier + attributeModifier;
+        const profBonus = isProficient ? (draft?.proficiencyBonus ?? 2) : 0;
+        const totalModifier = baseModifier + attributeModifier + profBonus;
 
         return `${quantity}d${faces}${totalModifier !== 0 ? (totalModifier > 0 ? `+${totalModifier}` : `${totalModifier}`) : ''}`;
     };
 
-    const rollWeaponFormula = async (itemName: string, formula: string, label: 'ataque' | 'dano', attribute?: WeaponAttribute) => {
-        const resolvedFormula = buildWeaponFormula(formula, attribute);
+    const rollWeaponFormula = async (itemName: string, formula: string, label: 'ataque' | 'dano', attribute?: WeaponAttribute, isProficient?: boolean) => {
+        const resolvedFormula = buildWeaponFormula(formula, attribute, isProficient);
         if (!resolvedFormula) {
             alert('Fórmula inválida. Use algo como 1d20+5, 2d6+3 ou d20.');
             return;
@@ -369,6 +373,7 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
             quantidade: item.quantidade?.toString() || '1',
             efeito: item.efeito || '',
             desc: item.desc || '',
+            proficiente: item.proficiente || false,
         });
         setEditingInventoryId(item.id);
         setShowInventoryForm(true);
@@ -383,6 +388,7 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
             name: newInventoryItem.nome.trim(),
             categoria: newInventoryItem.categoria,
             desc: newInventoryItem.desc.trim(),
+            proficiente: newInventoryItem.proficiente,
         };
 
         let payload: InventoryItem;
@@ -664,6 +670,10 @@ return (
                         </div>
                         {newInventoryItem.categoria === 'arma' && (
                             <div className="grid grid-cols-2 gap-2">
+                                <div className="col-span-2 flex items-center gap-2 mb-1">
+                                    <input type="checkbox" id="proficiente" checked={newInventoryItem.proficiente} onChange={e => setNewInventoryItem(prev => ({ ...prev, proficiente: e.target.checked }))} className="accent-[#00ff66] w-4 h-4 cursor-pointer" />
+                                    <label htmlFor="proficiente" className="text-[11px] text-[#4a5a4a] font-black uppercase tracking-widest cursor-pointer">Proficiente com esta arma</label>
+                                </div>
                                 <div>
                                     <label className="text-[10px] text-[#4a5a4a] font-black uppercase tracking-widest block mb-1">Fórmula de Ataque</label>
                                     <input type="text" placeholder="ex: 1d20+5" className={inputCls} value={newInventoryItem.ataque} onChange={e => setNewInventoryItem(prev => ({ ...prev, ataque: e.target.value }))} />
@@ -729,17 +739,17 @@ return (
 
         {/* POPUP ADICIONAR/EDITAR HABILIDADE (IGUAL AO INVENTÁRIO) */}
         {showSpellForm && (
-            <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 backdrop-blur-sm">
-                <div className="bg-[#0a120a] border border-[#1a2a1a] rounded-2xl p-6 w-[400px] shadow-[0_0_50px_rgba(0,0,0,0.95)] space-y-4 max-h-[90vh] overflow-y-auto">
-                    <h3 className="text-[#f1e5ac] text-sm font-black uppercase tracking-widest text-center">
+            <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+                <div className="bg-[#0a120a] border border-[#1a2a1a] rounded-2xl p-6 w-full max-w-[600px] shadow-[0_0_50px_rgba(0,0,0,0.95)] space-y-4 max-h-[90vh] overflow-y-auto flex flex-col">
+                    <h3 className="text-[#f1e5ac] text-sm font-black uppercase tracking-widest text-center shrink-0">
                         {editingSpellId !== null ? 'Editar Habilidade' : 'Nova Habilidade'}
                     </h3>
-                    <div className="space-y-3">
-                        <div>
+                    <div className="space-y-3 flex-1 flex flex-col min-h-0">
+                        <div className="shrink-0">
                             <label className="text-[10px] text-[#4a5a4a] font-black uppercase tracking-widest block mb-1">Nome da Habilidade</label>
                             <input type="text" className={inputCls} value={newSpellItem.name} onChange={e => setNewSpellItem(prev => ({ ...prev, name: e.target.value }))} />
                         </div>
-                        <div className="grid grid-cols-2 gap-2">
+                        <div className="grid grid-cols-2 gap-2 shrink-0">
                             <div>
                                 <label className="text-[10px] text-[#4a5a4a] font-black uppercase tracking-widest block mb-1">Tipo</label>
                                 <select className={selectCls} value={newSpellItem.tipo} onChange={e => setNewSpellItem(prev => ({ ...prev, tipo: e.target.value }))}>
@@ -754,12 +764,12 @@ return (
                                 <input type="text" placeholder="ex: 1º Círculo, 2 PM" className={inputCls} value={newSpellItem.level} onChange={e => setNewSpellItem(prev => ({ ...prev, level: e.target.value }))} />
                             </div>
                         </div>
-                        <div>
-                            <label className="text-[10px] text-[#4a5a4a] font-black uppercase tracking-widest block mb-1">Descrição</label>
-                            <textarea rows={4} className={inputCls + " resize-none"} value={newSpellItem.desc} onChange={e => setNewSpellItem(prev => ({ ...prev, desc: e.target.value }))} />
+                        <div className="flex-1 flex flex-col min-h-[150px]">
+                            <label className="text-[10px] text-[#4a5a4a] font-black uppercase tracking-widest block mb-1 shrink-0">Descrição</label>
+                            <textarea className={inputCls + " flex-1 min-h-[100px] resize-y"} value={newSpellItem.desc} onChange={e => setNewSpellItem(prev => ({ ...prev, desc: e.target.value }))} />
                         </div>
                     </div>
-                    <div className="flex gap-2 pt-2">
+                    <div className="flex gap-2 pt-2 shrink-0">
                         <button onClick={() => { resetSpellForm(); setShowSpellForm(false); }} className="flex-1 bg-transparent border border-[#1a2a1a] text-[#4a5a4a] hover:text-white uppercase text-[11px] font-black tracking-widest py-2 rounded-xl transition-colors">Cancelar</button>
                         <button onClick={addSpellItem} className="flex-1 bg-[#f1e5ac] text-black uppercase text-[11px] font-black tracking-widest py-2 rounded-xl hover:brightness-110 transition-all">Salvar</button>
                     </div>
@@ -856,7 +866,11 @@ return (
                                                         max={20}
                                                         className="mt-1 w-full bg-transparent text-2xl font-black text-white text-center outline-none"
                                                         value={levelValue}
-                                                        onChange={(e) => updateDraft('level', Number(e.target.value))}
+                                                        onChange={(e) => {
+                                                            const nextLevel = Number(e.target.value);
+                                                            const nextProf = Math.ceil(nextLevel / 4) + 1;
+                                                            setDraft(prev => prev ? { ...prev, level: nextLevel, proficiencyBonus: nextProf } : prev);
+                                                        }}
                                                     />
                                                 </div>
                                                 <div className="rounded-2xl border border-[#1a2a1a] bg-[#0a120a] p-2 text-center shadow-[0_0_12px_rgba(0,0,0,0.2)] w-24">
@@ -1133,7 +1147,7 @@ return (
                                                     </div>
                                                     <div className="flex gap-1 shrink-0" onClick={e => e.stopPropagation()}>
                                                         {item.ataque && (
-                                                            <button onClick={() => rollWeaponFormula(item.nome || item.name || 'arma', item.ataque ?? '', 'ataque', item.atributo)} className="bg-[#f1e5ac]/10 border border-[#f1e5ac]/20 text-[#f1e5ac] px-2 py-0.5 rounded text-[10px] font-black uppercase hover:bg-[#f1e5ac]/20 transition-colors">ATK</button>
+                                                            <button onClick={() => rollWeaponFormula(item.nome || item.name || 'arma', item.ataque ?? '', 'ataque', item.atributo, item.proficiente)} className="bg-[#f1e5ac]/10 border border-[#f1e5ac]/20 text-[#f1e5ac] px-2 py-0.5 rounded text-[10px] font-black uppercase hover:bg-[#f1e5ac]/20 transition-colors">ATK</button>
                                                         )}
                                                         <button onClick={() => editInventoryItem(item)} className="text-gray-400 hover:text-white p-1"><Pencil size={12} /></button>
                                                         <button onClick={() => removeInventoryItem(item.id)} className="text-red-500 hover:text-red-400 p-1"><Trash2 size={12} /></button>
