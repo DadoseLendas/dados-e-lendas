@@ -613,6 +613,7 @@ return (
                             </span>
                         )}
                     </div>
+                    
 
                     {/* Roll mode buttons */}
                     <div className="px-4 pb-2 grid grid-cols-3 gap-2">
