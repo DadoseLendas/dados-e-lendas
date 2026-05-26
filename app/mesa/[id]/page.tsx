@@ -3,7 +3,8 @@ import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { 
   UserRound, Users, Home, BookOpen, Map as MapIcon, 
-  ShieldCheck, ChevronLeft, ChevronRight, X, Upload, HelpCircle, Ruler, Trash2
+  ShieldCheck, ChevronLeft, ChevronRight, X, Upload, HelpCircle, Ruler, Trash2,
+  Dices, Sword, Sparkles, Move, Keyboard, MousePointer2
 } from 'lucide-react'; 
 import { FiBook } from 'react-icons/fi';
 import { GiSpellBook } from 'react-icons/gi';
@@ -154,6 +155,75 @@ const normalizeTokenSheet = (sheet: Partial<TokenSheet> | null | undefined): Tok
   abilitiesText: toStringValue(sheet?.abilitiesText),
   actionsText: toStringValue(sheet?.actionsText),
 });
+
+const TUTORIAL_VTT = {
+  jogador: [
+    {
+      titulo: "🧙‍♂️ Criando sua Lenda (Ficha)",
+      desc: "O primeiro passo para não morrer no primeiro encontro! No menu lateral, clique em 'Ficha'. Lá você define seu nome, raça e classe. O sistema já calcula seus bônus baseado nos atributos (10 é a média humana, acima disso você é um herói, abaixo... bom, boa sorte). Ao subir de nível, seu Bônus de Proficiência escala sozinho!",
+      detalhes: [
+        { item: "Pontos Iniciais", texto: "Distribua seus valores nos Atributos (FOR, DES, CON, INT, SAB, CAR). Eles afetam TUDO no jogo." },
+        { item: "Proficiências", texto: "Marque o círculo ao lado das perícias em que você é treinado para somar seu bônus de proficiência." },
+        { item: "Salvaguardas", texto: "São seus testes de resistência. Úteis para quando o mestre joga uma bola de fogo na sua cara." }
+      ]
+    },
+    {
+      titulo: "⚔️ Pancadaria e Magia",
+      desc: "Como fazer os inimigos pedirem arrego.",
+      detalhes: [
+        { item: "Ataque com Armas", texto: "No seu Inventário, clique no botão 'ATK' da arma. O sistema soma seu atributo + proficiência e joga no chat." },
+        { item: "Lançar Magias", texto: "No seu Grimório, clique no ícone de 'Lançar'. O cursor vai mudar no mapa: clique onde quer que a magia aconteça!" },
+        { item: "Dano", texto: "Após acertar o ataque, clique no valor de dano na sua ficha para rolar os dados de destruição." }
+      ]
+    },
+    {
+      titulo: "🎲 Dados e o Destino (Vantagem/Desvantagem)",
+      desc: "O motor do jogo são os dados de 20 lados (d20).",
+      detalhes: [
+        { item: "Comando de Chat", texto: "Digite '/r 1d20+5' para rolagens rápidas. O chat aceita fórmulas complexas tipo '2d6+1d4+3'." },
+        { item: "Vantagem (⬆️)", texto: "Role dois d20 e pegue o maior. Use quando o mestre está de bom humor ou você foi esperto." },
+        { item: "Desvantagem (⬇️)", texto: "Role dois d20 e pegue o menor. Acontece quando você está cego, caído ou a vida está difícil." },
+        { item: "Segredo", texto: "Marque a opção 'Segredo' no painel de dados para que apenas você e o mestre vejam o resultado." }
+      ]
+    },
+    {
+      titulo: "🗺️ Vida no Mapa",
+      desc: "Seu token é sua representação no mundo.",
+      detalhes: [
+        { item: "Movimentação", texto: "Clique e arraste seu token, ou use 'W A S D' para precisão milimétrica." },
+        { item: "Medir Distância", texto: "Use a ferramenta de 'Régua' na barra inferior. Clique e arraste para saber se o goblin está ao alcance da sua espada." },
+        { item: "Interação", texto: "Clique duplo no seu token abre sua ficha instantaneamente." }
+      ]
+    }
+  ],
+  mestre: [
+    {
+      titulo: "👑 O Poder Absoluto (Gestão da Mesa)",
+      desc: "Você é o deus desse mundo (mas tente ser um deus legal).",
+      detalhes: [
+        { item: "Biblioteca de Tokens", texto: "Clique no ícone de Escudo no menu lateral para puxar monstros e NPCs para o mapa." },
+        { item: "Editor de Mapa", texto: "Ícone de Mapa no menu lateral. Permite mudar a imagem de fundo, ajustar o tamanho do grid e a escala (metros/pés)." },
+        { item: "Fichas de Monstros", texto: "Clique duplo em qualquer monstro no mapa para abrir a ficha de estatísticas dele." }
+      ]
+    },
+    {
+      titulo: "📋 Fiscalizar Jogadores",
+      desc: "Sempre tem alguém tentando roubar no HP...",
+      detalhes: [
+        { item: "Lista de Jogadores", texto: "No menu lateral (ícone de Pessoas), você vê todos os personagens da mesa e pode abrir a ficha de qualquer um em modo leitura." },
+        { item: "Votos Secretos", texto: "Você recebe todas as rolagens secretas dos jogadores no seu chat. Eles não podem esconder nada de você!" }
+      ]
+    },
+    {
+      titulo: "🦾 Automação de Monstros",
+      desc: "Gerenciar 10 goblins nunca foi tão fácil.",
+      detalhes: [
+        { item: "Colar Ficha", texto: "Ao abrir a ficha de um monstro vazio, você pode colar o texto da ficha (do 5e.tools ou similar) e o sistema preenche TUDO sozinho." },
+        { item: "HP em Tempo Real", texto: "O HP dos monstros aparece como uma barra acima do token ou pode ser editado na ficha rápida." }
+      ]
+    }
+  ]
+};
 
 const CONDICOES_RPG = [
   { nome: "Confuso", desc: "Role um d10 no início de cada um de seus turnos para determinar seu comportamento.", tabela: [{ dado: "1", efeito: "Move-se em direção aleatória (d8). Não realiza ação." }, { dado: "2-6", efeito: "Não se move nem realiza ações neste turno." }, { dado: "7-8", efeito: "Ataque corpo a corpo contra alvo aleatório ao alcance." }, { dado: "9-10", efeito: "Pode agir e se mover normalmente." }] },
@@ -770,6 +840,9 @@ export default function TelaDeMesa() {
   const [fichaCharacterIdDM, setFichaCharacterIdDM] = useState<number | string | null>(null);
   const [playerCharacters, setPlayerCharacters] = useState<{ id: number; name: string; img: string | null; imgOffsetX: number; imgOffsetY: number }[]>([]);
   const [modalAjuda, setModalAjuda] = useState(false);
+  const [ajudaTab, setAjudaTab] = useState<'condicoes' | 'jogador' | 'mestre'>('jogador');
+  const [tutorialExpandido, setTutorialExpandido] = useState<string | null>(null);
+
   const [buscaCondicao, setBuscaCondicao] = useState("");
   const [itemExpandido, setItemExpandido] = useState<string | null>(null);
   const [rollDiceFunc, setRollDiceFunc] = useState<((formula: string, isSecret: boolean, mode: 'normal' | 'advantage' | 'disadvantage') => Promise<any | null>) | null>(null);
@@ -1677,70 +1750,142 @@ export default function TelaDeMesa() {
       </button>
 
       {modalAjuda && (
-        <div className="fixed bottom-20 left-6 z-[9998] w-80 sm:w-96 bg-[#0a0a0a]/95 border border-white/10 rounded-2xl shadow-2xl backdrop-blur-xl flex flex-col resize overflow-auto min-h-[300px] max-h-[70vh]">
-          <div className="p-4 border-b border-white/5 flex justify-between items-center bg-[#00ff66]/5">
-            <span className="text-[#00ff66] font-bold text-xs uppercase tracking-tighter">Manual de Condições</span>
+        <div className="fixed bottom-20 left-6 z-[9998] w-80 sm:w-96 bg-[#0a0a0a]/95 border border-white/10 rounded-2xl shadow-2xl backdrop-blur-xl flex flex-col resize overflow-hidden min-h-[300px] max-h-[70vh]">
+          <div className="p-4 border-b border-white/5 flex justify-between items-center bg-[#00ff66]/5 shrink-0">
+            <span className="text-[#00ff66] font-bold text-xs uppercase tracking-tighter">Ajuda Rápida</span>
             <button onClick={() => setModalAjuda(false)} className="text-white/20 hover:text-white"><X size={18}/></button>
           </div>
-          <div className="p-3">
-            <input 
-              type="text" 
-              placeholder="Buscar condição..." 
-              className="w-full bg-black/40 border border-white/5 rounded-lg py-2 px-3 text-xs text-white outline-none focus:border-[#00ff66]/30"
-              value={buscaCondicao}
-              onChange={(e) => setBuscaCondicao(e.target.value)}
-            />
+          <div className="flex bg-[#00ff66]/5 border-b border-white/5 shrink-0">
+             <button onClick={() => setAjudaTab('jogador')} className={`flex-1 py-3 text-[10px] font-black uppercase tracking-widest transition-colors ${ajudaTab === 'jogador' ? 'text-[#00ff66] border-b-2 border-[#00ff66]' : 'text-white/40 hover:text-white/70'}`}>Jogador</button>
+             <button onClick={() => setAjudaTab('mestre')} className={`flex-1 py-3 text-[10px] font-black uppercase tracking-widest transition-colors ${ajudaTab === 'mestre' ? 'text-[#00ff66] border-b-2 border-[#00ff66]' : 'text-white/40 hover:text-white/70'}`}>Mestre</button>
+             <button onClick={() => setAjudaTab('condicoes')} className={`flex-1 py-3 text-[10px] font-black uppercase tracking-widest transition-colors ${ajudaTab === 'condicoes' ? 'text-[#00ff66] border-b-2 border-[#00ff66]' : 'text-white/40 hover:text-white/70'}`}>Condições</button>
           </div>
-          <div className="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar">
-            {CONDICOES_RPG
-              .filter(c => c.nome.toLowerCase().includes(buscaCondicao.toLowerCase()))
-              .map((c, i) => {
-                const isExpanded = itemExpandido === c.nome;
-                return (
-                  <div key={i} className="border border-white/5 rounded-xl overflow-hidden bg-white/[0.02]">
-                    <button 
-                      onClick={() => setItemExpandido(isExpanded ? null : c.nome)}
-                      className="w-full p-3 flex justify-between items-center hover:bg-white/[0.05] transition-colors"
-                    >
-                      <span className={`text-xs font-bold uppercase ${isExpanded ? 'text-[#00ff66]' : 'text-white/60'}`}>{c.nome}</span>
-                      <ChevronRight size={14} className={`text-white/20 transition-transform ${isExpanded ? 'rotate-90 text-[#00ff66]' : ''}`} />
-                    </button>
-                    {isExpanded && (
-                      <div className="p-3 pt-0 text-[11px] text-white/70 leading-relaxed border-t border-white/5">
-                        <p className="mb-3 text-white/80">{c.desc}</p>
-                        {c.tabela && (
-                          <div className="space-y-1 mt-2">
-                            {c.tabela.map((t, idx) => (
-                              <div key={idx} className="flex gap-2 bg-black/40 p-2 rounded border border-white/5">
-                                <span className="text-[#00ff66] font-bold min-w-[30px]">{t.dado}</span>
-                                <span className="text-white/50">{t.efeito}</span>
+
+          <div className="flex-1 overflow-y-auto custom-scrollbar">
+            {ajudaTab === 'condicoes' ? (
+              <div className="p-3 space-y-2">
+                <div className="mb-3 shrink-0">
+                  <input 
+                    type="text" 
+                    placeholder="Buscar condição..." 
+                    className="w-full bg-black/40 border border-white/5 rounded-lg py-2 px-3 text-xs text-white outline-none focus:border-[#00ff66]/30"
+                    value={buscaCondicao}
+                    onChange={(e) => setBuscaCondicao(e.target.value)}
+                  />
+                </div>
+                {CONDICOES_RPG
+                  .filter(c => c.nome.toLowerCase().includes(buscaCondicao.toLowerCase()))
+                  .map((c, i) => {
+                    const isExpanded = itemExpandido === c.nome;
+                    return (
+                      <div key={i} className="border border-white/5 rounded-xl overflow-hidden bg-white/[0.02]">
+                        <button 
+                          onClick={() => setItemExpandido(isExpanded ? null : c.nome)}
+                          className="w-full p-3 flex justify-between items-center hover:bg-white/[0.05] transition-colors"
+                        >
+                          <span className={`text-xs font-bold uppercase ${isExpanded ? 'text-[#00ff66]' : 'text-white/60'}`}>{c.nome}</span>
+                          <ChevronRight size={14} className={`text-white/20 transition-transform ${isExpanded ? 'rotate-90 text-[#00ff66]' : ''}`} />
+                        </button>
+                        {isExpanded && (
+                          <div className="p-3 pt-0 text-[11px] text-white/70 leading-relaxed border-t border-white/5">
+                            <p className="mb-3 text-white/80">{c.desc}</p>
+                            {c.tabela && (
+                              <div className="space-y-1 mt-2">
+                                {c.tabela.map((t, idx) => (
+                                  <div key={idx} className="flex gap-2 bg-black/40 p-2 rounded border border-white/5">
+                                    <span className="text-[#00ff66] font-bold min-w-[30px]">{t.dado}</span>
+                                    <span className="text-white/50">{t.efeito}</span>
+                                  </div>
+                                ))}
                               </div>
-                            ))}
-                          </div>
-                        )}
-                        {c.niveis && (
-                          <div className="space-y-1 mt-2">
-                            {c.niveis.map((n, idx) => (
-                              <div key={idx} className="flex gap-2 text-white/50">
-                                <span className="text-[#00ff66]">•</span> {n}
+                            )}
+                            {c.niveis && (
+                              <div className="space-y-1 mt-2">
+                                {c.niveis.map((n, idx) => (
+                                  <div key={idx} className="flex gap-2 text-white/50">
+                                    <span className="text-[#00ff66]">•</span> {n}
+                                  </div>
+                                ))}
                               </div>
-                            ))}
-                          </div>
-                        )}
-                        {c.notas && (
-                          <div className="mt-3 pt-2 border-t border-white/5 text-[10px]">
-                            {c.notas.map((n, idx) => (
-                              <p key={idx} className="mb-2 text-white/40">
-                                {n.titulo && <strong className="text-[#00ff66]/70">{n.titulo}: </strong>} {n.texto}
-                              </p>
-                            ))}
+                            )}
+                            {c.notas && (
+                              <div className="mt-3 pt-2 border-t border-white/5 text-[10px]">
+                                {c.notas.map((n, idx) => (
+                                  <p key={idx} className="mb-2 text-white/40">
+                                    {n.titulo && <strong className="text-[#00ff66]/70">{n.titulo}: </strong>} {n.texto}
+                                  </p>
+                                ))}
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
-                    )}
+                    );
+                  })}
+              </div>
+            ) : (
+              <div className="p-3 space-y-2 pb-10">
+                {TUTORIAL_VTT[ajudaTab].map((t, i) => {
+                  const isExpanded = tutorialExpandido === t.titulo;
+                  return (
+                    <div key={i} className="border border-white/5 rounded-xl overflow-hidden bg-white/[0.02]">
+                      <button 
+                        onClick={() => setTutorialExpandido(isExpanded ? null : t.titulo)}
+                        className="w-full p-4 text-left hover:bg-white/[0.05] transition-colors"
+                      >
+                        <div className="flex justify-between items-center mb-1">
+                          <span className={`text-xs font-black uppercase tracking-tight ${isExpanded ? 'text-[#00ff66]' : 'text-white/80'}`}>{t.titulo}</span>
+                          <ChevronRight size={14} className={`text-white/20 transition-transform ${isExpanded ? 'rotate-90 text-[#00ff66]' : ''}`} />
+                        </div>
+                        {!isExpanded && <p className="text-[10px] text-white/40 line-clamp-1">{t.desc}</p>}
+                      </button>
+                      
+                      {isExpanded && (
+                        <div className="px-4 pb-4 space-y-4 border-t border-white/5 pt-3">
+                          <p className="text-[11px] text-white/70 italic leading-relaxed">{t.desc}</p>
+                          <div className="space-y-3">
+                            {t.detalhes.map((d, idx) => (
+                              <div key={idx} className="bg-black/40 border border-white/5 p-3 rounded-lg">
+                                <span className="text-[#00ff66] text-[10px] font-black uppercase block mb-1 tracking-tighter"># {d.item}</span>
+                                <p className="text-[11px] text-white/60">{d.texto}</p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+                
+                {/* Atalhos rápidos no final do Tutorial de Jogador */}
+                {ajudaTab === 'jogador' && (
+                  <div className="mt-6 pt-4 border-t border-white/5">
+                    <h5 className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] mb-3 text-center">Teclas de Atalho</h5>
+                    <div className="grid grid-cols-2 gap-2">
+                       <div className="bg-white/[0.03] p-2 rounded-lg flex justify-between items-center border border-white/5">
+                          <span className="text-[10px] text-white/40 font-bold">FICHA</span>
+                          <kbd className="bg-white/10 px-1.5 py-0.5 rounded text-[10px] font-black">F</kbd>
+                       </div>
+                       <div className="bg-white/[0.03] p-2 rounded-lg flex justify-between items-center border border-white/5">
+                          <span className="text-[10px] text-white/40 font-bold">MAGIAS</span>
+                          <kbd className="bg-white/10 px-1.5 py-0.5 rounded text-[10px] font-black">G</kbd>
+                       </div>
+                       <div className="bg-white/[0.03] p-2 rounded-lg flex justify-between items-center border border-white/5">
+                          <span className="text-[10px] text-white/40 font-bold">MOVER</span>
+                          <kbd className="bg-white/10 px-1.5 py-0.5 rounded text-[10px] font-black">WASD</kbd>
+                       </div>
+                       <div className="bg-white/[0.03] p-2 rounded-lg flex justify-between items-center border border-white/5">
+                          <span className="text-[10px] text-white/40 font-bold">ZOOM</span>
+                          <span className="text-[10px] text-white/60 font-black">SCROLL</span>
+                       </div>
+                    </div>
                   </div>
-                );
-              })}
+                )}
+              </div>
+            )}
+          </div>
+          <div className="p-2 border-t border-white/5 bg-black shrink-0 text-center">
+             <p className="text-[9px] text-white/20 uppercase font-medium">Se o mapa bugar ou a alma sair do corpo, aperte <strong className="text-white/40">F5</strong></p>
           </div>
         </div>
       )}
