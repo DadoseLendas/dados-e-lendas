@@ -1469,9 +1469,28 @@ export default function TelaDeMesa() {
           >
             <div ref={mapContentRef} className="relative pointer-events-auto">
               {!mapaUrl ? (
-                <div className="w-[1000px] h-[800px] flex flex-col items-center justify-center gap-4 text-white/10">
-                  <MapIcon size={64} strokeWidth={1} />
-                  <span className="text-[10px] uppercase font-black tracking-[0.2em]">Aguardando Mapa...</span>
+                <div className="w-[1000px] h-[800px] flex flex-col items-center justify-center gap-6 relative overflow-hidden select-none"
+                  style={{
+                    backgroundImage: `radial-gradient(ellipse 60% 50% at 50% 50%, #0d1a0d 0%, #060c06 60%, #030703 100%)`,
+                  }}
+                >
+                  {/* Grid sutil */}
+                  <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: 'linear-gradient(to right, rgba(0,255,102,0.04) 1px, transparent 1px), linear-gradient(to bottom, rgba(0,255,102,0.04) 1px, transparent 1px)', backgroundSize: '50px 50px' }} />
+                  {/* Glow central */}
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <div className="w-80 h-80 rounded-full" style={{ background: 'radial-gradient(circle, rgba(0,255,102,0.04) 0%, transparent 70%)' }} />
+                  </div>
+                  <div className="relative flex flex-col items-center gap-5 z-10">
+                    <div className="w-20 h-20 rounded-2xl border border-[#00ff66]/15 bg-black/40 flex items-center justify-center" style={{ boxShadow: '0 0 40px rgba(0,255,102,0.06)' }}>
+                      <MapIcon size={36} strokeWidth={1} className="text-[#00ff66]/30" />
+                    </div>
+                    <div className="text-center">
+                      <p className="text-[11px] uppercase font-black tracking-[0.3em] text-[#00ff66]/30 mb-1">Aguardando Mapa</p>
+                      {isDM && (
+                        <p className="text-[10px] text-white/15 tracking-wider">Use o ícone de mapa na barra lateral para fazer o upload.</p>
+                      )}
+                    </div>
+                  </div>
                 </div>
               ) : (
                 <img src={mapaUrl} className="max-w-none block opacity-80 shadow-2xl" alt="Map" />
@@ -1651,23 +1670,46 @@ export default function TelaDeMesa() {
       />
       
       {modalAtivo === 'Mapa' && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 backdrop-blur-sm p-6">
-          <div className="bg-[#0a0a0a] border border-[#00ff66]/20 p-10 rounded-[24px] w-full max-w-md relative shadow-[0_0_50px_rgba(0,255,102,0.1)]">
-            <button onClick={() => setModalAtivo(null)} className="absolute top-6 right-6 text-white/40 hover:text-[#00ff66] transition-colors">
-              <X size={20}/>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-md p-6">
+          <div className="bg-[#0d1a0d] border border-[#00ff66]/25 p-8 rounded-[24px] w-full max-w-md relative shadow-[0_0_80px_rgba(0,255,102,0.12),0_0_0_1px_rgba(0,255,102,0.05)]">
+            {/* Glow sutil no topo */}
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-px bg-gradient-to-r from-transparent via-[#00ff66]/40 to-transparent" />
+
+            <button onClick={() => setModalAtivo(null)} className="absolute top-5 right-5 w-8 h-8 flex items-center justify-center rounded-lg text-white/30 hover:text-[#00ff66] hover:bg-[#00ff66]/10 transition-all">
+              <X size={16}/>
             </button>
-            <h2 className="text-white text-2xl font-bold mb-10 uppercase tracking-[0.2em] text-center drop-shadow-[0_0_8px_rgba(255,255,255,0.3)]">
-              Carregar Mapa
-            </h2>
-            <div className="flex flex-col gap-8">
-              <label className="flex flex-col items-center justify-center gap-6 p-12 border-2 border-dashed border-white/5 rounded-3xl cursor-pointer hover:bg-[#00ff66]/[0.02] hover:border-[#00ff66]/30 group transition-all duration-500">
-                <div className="w-20 h-20 rounded-full bg-black border border-white/10 flex items-center justify-center group-hover:border-[#00ff66] shadow-[inset_0_0_20px_rgba(0,0,0,0.5)] group-hover:shadow-[0_0_20px_rgba(0,255,102,0.15)] transition-all">
-                  <Upload className="text-white/20 group-hover:text-[#00ff66] transition-all" size={32} />
-                </div>
-                <span className="text-white font-bold text-[11px] uppercase tracking-widest opacity-80">Arraste ou clique</span>
-                <input type="file" className="hidden" accept="image/*" onChange={(e) => handleFileUpload(e, 'Mapa')} />
-              </label>
+
+            <div className="mb-6">
+              <div className="flex items-center gap-2 mb-1">
+                <MapIcon size={16} className="text-[#00ff66]" />
+                <h2 className="text-[#00ff66] text-sm font-black uppercase tracking-[0.25em]">Carregar Mapa</h2>
+              </div>
+              <p className="text-white/30 text-[11px] pl-6">Substitui o mapa atual da campanha</p>
             </div>
+
+            <label className="flex flex-col items-center justify-center gap-5 p-8 border border-dashed border-white/10 rounded-2xl cursor-pointer hover:bg-[#00ff66]/[0.03] hover:border-[#00ff66]/40 group transition-all duration-300 bg-black/30">
+              <div className="w-16 h-16 rounded-2xl bg-black/60 border border-white/10 flex items-center justify-center group-hover:border-[#00ff66]/60 group-hover:bg-[#00ff66]/5 shadow-[inset_0_0_20px_rgba(0,0,0,0.5)] group-hover:shadow-[0_0_24px_rgba(0,255,102,0.1)] transition-all duration-300">
+                <Upload className="text-white/25 group-hover:text-[#00ff66] transition-all duration-300" size={28} />
+              </div>
+              <div className="text-center">
+                <span className="block text-white/70 group-hover:text-white font-bold text-[12px] uppercase tracking-widest transition-colors mb-1">Arraste ou clique para selecionar</span>
+                <span className="block text-white/25 text-[11px]">Limite: 7 MB</span>
+              </div>
+              <input type="file" className="hidden" accept="image/*" onChange={(e) => handleFileUpload(e, 'Mapa')} />
+            </label>
+
+            {/* Tipos de arquivo aceitos */}
+            <div className="mt-4 flex items-center justify-center gap-2 flex-wrap">
+              {['PNG', 'JPG', 'WEBP'].map(fmt => (
+                <span key={fmt} className="px-2.5 py-1 rounded-md bg-white/[0.04] border border-white/[0.07] text-[10px] font-black text-white/40 uppercase tracking-wider">
+                  {fmt}
+                </span>
+              ))}
+            </div>
+
+            <p className="mt-4 text-center text-[10px] text-white/20">
+              Mapas maiores podem demorar para carregar.
+            </p>
           </div>
         </div>
       )}
