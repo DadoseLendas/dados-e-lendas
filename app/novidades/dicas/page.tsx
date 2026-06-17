@@ -1,7 +1,7 @@
 "use client";
 import { useRouter } from 'next/navigation';
-import Navbar from '@/app/components/ui/navbar';
-import Footer from '@/app/components/ui/footer';
+import Navbar from '@/shared/components/navbar';
+import Footer from '@/shared/components/footer';
 import { ChevronLeft, BookOpen, Scroll, Coffee, Wand2 } from 'lucide-react';
 
 export default function DicasMestres() {

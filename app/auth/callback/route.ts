@@ -1,10 +1,22 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/utils/supabase/server'
 
+/**
+ * Garante que o parâmetro ?next= seja sempre um caminho relativo interno.
+ * Impede Open Redirect: new URL('https://evil.com', base) => 'https://evil.com'.
+ */
+function safeRedirectPath(next: string | null): string {
+  if (!next) return '/';
+  const trimmed = next.trim();
+  // Deve começar com '/' mas NÃO com '//' (protocol-relative URL)
+  if (trimmed.startsWith('/') && !trimmed.startsWith('//')) return trimmed;
+  return '/';
+}
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const code = searchParams.get('code')
-  const next = searchParams.get('next') ?? '/'
+  const next = safeRedirectPath(searchParams.get('next'))
 
   if (code) {
     const supabase = await createClient()

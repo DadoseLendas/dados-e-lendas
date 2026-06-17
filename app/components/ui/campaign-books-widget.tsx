@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Book, X, BookOpen, Plus, Trash2, ExternalLink, Image as ImageIcon } from 'lucide-react';
 import { createClient } from '@/utils/supabase/client';
-import PdfReaderModal from '@/app/components/ui/pdf-reader-modal';
+import PdfReaderModal from '@/shared/components/pdf-reader-modal';
 
 interface CampaignBook {
   id: string;

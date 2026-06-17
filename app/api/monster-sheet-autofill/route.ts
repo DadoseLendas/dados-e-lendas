@@ -10,17 +10,14 @@ export async function POST(request: NextRequest) {
     const campaignId = body?.campaignId as string | undefined;
     const tokenName = body?.tokenName as string | undefined;
 
-    console.log('[monster-sheet-autofill] request received:', { campaignId, tokenName, hasBody: Boolean(body) });
 
     if (!campaignId || !tokenName?.trim()) {
-      console.log('[monster-sheet-autofill] invalid request payload');
       return NextResponse.json({ error: 'campaignId e tokenName são obrigatórios' }, { status: 400 });
     }
 
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
-    console.log('[monster-sheet-autofill] auth user:', user?.id ?? null);
 
     if (!user) {
       return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
@@ -33,12 +30,10 @@ export async function POST(request: NextRequest) {
       .maybeSingle();
 
     if (campaignError || !campaign) {
-      console.log('[monster-sheet-autofill] campaign lookup failed:', campaignError?.message ?? null);
       return NextResponse.json({ error: 'Campanha não encontrada' }, { status: 404 });
     }
 
     if ((campaign as any).dm_id !== user.id) {
-      console.log('[monster-sheet-autofill] forbidden for user:', user.id, 'dm:', (campaign as any).dm_id);
       return NextResponse.json({ error: 'Apenas o mestre pode usar o auto-preenchimento' }, { status: 403 });
     }
 
@@ -49,25 +44,36 @@ export async function POST(request: NextRequest) {
       .order('created_at', { ascending: true });
 
     if (booksError) {
-      console.log('[monster-sheet-autofill] books lookup failed:', booksError.message);
       return NextResponse.json({ error: booksError.message }, { status: 500 });
     }
 
     if (!books?.length) {
-      console.log('[monster-sheet-autofill] no campaign books found');
       return NextResponse.json({ error: 'Nenhum livro encontrado na biblioteca da campanha' }, { status: 404 });
     }
 
     const tokenSheetFallback = buildEmptyMonsterSheet(tokenName.trim());
     let lastError: string | null = null;
 
+    // T-15: Validar que pdf_url é HTTPS antes de fazer fetch server-side (SSRF)
+    const isAllowedPdfUrl = (url: string): boolean => {
+      try {
+        const parsed = new URL(url);
+        if (parsed.protocol !== 'https:') return false;
+        // Bloquear IPs privados e localhost
+        const hostname = parsed.hostname;
+        if (/^(localhost|127\.\d+\.\d+\.\d+|10\.\d+|172\.(1[6-9]|2\d|3[01])\.|192\.168\.)/.test(hostname)) return false;
+        return true;
+      } catch { return false; }
+    };
+
     for (const book of books) {
       try {
-        console.log('[monster-sheet-autofill] trying book:', book.title, book.pdf_url);
+        if (!isAllowedPdfUrl(book.pdf_url)) {
+          continue; // Silenciosamente ignora URLs inválidas/internas
+        }
         const parsedSheet = await extractMonsterSheetFromPdf(book.pdf_url, tokenName.trim());
 
         if (parsedSheet) {
-          console.log('[monster-sheet-autofill] parsed sheet found in book:', book.title);
           return NextResponse.json({
             ok: true,
             sourceBook: {
@@ -82,11 +88,9 @@ export async function POST(request: NextRequest) {
         }
       } catch (error) {
         lastError = error instanceof Error ? error.message : 'Falha ao ler o PDF';
-        console.log('[monster-sheet-autofill] book failed:', book.title, lastError);
       }
     }
 
-    console.log('[monster-sheet-autofill] no match found, lastError:', lastError);
 
     return NextResponse.json(
       { error: lastError ?? 'Não foi possível encontrar uma ficha correspondente' },

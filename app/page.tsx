@@ -1,8 +1,8 @@
 "use client";
 import { useState, useEffect } from 'react'; 
 import { useRouter } from 'next/navigation';
-import Navbar from '@/app/components/ui/navbar';
-import Footer from '@/app/components/ui/footer';
+import Navbar from '@/shared/components/navbar';
+import Footer from '@/shared/components/footer';
 import { FileText, Dices, Map, ChevronRight } from 'lucide-react';
 import { createClient } from '@/utils/supabase/client';
 
@@ -24,8 +24,8 @@ export default function Home() {
   }, [fotos.length]);
 
   const handleStartAdventure = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    router.push(session ? '/campanhas' : '/login');
+    const { data: { user } } = await supabase.auth.getUser();
+    router.push(user ? '/campanhas' : '/login');
   };
 
   if (!mounted) {

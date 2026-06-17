@@ -2,6 +2,15 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Users, ChevronDown, GripHorizontal, Moon } from 'lucide-react';
 import { createClient } from '@/utils/supabase/client';
+import { fetchProfile } from '@/features/profile/services/profile-service';
+import { fetchCharacterById } from '@/features/character/services/character-service';
+import {
+  fetchCampaignMember,
+  fetchCampaignMembers,
+  fetchProfilesByIds,
+  fetchCharactersByIds,
+  fetchCampaignDmId,
+} from '@/features/mesa/services/mesa-service';
 
 // ---------------------------------------------------------------------------
 // Tipos
@@ -46,7 +55,7 @@ export default function PlayerStatusWidget({
   const supabase = useMemo(() => createClient(), []);
 
   // --- Estado do painel ---
-  const [isOpen, setIsOpen]   = useState(true);
+  const [isOpen, setIsOpen]   = useState(false);
   const [players, setPlayers] = useState<Map<string, PlayerPresence>>(new Map());
   const [myStatus, setMyStatus] = useState<StatusType>('online');
 
@@ -77,82 +86,51 @@ export default function PlayerStatusWidget({
 
     const init = async () => {
       // Perfil do usuário atual
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('display_name, avatar_url')
-        .eq('id', currentUserId)
-        .single();
-
+      const profile = await fetchProfile(currentUserId);
       const name = profile?.display_name ?? 'Aventureiro';
       setMyDisplayName(name);
       setMyAvatarUrl(profile?.avatar_url ?? null);
 
       // Personagem vinculado do usuário atual
-      const { data: myMember } = await supabase
-        .from('campaign_members')
-        .select('current_character_id')
-        .eq('campaign_id', campaignId)
-        .eq('user_id', currentUserId)
-        .maybeSingle();
+      const myMember = await fetchCampaignMember(campaignId, currentUserId);
 
       if (myMember?.current_character_id) {
-        const { data: myChar } = await supabase
-          .from('characters')
-          .select('name, img')
-          .eq('id', myMember.current_character_id)
-          .single();
+        const myChar = await fetchCharacterById(myMember.current_character_id);
         setMyCharacterName(myChar?.name ?? null);
-        setMyCharacterImg((myChar as any)?.img ?? null);
+        setMyCharacterImg(myChar?.img ?? null);
       }
 
       // Busca TODOS os membros da campanha para popular a lista inicial
-      // O mestre (dm_id) também é incluído via query à tabela campaigns
-      const { data: campaign } = await supabase
-        .from('campaigns')
-        .select('dm_id')
-        .eq('id', campaignId)
-        .single();
-
-      const { data: members } = await supabase
-        .from('campaign_members')
-        .select('user_id, current_character_id')
-        .eq('campaign_id', campaignId);
+      const dmId = await fetchCampaignDmId(campaignId);
+      const members = await fetchCampaignMembers(campaignId);
 
       // Agrega todos os user_ids: jogadores + mestre
       const allUserIds = [
-        ...(members ?? []).map((m: any) => m.user_id),
+        ...members.map((m: any) => m.user_id),
       ];
-      if (campaign?.dm_id && !allUserIds.includes(campaign.dm_id)) {
-        allUserIds.push(campaign.dm_id);
+      if (dmId && !allUserIds.includes(dmId)) {
+        allUserIds.push(dmId);
       }
 
       if (allUserIds.length === 0) return;
 
       // Busca perfis
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('id, display_name, avatar_url')
-        .in('id', allUserIds);
+      const profiles = await fetchProfilesByIds(allUserIds);
 
       // Busca personagens vinculados
-      const charIds = (members ?? [])
+      const charIds = members
         .map((m: any) => m.current_character_id)
         .filter(Boolean);
 
-      const { data: chars } = charIds.length > 0
-        ? await supabase
-            .from('characters')
-            .select('id, name, img')
-            .in('id', charIds)
-        : { data: [] };
+      const chars = charIds.length > 0 ? await fetchCharactersByIds(charIds) : [];
 
       // Monta mapa inicial — todos como ausente (o Presence sobrescreve)
       const initial = new Map<string, PlayerPresence>();
       for (const uid of allUserIds) {
-        const prof = (profiles ?? []).find((p: any) => p.id === uid);
-        const member = (members ?? []).find((m: any) => m.user_id === uid);
+        const prof = profiles.find((p: any) => p.id === uid);
+        const member = members.find((m: any) => m.user_id === uid);
         const char = member?.current_character_id
-          ? (chars ?? []).find((c: any) => c.id === member.current_character_id)
+          ? chars.find((c: any) => c.id === member.current_character_id)
           : null;
 
         initial.set(uid, {
@@ -358,6 +336,22 @@ export default function PlayerStatusWidget({
       window.removeEventListener('mouseup', handleMouseUp);
     };
   }, []);
+
+  // ---------------------------------------------------------------------------
+  // Fecha o painel ao clicar fora dele (ou em outro componente)
+  // ---------------------------------------------------------------------------
+  useEffect(() => {
+    if (!isOpen) return;
+    const handlePointerDown = (e: MouseEvent) => {
+      // Não fecha enquanto arrasta o painel
+      if (isDraggingRef.current) return;
+      if (widgetRef.current && !widgetRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handlePointerDown);
+    return () => document.removeEventListener('mousedown', handlePointerDown);
+  }, [isOpen]);
 
   // ---------------------------------------------------------------------------
   // Derivados

@@ -1,6 +1,6 @@
 "use client";
-import Navbar from '@/app/components/ui/navbar';
-import Footer from '@/app/components/ui/footer';
+import Navbar from '@/shared/components/navbar';
+import Footer from '@/shared/components/footer';
 import { useState } from 'react';
 import { Mail, Send, MessageSquare } from 'lucide-react';
 
