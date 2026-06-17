@@ -1,0 +1,2 @@
+remote: Permission to DadoseLendas/dados-e-lendas.git denied to OmiOOMI.
+fatal: unable to access 'https://github.com/DadoseLendas/dados-e-lendas.git/': The requested URL returned error: 403
