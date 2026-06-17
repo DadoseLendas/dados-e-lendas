@@ -35,8 +35,8 @@ export default function MapEditorModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/95 backdrop-blur-sm p-4">
-      <div className="bg-[#0a0a0a] border border-[#00ff66]/20 rounded-[24px] w-full max-w-4xl max-h-[90vh] flex flex-col shadow-[0_0_50px_rgba(0,255,102,0.1)]">
+    <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/95 backdrop-blur-sm p-4" onMouseDown={(e) => { if (e.target === e.currentTarget && !isLoading) onCancel(); }}>
+      <div className="bg-[#0a0a0a] border border-[#00ff66]/20 rounded-[24px] w-full max-w-4xl max-h-[90vh] flex flex-col shadow-[0_0_50px_rgba(0,255,102,0.1)]" onMouseDown={(e) => e.stopPropagation()}>
         <div className="p-6 border-b border-white/5 flex justify-between items-center">
           <h2 className="text-white text-2xl font-bold uppercase tracking-[0.2em] drop-shadow-[0_0_8px_rgba(255,255,255,0.3)]">
             Editor de Mapa

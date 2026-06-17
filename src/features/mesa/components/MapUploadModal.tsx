@@ -11,8 +11,8 @@ export default function MapUploadModal({ isOpen, onClose, onFileUpload }: MapUpl
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/95 backdrop-blur-sm p-6">
-      <div className="bg-[#0a0a0a] border border-[#00ff66]/20 p-10 rounded-[24px] w-full max-w-md relative shadow-[0_0_50px_rgba(0,255,102,0.1)]">
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/95 backdrop-blur-sm p-6" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="bg-[#0a0a0a] border border-[#00ff66]/20 p-10 rounded-[24px] w-full max-w-md relative shadow-[0_0_50px_rgba(0,255,102,0.1)]" onMouseDown={(e) => e.stopPropagation()}>
         <button onClick={onClose} className="absolute top-6 right-6 text-white/40 hover:text-[#00ff66] transition-colors">
           <X size={20} />
         </button>

@@ -176,6 +176,7 @@ export default function PlayerStatusWidget({
       // Os ausentes permanecem do mapa inicial
       setPlayers(prev => {
         const next = new Map(prev);
+        const presentIds = new Set(Object.keys(state));
         for (const [userId, presences] of Object.entries(state)) {
           const p = (presences as any[])[0];
           if (!p) continue;
@@ -186,9 +187,15 @@ export default function PlayerStatusWidget({
             characterName: existing?.characterName ?? p.characterName ?? null,
             characterImg:  existing?.characterImg  ?? p.characterImg  ?? null,
             avatarUrl:     existing?.avatarUrl     ?? p.avatarUrl     ?? null,
-            status:        p.status ?? 'online',
+            status:        (p.status as StatusType) ?? 'online',
             joinedAt:      p.joinedAt ?? new Date().toISOString(),
           });
+        }
+        // Quem sumiu do presenceState (saiu/desconectou) vira ausente — reduz o online
+        for (const [userId, player] of next) {
+          if (!presentIds.has(userId) && player.status !== 'ausente') {
+            next.set(userId, { ...player, status: 'ausente' });
+          }
         }
         return next;
       });
@@ -353,7 +360,13 @@ export default function PlayerStatusWidget({
   // ---------------------------------------------------------------------------
   // Derivados
   // ---------------------------------------------------------------------------
-  const playerList = Array.from(players.values()).sort((a, b) => {
+  // O meu próprio status é autoritativo localmente (toggle manual / aba oculta),
+  // sem depender do eco do servidor voltar — assim o contador cai na hora.
+  const playersArr = Array.from(players.values()).map(p =>
+    p.userId === currentUserId ? { ...p, status: myStatus } : p
+  );
+
+  const playerList = playersArr.sort((a, b) => {
     // Eu mesmo primeiro
     if (a.userId === currentUserId) return -1;
     if (b.userId === currentUserId) return 1;
@@ -362,8 +375,8 @@ export default function PlayerStatusWidget({
     return a.displayName.localeCompare(b.displayName);
   });
 
-  const onlineCount  = Array.from(players.values()).filter(p => p.status === 'online').length;
-  const totalCount   = players.size;
+  const onlineCount  = playersArr.filter(p => p.status === 'online').length;
+  const totalCount   = playersArr.length;
 
   // ---------------------------------------------------------------------------
   // Render

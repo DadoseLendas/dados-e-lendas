@@ -37,6 +37,9 @@ interface SpellCasterProps {
   gridUnit: 'm' | 'pes';
   casterLevel: number;
   casterModificador: number;
+  /** Converte coordenadas de tela (clientX/Y) para coordenadas do CONTEÚDO do mapa
+   *  (mesmo sistema dos tokens, já dividido pelo zoom). Passe getLocalPointFromMouse do MesaPage. */
+  resolvePoint?: (clientX: number, clientY: number) => { x: number; y: number } | null;
   onClose: () => void;
   onSpellCast?: (resultado: EffectResult[]) => void;
   onRollDice?: (formula: string, isSecret: boolean, mode: 'normal' | 'advantage' | 'disadvantage') => Promise<any | null>;
@@ -53,6 +56,7 @@ export default function SpellCaster({
   gridUnit,
   casterLevel,
   casterModificador,
+  resolvePoint,
   onClose,
   onSpellCast,
   onRollDice,
@@ -90,13 +94,16 @@ export default function SpellCaster({
     return /(cura|curar|curou|recuper|restaura|restaurar|healing|heal)/.test(corpus);
   }, []);
 
-  const getMousePoint = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+  const getMousePoint = useCallback((e: React.MouseEvent<HTMLDivElement>): { x: number; y: number } | null => {
+    // Usa a MESMA conversão dos tokens (divide pelo zoom, origem = mapContentRef),
+    // garantindo que mira e token fiquem alinhados em qualquer zoom/pan.
+    if (resolvePoint) return resolvePoint(e.clientX, e.clientY);
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
     return {
       x: e.clientX - rect.left,
       y: e.clientY - rect.top,
     };
-  }, [gridSize]);
+  }, [resolvePoint]);
 
   const buildPreview = useCallback((point: { x: number; y: number }) => {
     if (!spell || !casterPoint) return null;

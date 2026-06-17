@@ -22,6 +22,7 @@ export default function TokenLibraryWidget({ isOpen, onToggle, onAddToken, onUpl
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
+  const widgetRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetch('/assets/tokens/tokens.json')
@@ -29,6 +30,20 @@ export default function TokenLibraryWidget({ isOpen, onToggle, onAddToken, onUpl
       .then(data => setGalleryTokens(Array.isArray(data) ? data : []))
       .catch(() => setGalleryTokens([]));
   }, []);
+
+  // Fecha ao clicar fora (apenas no modo painel lateral, não-floating)
+  useEffect(() => {
+    if (!isOpen || floating) return;
+    const onDown = (e: MouseEvent) => {
+      if (widgetRef.current && !widgetRef.current.contains(e.target as Node)) {
+        setSelectedCategory(null);
+        setSearch('');
+        onToggle();
+      }
+    };
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, [isOpen, floating, onToggle]);
 
   const categories = Array.from(new Set(galleryTokens.map(t => t.category))).sort();
 
@@ -68,7 +83,7 @@ export default function TokenLibraryWidget({ isOpen, onToggle, onAddToken, onUpl
   );
 
   const renderContent = (fullHeight = true) => (
-    <div className={`bg-[#050a05] border border-[#1a2a1a] rounded-xl shadow-[0_0_40px_rgba(0,0,0,0.9)] overflow-hidden ${fullHeight ? 'flex flex-col h-full' : ''}`}>
+    <div className={`bg-[#050a05] border border-[#1a2a1a] rounded-xl shadow-[0_0_40px_rgba(0,0,0,0.9)] overflow-hidden ${fullHeight ? 'flex flex-col max-h-[80vh] w-64' : ''}`}>
       {header}
 
       {/* Pastas */}
@@ -265,9 +280,8 @@ export default function TokenLibraryWidget({ isOpen, onToggle, onAddToken, onUpl
   }
 
   return (
-    <div className="absolute left-16 top-1/2 -translate-y-1/2 z-50">
+    <div ref={widgetRef} className="absolute left-16 top-1/2 -translate-y-1/2 z-50">
       {isOpen && renderContent(true)}
     </div>
   );
 }
-
