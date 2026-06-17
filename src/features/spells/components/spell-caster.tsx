@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef, useMemo } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { createClient } from "@/utils/supabase/client";
 import {
   aplicarEfeitoMagia,
@@ -11,7 +11,7 @@ import {
   parsearDano,
   parseDistanciaTexto,
   rolarDano,
-} from '@/domain/spells/spell-executor';
+} from "@/domain/spells/spell-executor";
 import { Zap, X, Crosshair, Circle, Square, ArrowRight, Shield } from "lucide-react";
 
 interface Token {
@@ -37,9 +37,6 @@ interface SpellCasterProps {
   gridUnit: 'm' | 'pes';
   casterLevel: number;
   casterModificador: number;
-  /** Canal realtime já existente da mesa — reutilizado para broadcast de spell-cast,
-   *  evitando criação de canais efêmeros que causam mem  /** Canal realtime da mesa reutilizado para broadcast de spell-cast (evita memory leak T-08) */
-  realtimeChannel?: any;
   onClose: () => void;
   onSpellCast?: (resultado: EffectResult[]) => void;
   onRollDice?: (formula: string, isSecret: boolean, mode: 'normal' | 'advantage' | 'disadvantage') => Promise<any | null>;
@@ -56,13 +53,11 @@ export default function SpellCaster({
   gridUnit,
   casterLevel,
   casterModificador,
-  realtimeChannel,
   onClose,
   onSpellCast,
   onRollDice,
 }: SpellCasterProps) {
-  // createClient em useMemo para evitar nova instância a cada render (M-13)
-  const supabase = useMemo(() => createClient(), []);
+  const supabase = createClient();
   const overlayRef = useRef<HTMLDivElement | null>(null);
 
   // defensive defaults shared across functions
@@ -96,16 +91,10 @@ export default function SpellCaster({
   }, []);
 
   const getMousePoint = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    const el = e.currentTarget as HTMLElement;
-    const rect = el.getBoundingClientRect();
-    // Corrige o offset quando o mapa está com zoom (CSS transform: scale).
-    // rect.width é o tamanho renderizado (viewport), el.offsetWidth é o CSS size.
-    // Dividir pela escala converte de "pixels de viewport" para "pixels do mapa".
-    const scaleX = rect.width > 0 ? rect.width / el.offsetWidth : 1;
-    const scaleY = rect.height > 0 ? rect.height / el.offsetHeight : 1;
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
     return {
-      x: (e.clientX - rect.left) / scaleX,
-      y: (e.clientY - rect.top) / scaleY,
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top,
     };
   }, [gridSize]);
 
@@ -123,19 +112,10 @@ export default function SpellCaster({
       parseDistanciaTexto(spell.areaTexto || null, gridUnit) ??
       (spell.areaRaio ? (spell.areaRaio / gs) * gv : null);
 
-    const alcanceTextoLow = alcanceTextoStr;
-    const isPersonalSpell =
-      alcanceTextoLow.includes('pessoal') ||
-      alcanceTextoLow.includes('self') ||
-      alcanceTextoLow === '';
-
-    // Magias pessoais com área (ex: Luz, Bola de Fogo pessoal) centram no lançador
-    const effectivePoint = (isPersonalSpell && areaUnits && casterPoint) ? casterPoint : point;
-
     const rangeUnitsParsed = parseDistanciaTexto(spell.alcanceTexto || null, gridUnit);
 
     const distanceFromCasterPx = Math.sqrt(
-      Math.pow(effectivePoint.x - casterPoint.x, 2) + Math.pow(effectivePoint.y - casterPoint.y, 2)
+      Math.pow(point.x - casterPoint.x, 2) + Math.pow(point.y - casterPoint.y, 2)
     );
 
     // distance in map units (meters or feet) using grid conversion
@@ -247,7 +227,7 @@ export default function SpellCaster({
     if (isCircle) {
       if (areaUnits == null) return null;
       const raioPreview = (areaUnits / gv) * gs;
-      const atingidos = detectarTokensNaArea(tokens.map((t) => ({ id: t.id, x: t.x, y: t.y, raio: t.raio })), point, raioPreview).map((tokenId) => tokens.find((t) => t.id === tokenId)).filter(Boolean) as Token[];
+      const atingidos = detectarTokensNaArea(tokens.map((t) => ({ id: t.id, x: t.x, y: t.y, raio: t.raio })), point, raioPreview).map((tokenId: string) => tokens.find((t) => t.id === tokenId)).filter(Boolean) as Token[];
       return { x: point.x, y: point.y, raioPreview, inRange, atingidos };
     }
 
@@ -286,25 +266,34 @@ export default function SpellCaster({
     const token = tokens.find((t) => t.id === tokenId);
     if (!token) return;
     try {
-      // Usa colunas reais da tabela campaign_tokens (hit_points)
-      const { data: tokenRow, error } = await supabase
+      const { data, error } = await supabase
         .from("campaign_tokens")
-        .select("hit_points")
+        .select("data")
         .eq("id", tokenId)
         .single();
 
-      if (error) {
-        console.warn("[PV] erro ao buscar HP:", error.message);
+      if (error || !data) {
+        console.warn("[PV] coluna data nao encontrada, HP salvo apenas localmente");
         return;
       }
 
-      const currentPV = Number(token.pvAtuais ?? tokenRow?.hit_points ?? 0);
-      const maxPV = Number(token.pvMax ?? tokenRow?.hit_points ?? currentPV);
+      const currentData = typeof data?.data === "string"
+        ? JSON.parse(data.data || "{}")
+        : (data?.data || {});
+
+      const currentPV = Number(token.pvAtuais ?? currentData.pvAtuais ?? token.pvMax ?? currentData.pvMax ?? 0);
+      const maxPV = Number(token.pvMax ?? currentData.pvMax ?? currentPV);
       const nextPV = Math.max(0, Math.min(maxPV || 0, currentPV + deltaPV));
 
       await supabase
         .from("campaign_tokens")
-        .update({ hit_points: nextPV })
+        .update({
+          data: JSON.stringify({
+            ...currentData,
+            pvAtuais: nextPV,
+            pvMax: maxPV,
+          }),
+        })
         .eq("id", tokenId);
     } catch (e) {
       console.warn("[PV] erro ao persistir HP:", e);
@@ -315,8 +304,7 @@ export default function SpellCaster({
     const nomes = resultados
       .map((resultado) => {
         const rt = resolvedTokens?.get(resultado.tokenId);
-        const t = tokens.find((token) => token.id === resultado.tokenId);
-        return rt?.nome || t?.nome || resultado.tokenId.slice(0, 8);
+        return rt?.nome || tokens.find((token) => token.id === resultado.tokenId)?.nome || `Token-${resultado.tokenId.slice(0, 4)}`;
       })
       .filter(Boolean);
 
@@ -352,8 +340,7 @@ export default function SpellCaster({
 
     const linhas = resultados.map((resultado) => {
       const rt = resolvedTokens?.get(resultado.tokenId);
-      const _t = tokens.find((t) => t.id === resultado.tokenId);
-      const nome = rt?.nome || _t?.nome || resultado.tokenId.slice(0, 8);
+      const nome = rt?.nome || tokens.find((t) => t.id === resultado.tokenId)?.nome || `Token-${resultado.tokenId.slice(0, 4)}`;
       if (kind === "cura") {
         return `- ${nome}: curou ${Math.abs(resultado.danoRecebido)} PV`;
       }
@@ -438,7 +425,7 @@ export default function SpellCaster({
       if (characterId) {
         const { data: char } = await supabase
           .from('characters')
-          .select('id, name, level, stats, savingThrows, proficiencyBonus, class')
+          .select('*')
           .eq('id', characterId)
           .maybeSingle();
         if (char) {
@@ -668,10 +655,9 @@ export default function SpellCaster({
 
       setRecentCasts((prev) => [...prev, { spell: spellExecution, time: Date.now() }].slice(-10));
 
-      // Usa o canal da mesa já existente para broadcast, evitando canal efêmero orphan (T-08).
-      // Se não houver canal disponível, cria um temporário com cleanup imediato.
-      if (realtimeChannel) {
-        await realtimeChannel.send({
+      await supabase
+        .channel(`spell-effects-${campaignId}`)
+        .send({
           type: "broadcast",
           event: "spell-cast",
           payload: {
@@ -681,21 +667,6 @@ export default function SpellCaster({
             timestamp: Date.now(),
           },
         });
-      } else {
-        const tempChannel = supabase.channel(`spell-effects-${campaignId}`);
-        await tempChannel.send({
-          type: "broadcast",
-          event: "spell-cast",
-          payload: {
-            spell: spellExecution,
-            resultados,
-            animacao,
-            timestamp: Date.now(),
-          },
-        });
-        // Limpa imediatamente para evitar memory leak
-        supabase.removeChannel(tempChannel);
-      }
 
       setPreviewArea(null);
       setHoverPoint(null);
@@ -761,7 +732,11 @@ export default function SpellCaster({
         onClick={handleClick}
       >
         <div className="absolute left-4 top-4 z-[121] rounded-2xl border border-white/10 bg-black/80 px-3 py-2 text-[11px] font-bold text-white/75 shadow-[0_0_24px_rgba(0,0,0,0.5)]">
+          <div>Alcance: {rangeLabel}</div>
           <div>Área: {areaLabel}</div>
+          <div className={previewArea?.inRange ? "text-gray-200" : "text-red-300"}>
+            {previewArea?.inRange ? "Dentro do alcance" : "Fora do alcance"}
+          </div>
         </div>
 
         {previewArea && (
