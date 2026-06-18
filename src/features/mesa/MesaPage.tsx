@@ -288,6 +288,7 @@ export default function TelaDeMesa() {
                 gridSize={gridSize} gridValue={gridDistanceInfo.value}
                 gridUnit={gridDistanceInfo.unit === 'm' ? 'm' : 'pes'}
                 casterLevel={casterToken?.characterId ? 1 : 1} casterModificador={3}
+                resolvePoint={(cx, cy) => getLocalPointFromMouse(cx, cy, mapContentRef.current)}
                 onClose={() => setActiveSpellCast(null)}
                 onSpellCast={handleSpellCast}
                 onRollDice={async (formula, secret, mode) => {
