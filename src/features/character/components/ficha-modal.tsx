@@ -1,6 +1,8 @@
 'use client';
 import { useEffect, useState, useRef, useMemo } from 'react';
 import { createClient } from '@/utils/supabase/client';
+import type { ActiveEffect } from '@/features/mesa/utils/character-effects';
+import { setCharacterEffects } from '@/features/mesa/services/mesa-service';
 import {
     ArrowLeft, Shield, Zap, ShieldAlert, Sparkles, Save, Trash2, Pencil, Sword, ShieldHalf, FlaskConical, Backpack, Wand2, Eye, EyeOff, Plus, X
 } from 'lucide-react';
@@ -133,6 +135,7 @@ type Character = {
     ac: number;
     hp_current: number;
     hp_max: number;
+    active_effects?: ActiveEffect[];
     stats: { str: number; dex: number; con: number; int: number; wis: number; cha: number };
     savingThrows: Record<string, boolean>;
     skills: Record<string, boolean>;
@@ -375,6 +378,13 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
     const updateDraft = (field: string, value: unknown) =>
         setDraft(prev => prev ? { ...prev, [field]: value } : prev);
 
+    const removeEffect = async (effectId: string) => {
+        if (!draft) return;
+        const next = (draft.active_effects ?? []).filter(e => e.id !== effectId);
+        setDraft(prev => prev ? { ...prev, active_effects: next } : prev);
+        try { await setCharacterEffects(draft.id, next); } catch { /* ignore */ }
+    };
+
     const updateStat = (key: string, value: number) =>
         setDraft(prev => prev ? { ...prev, stats: { ...prev.stats, [key]: Math.floor(Number(value) || 0) } } : prev);
 
@@ -527,7 +537,7 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
                 .from('characters')
                 .update(payload)
                 .eq('id', draft.id)
-                .select('id, name, class, level, race, alignment, experiencePoints, proficiencyBonus, inspiration, ac, hp_current, hp_max, stats, savingThrows, skills, inventory, spells, img, currency, imgOffsetX, imgOffsetY, is_linked, owner_id, classLevels, spellSlots, preparedSpells, lastLongRest, customSkills')
+                .select('id, name, class, level, race, alignment, experiencePoints, proficiencyBonus, inspiration, ac, hp_current, hp_max, stats, savingThrows, skills, inventory, spells, img, currency, imgOffsetX, imgOffsetY, is_linked, owner_id, classLevels, spellSlots, preparedSpells, lastLongRest, customSkills, active_effects')
                 .single();
             if (!error && data) { saved = data as Character; saveError = null; break; }
             if (error) {
@@ -576,7 +586,7 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
             setDraft(null);
             const { data, error } = await supabase
                 .from('characters')
-                .select('id, name, class, level, race, alignment, experiencePoints, proficiencyBonus, inspiration, ac, hp_current, hp_max, stats, savingThrows, skills, inventory, spells, img, currency, imgOffsetX, imgOffsetY, is_linked, owner_id, classLevels, spellSlots, preparedSpells, lastLongRest, customSkills')
+                .select('id, name, class, level, race, alignment, experiencePoints, proficiencyBonus, inspiration, ac, hp_current, hp_max, stats, savingThrows, skills, inventory, spells, img, currency, imgOffsetX, imgOffsetY, is_linked, owner_id, classLevels, spellSlots, preparedSpells, lastLongRest, customSkills, active_effects')
                 .eq('id', characterId)
                 .single();
             if (!error && data) {
@@ -586,6 +596,25 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
             setLoading(false);
         };
         fetchCharacter();
+    }, [isOpen, characterId, supabase]);
+
+    // Item 7a: reflete em tempo real mudanças de PV feitas por fora (ex.: magia do mestre)
+    // na ficha aberta — tanto na visão do mestre quanto na do jogador.
+    useEffect(() => {
+        if (!isOpen || !characterId) return;
+        const channel = supabase
+            .channel(`ficha-${characterId}`)
+            .on(
+                'postgres_changes',
+                { event: 'UPDATE', schema: 'public', table: 'characters', filter: `id=eq.${characterId}` },
+                ({ new: row }) => {
+                    const r = row as { hp_current?: number; hp_max?: number; active_effects?: ActiveEffect[] };
+                    setDraft(prev => prev ? { ...prev, hp_current: r.hp_current ?? prev.hp_current, hp_max: r.hp_max ?? prev.hp_max, active_effects: r.active_effects ?? prev.active_effects } : prev);
+                    setInitialChar(prev => prev ? { ...prev, hp_current: r.hp_current ?? prev.hp_current, hp_max: r.hp_max ?? prev.hp_max, active_effects: r.active_effects ?? prev.active_effects } : prev);
+                }
+            )
+            .subscribe();
+        return () => { supabase.removeChannel(channel); };
     }, [isOpen, characterId, supabase]);
 
     useEffect(() => {
@@ -960,6 +989,26 @@ return (
                                                         />
                                                     </div>
                                                 </div>
+
+                                                {(draft.active_effects?.length ?? 0) > 0 && (
+                                                    <div className="mt-3 border-t border-[#1a2a1a] pt-3">
+                                                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[#4a5a4a] block mb-2">Efeitos ativos</span>
+                                                        <div className="flex flex-wrap gap-1.5">
+                                                            {(draft.active_effects ?? []).map((ef) => (
+                                                                <span
+                                                                    key={ef.id}
+                                                                    title={ef.origem ? `${ef.rotulo} — ${ef.origem}` : ef.rotulo}
+                                                                    className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold ${ef.tipo === 'beneficio' ? 'border-[#00ff66]/40 bg-[#00ff66]/10 text-[#00ff66]' : ef.tipo === 'restricao' ? 'border-red-500/40 bg-red-500/10 text-red-300' : 'border-yellow-500/40 bg-yellow-500/10 text-yellow-200'}`}
+                                                                >
+                                                                    <span className="max-w-[160px] truncate">{ef.rotulo}</span>
+                                                                    {!readOnly && (
+                                                                        <button type="button" onClick={() => removeEffect(ef.id)} className="opacity-60 hover:opacity-100" title="Remover efeito">×</button>
+                                                                    )}
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
                                             </div>
 
                                             <div className="grid grid-cols-2 gap-2">

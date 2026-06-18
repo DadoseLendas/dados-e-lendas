@@ -12,7 +12,9 @@ import {
   parseDistanciaTexto,
   rolarDano,
 } from "@/domain/spells/spell-executor";
-import { Zap, X, Crosshair, Circle, Square, ArrowRight, Shield } from "lucide-react";
+import { Zap, X, Crosshair, Circle, Square, ArrowRight, Shield, Check } from "lucide-react";
+import { efeitosDaMagia } from "@/features/mesa/utils/character-effects";
+import { addEffectsToCharacter, addEffectsToMonsterToken } from "@/features/mesa/services/mesa-service";
 
 interface Token {
   id: string;
@@ -37,6 +39,9 @@ interface SpellCasterProps {
   gridUnit: 'm' | 'pes';
   casterLevel: number;
   casterModificador: number;
+  /** Converte coordenadas de tela (clientX/Y) para coordenadas do CONTEÚDO do mapa
+   *  (mesmo sistema dos tokens, já dividido pelo zoom). Passe getLocalPointFromMouse do MesaPage. */
+  resolvePoint?: (clientX: number, clientY: number) => { x: number; y: number } | null;
   onClose: () => void;
   onSpellCast?: (resultado: EffectResult[]) => void;
   onRollDice?: (formula: string, isSecret: boolean, mode: 'normal' | 'advantage' | 'disadvantage') => Promise<any | null>;
@@ -53,6 +58,7 @@ export default function SpellCaster({
   gridUnit,
   casterLevel,
   casterModificador,
+  resolvePoint,
   onClose,
   onSpellCast,
   onRollDice,
@@ -74,6 +80,8 @@ export default function SpellCaster({
   } | null>(null);
   const [recentCasts, setRecentCasts] = useState<Array<{ spell: SpellExecution; time: number }>>([]);
   const [loading, setLoading] = useState(false);
+  // Alvos desmarcados pelo usuário no painel de alcance (item 6). Vazio = todos selecionados.
+  const [excludedIds, setExcludedIds] = useState<Set<string>>(new Set());
 
   const isHealingSpell = useCallback((currentSpell: SpellExecution) => {
     const corpus = [
@@ -90,13 +98,16 @@ export default function SpellCaster({
     return /(cura|curar|curou|recuper|restaura|restaurar|healing|heal)/.test(corpus);
   }, []);
 
-  const getMousePoint = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+  const getMousePoint = useCallback((e: React.MouseEvent<HTMLDivElement>): { x: number; y: number } | null => {
+    // Usa a MESMA conversão dos tokens (divide pelo zoom, origem = mapContentRef),
+    // garantindo que mira e token fiquem alinhados em qualquer zoom/pan.
+    if (resolvePoint) return resolvePoint(e.clientX, e.clientY);
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
     return {
       x: e.clientX - rect.left,
       y: e.clientY - rect.top,
     };
-  }, [gridSize]);
+  }, [resolvePoint]);
 
   const buildPreview = useCallback((point: { x: number; y: number }) => {
     if (!spell || !casterPoint) return null;
@@ -261,6 +272,11 @@ export default function SpellCaster({
       setPreviewArea(null);
     }
   }, [isOpen]);
+
+  // Zera a seleção de alvos ao trocar de magia ou fechar (item 6)
+  useEffect(() => {
+    setExcludedIds(new Set());
+  }, [spell, isOpen]);
 
   const atualizarPVsToken = async (tokenId: string, deltaPV: number) => {
     const token = tokens.find((t) => t.id === tokenId);
@@ -469,6 +485,11 @@ export default function SpellCaster({
     const preview = buildPreview(point);
     if (!preview || !preview.inRange) return;
 
+    // Item 6: aplica só aos alvos selecionados (não-excluídos) no painel de alcance.
+    // Reatribuir aqui faz todos os ramos do executeSpell respeitarem a seleção.
+    preview.atingidos = preview.atingidos.filter((t) => !excludedIds.has(t.id));
+    if (preview.atingidos.length === 0) { onClose(); return; }
+
     try {
       setLoading(true);
 
@@ -670,6 +691,19 @@ export default function SpellCaster({
 
       setPreviewArea(null);
       setHoverPoint(null);
+
+      // Item 7b: registra efeitos (condições + benefício/restrição) na ficha dos alvos selecionados.
+      // Aplica a TODOS os selecionados (mesmo magias sem dano, como buffs).
+      for (const alvo of preview.atingidos) {
+        const cond = resultados.find((r) => r.tokenId === alvo.id)?.condicoes ?? [];
+        const efeitos = efeitosDaMagia(spell, cond);
+        if (efeitos.length === 0) continue;
+        const tk = tokens.find((t) => t.id === alvo.id);
+        if (!tk) continue;
+        if (tk.characterId) void addEffectsToCharacter(tk.characterId, efeitos).catch(() => {});
+        else void addEffectsToMonsterToken(tk.id, efeitos).catch(() => {});
+      }
+
       onSpellCast?.(resultados);
       onClose();
     } catch (err) {
@@ -677,7 +711,7 @@ export default function SpellCaster({
     } finally {
       setLoading(false);
     }
-  }, [buildPreview, casterLevel, casterModificador, casterPoint, campaignId, gridSize, gridUnit, gridValue, isHealingSpell, onClose, onSpellCast, spell, supabase, tokens]);
+  }, [buildPreview, casterLevel, casterModificador, casterPoint, campaignId, excludedIds, gridSize, gridUnit, gridValue, isHealingSpell, onClose, onSpellCast, spell, supabase, tokens]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if (!spell || !isOpen) return;
@@ -723,6 +757,41 @@ export default function SpellCaster({
           <X className="h-3.5 w-3.5" />
         </button>
       </div>
+
+      {/* Item 6: alvos no alcance — contagem + nomes + seleção */}
+      {previewArea && previewArea.inRange && previewArea.atingidos.length > 0 && (
+        <div className="absolute right-4 top-16 z-[121] w-56 rounded-2xl border border-white/10 bg-black/85 p-3 shadow-[0_0_24px_rgba(0,0,0,0.5)]">
+          <div className="mb-2 flex items-center justify-between text-[10px] font-black uppercase tracking-[0.15em] text-[#00ff66]">
+            <span>No alcance</span>
+            <span>{previewArea.atingidos.filter((t) => !excludedIds.has(t.id)).length}/{previewArea.atingidos.length}</span>
+          </div>
+          <div className="max-h-48 space-y-1 overflow-y-auto">
+            {previewArea.atingidos.map((t) => {
+              const sel = !excludedIds.has(t.id);
+              return (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => setExcludedIds((prev) => {
+                    const next = new Set(prev);
+                    if (next.has(t.id)) next.delete(t.id); else next.add(t.id);
+                    return next;
+                  })}
+                  className={`flex w-full items-center gap-2 rounded-lg border px-2 py-1.5 text-left text-[11px] transition-colors ${sel ? "border-[#00ff66]/40 bg-[#00ff66]/10 text-white" : "border-white/10 text-white/40"}`}
+                >
+                  <span className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded border ${sel ? "border-[#00ff66] bg-[#00ff66] text-black" : "border-white/30"}`}>
+                    {sel && <Check className="h-2.5 w-2.5" />}
+                  </span>
+                  <span className="truncate">{t.nome}</span>
+                </button>
+              );
+            })}
+          </div>
+          <div className="mt-2 text-[9px] leading-tight text-white/40">
+            Clique nos nomes para incluir/excluir • clique no mapa para lançar
+          </div>
+        </div>
+      )}
 
       <div
         ref={overlayRef}

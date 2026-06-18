@@ -1,4 +1,6 @@
 import { createClient } from '@/utils/supabase/client';
+import type { ActiveEffect } from '@/features/mesa/utils/character-effects';
+import { mesclarEfeitos } from '@/features/mesa/utils/character-effects';
 
 export async function updateTokenRotation(id: string | number, rotation: number) {
   const supabase = createClient();
@@ -122,7 +124,7 @@ export async function fetchTokensByCampaignId(campaignId: string | number) {
   const supabase = createClient();
   const { data } = await supabase
     .from('campaign_tokens')
-    .select('id, url, name, x, y, rotation, character_id, is_monster, size_category')
+    .select('id, url, name, x, y, rotation, character_id, is_monster, size_category, hit_points, hp_current')
     .eq('campaign_id', campaignId);
   return data ?? [];
 }
@@ -162,4 +164,66 @@ export async function fetchCharactersByIdsWithOffset(ids: (string | number)[]) {
     .select('id, name, img, imgOffsetX, imgOffsetY')
     .in('id', ids);
   return data ?? [];
+}
+
+// --- Item 7a: aplicação de efeito de magia no PV (dano/cura), autoritativa ---
+// Lê o PV atual no banco e aplica o delta (cura = delta positivo, dano = negativo).
+// Nunca abaixo de 0; nunca acima do máximo. Não remove o token ao zerar.
+
+export async function applyHpDeltaToCharacter(characterId: string | number, delta: number) {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from('characters')
+    .select('hp_current, hp_max')
+    .eq('id', characterId)
+    .single();
+  if (error || !data) return null;
+  const max = (data as { hp_max?: number; hp_current?: number }).hp_max ?? (data as { hp_current?: number }).hp_current ?? 0;
+  const current = (data as { hp_current?: number }).hp_current ?? max;
+  const next = Math.max(0, max ? Math.min(max, current + delta) : current + delta);
+  const { error: upErr } = await supabase.from('characters').update({ hp_current: next }).eq('id', characterId);
+  if (upErr) throw new Error(upErr.message);
+  return next;
+}
+
+export async function applyHpDeltaToMonsterToken(tokenId: string | number, delta: number) {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from('campaign_tokens')
+    .select('hit_points, hp_current')
+    .eq('id', tokenId)
+    .single();
+  if (error || !data) return null;
+  const max = (data as { hit_points?: number; hp_current?: number }).hit_points ?? (data as { hp_current?: number }).hp_current ?? 0;
+  const current = (data as { hp_current?: number; hit_points?: number }).hp_current ?? (data as { hit_points?: number }).hit_points ?? 0;
+  const next = Math.max(0, max ? Math.min(max, current + delta) : current + delta);
+  const { error: upErr } = await supabase.from('campaign_tokens').update({ hp_current: next }).eq('id', tokenId);
+  if (upErr) throw new Error(upErr.message);
+  return next;
+}
+
+// --- Item 7b: efeitos ativos (condições/benefícios/restrições) na ficha/token ---
+
+export async function addEffectsToCharacter(characterId: string | number, novos: ActiveEffect[]) {
+  if (novos.length === 0) return;
+  const supabase = createClient();
+  const { data } = await supabase.from('characters').select('active_effects').eq('id', characterId).single();
+  const atuais = ((data as { active_effects?: ActiveEffect[] } | null)?.active_effects) ?? [];
+  const { error } = await supabase.from('characters').update({ active_effects: mesclarEfeitos(atuais, novos) }).eq('id', characterId);
+  if (error) throw new Error(error.message);
+}
+
+export async function setCharacterEffects(characterId: string | number, effects: ActiveEffect[]) {
+  const supabase = createClient();
+  const { error } = await supabase.from('characters').update({ active_effects: effects }).eq('id', characterId);
+  if (error) throw new Error(error.message);
+}
+
+export async function addEffectsToMonsterToken(tokenId: string | number, novos: ActiveEffect[]) {
+  if (novos.length === 0) return;
+  const supabase = createClient();
+  const { data } = await supabase.from('campaign_tokens').select('active_effects').eq('id', tokenId).single();
+  const atuais = ((data as { active_effects?: ActiveEffect[] } | null)?.active_effects) ?? [];
+  const { error } = await supabase.from('campaign_tokens').update({ active_effects: mesclarEfeitos(atuais, novos) }).eq('id', tokenId);
+  if (error) throw new Error(error.message);
 }

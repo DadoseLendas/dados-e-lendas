@@ -1,6 +1,7 @@
 'use client';
 
 import type { Token } from '@/features/mesa/types';
+import { computeTokenLabels } from '@/features/mesa/utils/token-labels';
 
 interface TokenLayerProps {
   tokens: Token[];
@@ -23,12 +24,14 @@ export default function TokenLayer({
   onTokenMouseDown,
   onOpenTokenSheet,
 }: TokenLayerProps) {
+  const tokenLabels = computeTokenLabels(tokens);
   return (
     <>
       {tokens.map((token) => {
         const footprint = footprintForCategory(token.sizeCategory);
         const displaySize = gridSize * footprint;
-        const labelHeight = token.characterId && token.name ? 18 : 0;
+        const labelText = tokenLabels.get(token.id);
+        const labelHeight = labelText ? 18 : 0;
 
         return (
           <div
@@ -87,9 +90,9 @@ export default function TokenLayer({
                 </div>
               )}
             </div>
-            {token.characterId && token.name && (
+            {labelText && (
               <span className="mt-1 text-[8px] font-bold text-white/80 bg-black/60 px-1.5 py-0.5 rounded-full whitespace-nowrap max-w-[80px] truncate text-center leading-tight flex-none">
-                {token.name}
+                {labelText}
               </span>
             )}
           </div>

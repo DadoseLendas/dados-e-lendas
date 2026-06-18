@@ -47,6 +47,8 @@ export function buildRealtimeCallbacks({
           imgOffsetX: 50,
           imgOffsetY: 50,
           sizeCategory: t.size_category ?? 'Medium',
+          hp: t.hp_current ?? t.hit_points ?? undefined,
+          maxHp: t.hit_points ?? undefined,
         } as Token];
       });
     },
