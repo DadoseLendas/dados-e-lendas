@@ -258,6 +258,7 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
     }, [supabase]);
 
     const rollD20 = (label: string, modifier: number) => {
+        if (readOnly) return; // mestre em modo visualização não rola pelo jogador
         setRollPopup({ label, modifier, isSecret: false });
     };
 
@@ -325,6 +326,7 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
     };
 
     const rollWeaponFormula = async (itemName: string, formula: string, label: 'ataque' | 'dano', attribute?: WeaponAttribute, isProficient?: boolean) => {
+        if (readOnly) return; // mestre em modo visualização não rola pelo jogador
         const resolvedFormula = buildWeaponFormula(formula, attribute, isProficient);
         if (!resolvedFormula) {
             alert('Fórmula inválida. Use algo como 1d20+5, 2d6+3 ou d20.');
@@ -889,7 +891,7 @@ return (
                                     )}
                                 </div>
 
-                            <div className="bg-black/65 border border-[#1a2a1a] rounded-2xl p-3 sm:p-4 space-y-4 shadow-[0_0_24px_rgba(0,0,0,0.35)] mb-6">
+                            <div className={`bg-black/65 border border-[#1a2a1a] rounded-2xl p-3 sm:p-4 space-y-4 shadow-[0_0_24px_rgba(0,0,0,0.35)] mb-6 ${readOnly ? 'pointer-events-none select-none' : ''}`}>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     {/* LADO ESQUERDO */}
                                     <div className="space-y-3">

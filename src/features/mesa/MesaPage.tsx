@@ -246,9 +246,27 @@ export default function TelaDeMesa() {
           >
             <div ref={mapContentRef} className="relative pointer-events-auto">
               {!mapaUrl ? (
-                <div className="w-[1000px] h-[800px] flex flex-col items-center justify-center gap-4 text-white/10">
-                  <MapIcon size={64} strokeWidth={1} />
-                  <span className="text-[10px] uppercase font-black tracking-[0.2em]">Aguardando Mapa...</span>
+                <div
+                  className="w-[1000px] h-[800px] flex flex-col items-center justify-center gap-6 relative overflow-hidden select-none"
+                  style={{ backgroundImage: `radial-gradient(ellipse 60% 50% at 50% 50%, #0d1a0d 0%, #060c06 60%, #030703 100%)` }}
+                >
+                  {/* Grid sutil */}
+                  <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: 'linear-gradient(to right, rgba(0,255,102,0.04) 1px, transparent 1px), linear-gradient(to bottom, rgba(0,255,102,0.04) 1px, transparent 1px)', backgroundSize: '50px 50px' }} />
+                  {/* Glow central */}
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <div className="w-80 h-80 rounded-full" style={{ background: 'radial-gradient(circle, rgba(0,255,102,0.04) 0%, transparent 70%)' }} />
+                  </div>
+                  <div className="relative flex flex-col items-center gap-5 z-10">
+                    <div className="w-20 h-20 rounded-2xl border border-[#00ff66]/15 bg-black/40 flex items-center justify-center" style={{ boxShadow: '0 0 40px rgba(0,255,102,0.06)' }}>
+                      <MapIcon size={36} strokeWidth={1} className="text-[#00ff66]/30" />
+                    </div>
+                    <div className="text-center">
+                      <p className="text-[11px] uppercase font-black tracking-[0.3em] text-[#00ff66]/30 mb-1">Aguardando Mapa</p>
+                      {isDM && (
+                        <p className="text-[10px] text-white/15 tracking-wider">Use o ícone de mapa na barra lateral para fazer o upload.</p>
+                      )}
+                    </div>
+                  </div>
                 </div>
               ) : (
                 <img src={mapaUrl} className="max-w-none block opacity-80 shadow-2xl" alt="Map" />

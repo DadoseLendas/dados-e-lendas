@@ -89,7 +89,7 @@ export default function MesaModals({
 
       {showFichaDM && fichaCharacterIdDM && (
         <FichaModal isOpen={showFichaDM} characterId={fichaCharacterIdDM} campaignId={campaignId}
-          readOnly={false}
+          readOnly
           onClose={onCloseFichaDM}
           onRollDice={rollDiceFunc ?? (async () => null)} />
       )}
@@ -119,7 +119,7 @@ export default function MesaModals({
         />
       )}
 
-      {modalAjuda && <HelpModal isOpen={modalAjuda} onToggle={onToggleAjuda} />}
+      <HelpModal isOpen={modalAjuda} onToggle={onToggleAjuda} />
     </>
   );
 }

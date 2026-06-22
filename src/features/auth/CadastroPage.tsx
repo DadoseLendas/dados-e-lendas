@@ -5,6 +5,7 @@ import { createClient } from '@/utils/supabase/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Playfair_Display, Inter } from 'next/font/google'
+import { Eye, EyeOff } from 'lucide-react'
 
 const playfair = Playfair_Display({ subsets: ['latin'] })
 const inter = Inter({ subsets: ['latin'] })
@@ -28,6 +29,11 @@ export default function SignupPage() {
   const [emailError, setEmailError] = useState(false)
   // LGPD Art. 8°: registro de consentimento obrigatório
   const [termsAccepted, setTermsAccepted] = useState(false)
+  // Ver senha (olho) nos campos de senha
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirm, setShowConfirm] = useState(false)
+  // Mensagem de sucesso do reenvio (substitui o alert() puro)
+  const [resendMsg, setResendMsg] = useState<string | null>(null)
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -129,6 +135,8 @@ export default function SignupPage() {
 
   const handleResendEmail = async () => {
     setLoading(true)
+    setResendMsg(null)
+    setErrorMsg(null)
     const { error } = await supabase.auth.resend({
       type: 'signup',
       email: formData.email,
@@ -137,7 +145,7 @@ export default function SignupPage() {
       }
     })
     if (error) setErrorMsg(error.message)
-    else alert("Pergaminho reenviado! Verifique sua caixa de entrada.")
+    else setResendMsg("Pergaminho reenviado! Verifique sua caixa de entrada (e o spam).")
     setLoading(false)
   }
 
@@ -160,6 +168,19 @@ export default function SignupPage() {
               Enviamos um pergaminho mágico para <strong>{formData.email}</strong>.
               <br/>Clique no link para ativar sua conta.
             </p>
+
+            {/* Popup de reenvio customizado (substitui o alert() puro) */}
+            {resendMsg && (
+              <div className="rounded-lg border border-[#00ff66]/50 bg-[#00ff66]/10 p-3 text-sm text-[#00ff66] text-center animate-in fade-in zoom-in duration-300 shadow-[inset_0_0_15px_rgba(0,255,102,0.08)]">
+                <span className="font-bold uppercase tracking-widest block mb-1 text-[10px] text-[#00ff66]/70">Reenviado</span>
+                {resendMsg}
+              </div>
+            )}
+            {errorMsg && (
+              <div className="rounded-lg border border-red-500/50 bg-red-900/20 p-3 text-sm text-red-200 text-center">
+                ⚠️ {errorMsg}
+              </div>
+            )}
 
             <div className="flex flex-col gap-3 pt-4">
                <button
@@ -256,14 +277,25 @@ export default function SignupPage() {
 
               <div>
                 <label className="block text-xs font-black text-[#4a5a4a] uppercase tracking-[0.2em] mb-2 ml-1">Senha</label>
-                <input
-                  name="password"
-                  type="password"
-                  placeholder='M1nhaS&nhaF0rt&_'
-                  required
-                  onChange={handleChange}
-                  className="w-full rounded bg-[#050a05] border border-[#1a2a1a] p-2.5 text-sm text-white focus:border-[#00ff66] focus:outline-none transition-colors placeholder-[#1a2a1a]"
-                />
+                <div className="relative">
+                  <input
+                    name="password"
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder='M1nhaS&nhaF0rt&_'
+                    required
+                    onChange={handleChange}
+                    className="w-full rounded bg-[#050a05] border border-[#1a2a1a] p-2.5 pr-10 text-sm text-white focus:border-[#00ff66] focus:outline-none transition-colors placeholder-[#1a2a1a]"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(v => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#4a5a4a] hover:text-[#00ff66] transition-colors"
+                    title={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+                    aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+                  >
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
                  <p className="text-[10px] text-[#4a5a4a] mt-1 ml-1">
                   Min. 8 caracteres, Maiúscula, Número e Especial.
                 </p>
@@ -271,17 +303,28 @@ export default function SignupPage() {
 
               <div>
                 <label className="block text-xs font-black text-[#4a5a4a] uppercase tracking-[0.2em] mb-2 ml-1">Confirmar Senha</label>
-                <input
-                  name="confirmPassword"
-                  type="password"
-                  required
-                  onChange={handleChange}
-                  className={`w-full rounded bg-[#050a05] border p-2.5 text-sm text-white focus:outline-none transition-colors ${
-                    formData.confirmPassword && formData.password !== formData.confirmPassword 
-                      ? 'border-red-500' 
-                      : 'border-[#1a2a1a] focus:border-[#00ff66]'
-                  }`}
-                />
+                <div className="relative">
+                  <input
+                    name="confirmPassword"
+                    type={showConfirm ? 'text' : 'password'}
+                    required
+                    onChange={handleChange}
+                    className={`w-full rounded bg-[#050a05] border p-2.5 pr-10 text-sm text-white focus:outline-none transition-colors ${
+                      formData.confirmPassword && formData.password !== formData.confirmPassword 
+                        ? 'border-red-500' 
+                        : 'border-[#1a2a1a] focus:border-[#00ff66]'
+                    }`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirm(v => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#4a5a4a] hover:text-[#00ff66] transition-colors"
+                    title={showConfirm ? 'Ocultar senha' : 'Mostrar senha'}
+                    aria-label={showConfirm ? 'Ocultar senha' : 'Mostrar senha'}
+                  >
+                    {showConfirm ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
               </div>
 
               {/* LGPD Art. 8°: checkbox de consentimento obrigatório */}

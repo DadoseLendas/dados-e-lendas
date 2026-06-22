@@ -49,6 +49,7 @@ export async function proxy(request: NextRequest) {
     '/', 
     '/cadastro', 
     '/login', 
+    '/esqueci-senha', 
     '/termos', 
     '/privacidade', 
     '/agradecimentos', 

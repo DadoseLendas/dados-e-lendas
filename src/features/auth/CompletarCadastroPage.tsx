@@ -5,6 +5,7 @@ import { createClient } from '@/utils/supabase/client'
 import { useRouter } from 'next/navigation'
 import { Playfair_Display, Inter } from 'next/font/google'
 import Image from 'next/image'
+import { Eye, EyeOff } from 'lucide-react'
 
 const playfair = Playfair_Display({ subsets: ['latin'] })
 const inter = Inter({ subsets: ['latin'] })
@@ -23,6 +24,9 @@ export default function CompleteProfilePage() {
   const [loading, setLoading] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [nicknameError, setNicknameError] = useState(false)
+  // Ver senha (olho) nos campos de senha
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirm, setShowConfirm] = useState(false)
 
   useEffect(() => {
     const checkSession = async () => {
@@ -197,30 +201,52 @@ export default function CompleteProfilePage() {
 
           <div>
             <label className="block text-xs font-black text-[#4a5a4a] uppercase tracking-[0.2em] mb-2 ml-1">SENHA</label>
-            <input
-              name="password"
-              type="password"
-              placeholder="••••••••"
-              value={formData.password}
-              onChange={handleChange}
-              className="w-full rounded bg-[#050a05] border border-[#1a2a1a] p-3 text-white focus:border-[#00ff66] focus:outline-none transition-colors placeholder-[#1a2a1a]"
-            />
+            <div className="relative">
+              <input
+                name="password"
+                type={showPassword ? 'text' : 'password'}
+                placeholder="••••••••"
+                value={formData.password}
+                onChange={handleChange}
+                className="w-full rounded bg-[#050a05] border border-[#1a2a1a] p-3 pr-10 text-white focus:border-[#00ff66] focus:outline-none transition-colors placeholder-[#1a2a1a]"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(v => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#4a5a4a] hover:text-[#00ff66] transition-colors"
+                title={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+                aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+              >
+                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
           </div>
 
            <div>
             <label className="block text-xs font-black text-[#4a5a4a] uppercase tracking-[0.2em] mb-2 ml-1">CONFIRMAR SENHA</label>
-            <input
-              name="confirmPassword"
-              type="password"
-              placeholder="••••••••"
-              value={formData.confirmPassword}
-              onChange={handleChange}
-              className={`w-full rounded bg-[#050a05] border p-3 text-white focus:outline-none transition-colors placeholder-[#1a2a1a] ${
-                formData.password && formData.confirmPassword && formData.password !== formData.confirmPassword 
-                  ? 'border-red-500' 
-                  : 'border-[#1a2a1a] focus:border-[#00ff66]'
-              }`}
-            />
+            <div className="relative">
+              <input
+                name="confirmPassword"
+                type={showConfirm ? 'text' : 'password'}
+                placeholder="••••••••"
+                value={formData.confirmPassword}
+                onChange={handleChange}
+                className={`w-full rounded bg-[#050a05] border p-3 pr-10 text-white focus:outline-none transition-colors placeholder-[#1a2a1a] ${
+                  formData.password && formData.confirmPassword && formData.password !== formData.confirmPassword 
+                    ? 'border-red-500' 
+                    : 'border-[#1a2a1a] focus:border-[#00ff66]'
+                }`}
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirm(v => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#4a5a4a] hover:text-[#00ff66] transition-colors"
+                title={showConfirm ? 'Ocultar senha' : 'Mostrar senha'}
+                aria-label={showConfirm ? 'Ocultar senha' : 'Mostrar senha'}
+              >
+                {showConfirm ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
           </div>
           
           <button
