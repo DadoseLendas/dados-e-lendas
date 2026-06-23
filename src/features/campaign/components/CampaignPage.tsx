@@ -5,7 +5,7 @@ import Footer from '@/shared/components/footer';
 import type { ChangeEvent } from 'react';
 import Card from '@/shared/components/card';
 import { FormModal, TextInput, ImageUpload, ModalButtons } from '@/shared/components/modal';
-import { Plus } from 'lucide-react';
+import { Plus, Check, Copy } from 'lucide-react';
 import { createClient } from '@/utils/supabase/client';
 
 interface Campaign {
@@ -56,6 +56,8 @@ export default function CampanhasPage() {
   const [dropdownOpen, setDropdownOpen] = useState<string | null>(null);
   const [confirmAction, setConfirmAction] = useState<{ id: string | number; type: 'delete' | 'leave' } | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const [copiedPopup, setCopiedPopup] = useState<{ code: string; name: string } | null>(null);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -495,8 +497,9 @@ export default function CampanhasPage() {
                   onDropdownToggle={() => setDropdownOpen((prev) => prev === String(campaign.id) ? null : String(campaign.id))}
                   dropdownRef={dropdownRef}
                   onCopyCode={() => {
-                    navigator.clipboard.writeText(campaign.code || '');
-                    alert('Código copiado!');
+                    const code = campaign.code || '';
+                    navigator.clipboard.writeText(code);
+                    setCopiedPopup({ code, name: campaign.name });
                   }}
                   onEdit={() => openEditModal(campaign)}
                   onDelete={campaign.isOwner ? () => { setDropdownOpen(null); setConfirmAction({ id: campaign.id, type: 'delete' }); } : () => { setDropdownOpen(null); setConfirmAction({ id: campaign.id, type: 'leave' }); }}
@@ -591,6 +594,48 @@ export default function CampanhasPage() {
                 className="flex-1 py-2 rounded-lg bg-red-900/60 border border-red-800 text-red-300 hover:bg-red-800/80 transition-colors font-semibold"
               >
                 {confirmAction.type === 'delete' ? 'Excluir' : 'Sair'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {copiedPopup && (
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80"
+          onClick={() => setCopiedPopup(null)}
+        >
+          <div
+            className="bg-[#0a120a] border border-[#1a2a1a] rounded-2xl p-8 w-[340px] flex flex-col items-center gap-4 shadow-[0_0_40px_rgba(0,255,102,0.15)]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-2 text-[#00ff66]">
+              <Check size={18} />
+              <span className="text-xs font-black uppercase tracking-[0.2em]">Código copiado</span>
+            </div>
+            <p className="text-[#8a9a8a] text-xs text-center">
+              Compartilhe este código para convidar jogadores para{' '}
+              <strong className="text-[#f1e5ac]">{copiedPopup.name}</strong>.
+            </p>
+            <div className="w-full rounded-xl border border-[#00ff66]/30 bg-black/40 px-4 py-4 text-center">
+              <span className="text-[#00ff66] text-3xl font-black tracking-[0.3em] font-mono select-all">
+                {copiedPopup.code}
+              </span>
+            </div>
+            <div className="flex gap-3 w-full">
+              <button
+                type="button"
+                onClick={() => navigator.clipboard.writeText(copiedPopup.code)}
+                className="flex-1 py-2 rounded-lg border border-[#2a3a2a] text-[#a0a0a0] hover:text-white hover:border-[#3a4a3a] transition-colors text-xs font-bold uppercase flex items-center justify-center gap-1"
+              >
+                <Copy size={13} /> Copiar de novo
+              </button>
+              <button
+                type="button"
+                onClick={() => setCopiedPopup(null)}
+                className="flex-1 py-2 rounded-lg bg-[#00ff66] text-black hover:brightness-110 transition-all text-xs font-black uppercase"
+              >
+                Fechar
               </button>
             </div>
           </div>

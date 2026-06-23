@@ -351,6 +351,15 @@ export default function ChatWidget({ campaignId, isDiceReady, onRollDice }: Chat
     prevMessagesLength.current = messages.length;
   }, [messages, isOpen]);
 
+  // Ao trocar de aba (Campanha <-> Fichas), volta o scroll para o final
+  // em vez de mostrar a conversa desde o começo.
+  useEffect(() => {
+    if (!isOpen) return;
+    setTimeout(() => {
+      chatEndRef.current?.scrollIntoView({ behavior: 'auto', block: 'end' });
+    }, 50);
+  }, [activeTab, isOpen]);
+
   const handleOpenChat = () => {
     setIsOpen(true);
     setUnreadCount(0);

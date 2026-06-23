@@ -1,8 +1,9 @@
 "use client";
 import Navbar from '@/shared/components/navbar';
 import Footer from '@/shared/components/footer';
+import Link from 'next/link';
 import { useState } from 'react';
-import { Mail, Send, MessageSquare } from 'lucide-react';
+import { Mail, Send, MessageSquare, ArrowLeft } from 'lucide-react';
 
 export default function ContatoPage() {
   const [abaAtiva, setAbaAtiva] = useState('');
@@ -19,7 +20,15 @@ export default function ContatoPage() {
     <div className="bg-[#050a05] min-h-screen flex flex-col font-sans text-white">
       <Navbar abaAtiva={abaAtiva} setAbaAtiva={setAbaAtiva} />
       
-      <main className="flex-grow max-w-5xl mx-auto px-6 py-16 w-full flex flex-col md:flex-row gap-12 items-start">
+      <main className="flex-grow max-w-5xl mx-auto px-6 py-16 w-full">
+        <Link
+          href="/"
+          className="inline-flex items-center gap-2 text-[#8a9a8a] hover:text-[#00ff66] transition-colors text-xs font-black uppercase tracking-widest mb-8"
+        >
+          <ArrowLeft size={14} /> Início
+        </Link>
+
+        <div className="flex flex-col md:flex-row gap-12 items-start">
         
         {/* Lado Esquerdo: Textos */}
         <div className="w-full md:w-1/2 animate-in slide-in-from-left duration-500">
@@ -90,6 +99,7 @@ export default function ContatoPage() {
           )}
         </div>
 
+        </div>
       </main>
       
       <Footer />

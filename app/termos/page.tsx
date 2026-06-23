@@ -1,6 +1,8 @@
 "use client";
 import Navbar from '@/shared/components/navbar';
 import Footer from '@/shared/components/footer';
+import Link from 'next/link';
+import { ArrowLeft } from 'lucide-react';
 import { useState } from 'react';
 
 export default function TermosPage() {
@@ -11,6 +13,13 @@ export default function TermosPage() {
       <Navbar abaAtiva={abaAtiva} setAbaAtiva={setAbaAtiva} />
       
       <main className="flex-grow max-w-4xl mx-auto px-6 py-16 w-full">
+        <Link
+          href="/"
+          className="inline-flex items-center gap-2 text-[#8a9a8a] hover:text-[#00ff66] transition-colors text-xs font-black uppercase tracking-widest mb-8"
+        >
+          <ArrowLeft size={14} /> Início
+        </Link>
+
         <div className="mb-12 border-l-4 border-[#00ff66] pl-6 animate-in slide-in-from-left duration-500">
           <h1 className="text-4xl md:text-5xl font-serif text-[#f1e5ac] italic tracking-wider">Termos de Uso</h1>
           <p className="text-[#8a9a8a] mt-2 tracking-wide">Condições gerais de acesso e utilização da plataforma.</p>

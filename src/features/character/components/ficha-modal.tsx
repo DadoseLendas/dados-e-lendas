@@ -4,7 +4,7 @@ import { createClient } from '@/utils/supabase/client';
 import type { ActiveEffect } from '@/features/mesa/utils/character-effects';
 import { setCharacterEffects } from '@/features/mesa/services/mesa-service';
 import {
-    ArrowLeft, Shield, Zap, ShieldAlert, Sparkles, Save, Trash2, Pencil, Sword, ShieldHalf, FlaskConical, Backpack, Wand2, Eye, EyeOff, Plus, X
+    ArrowLeft, Shield, ShieldAlert, Sparkles, Save, Trash2, Pencil, Sword, ShieldHalf, FlaskConical, Backpack, Wand2, Eye, EyeOff, Plus, X
 } from 'lucide-react';
 
 // ─── Dados estáticos (espelho de personagens/page.tsx) ────────────────────────
@@ -92,6 +92,22 @@ const getModifier = (value: number) => {
     return Math.floor((normalizedValue - 10) / 2);
 };
 const fmtMod = (mod: number) => (mod >= 0 ? `+${mod}` : `${mod}`);
+
+// Bônus de proficiência derivado do nível (D&D 5e):
+// nv 1-4 = +2, 5-8 = +3, 9-12 = +4, 13-16 = +5, 17-20 = +6.
+const proficiencyByLevel = (level: number) => {
+    const lv = Math.min(Math.max(Math.floor(Number(level)) || 1, 1), 20);
+    return Math.ceil(lv / 4) + 1;
+};
+
+// Atributo de conjuração por classe (CD de Magia = 8 + proficiência + mod do atributo).
+// Classes não listadas não exibem CD de magia (sem conjuração).
+// Guerreiro/Cavaleiro Arcano e Ladino/Trapaceiro Arcano foram desconsiderados (Notion).
+const SPELL_ATTR_BY_CLASS: Record<string, 'int' | 'wis' | 'cha'> = {
+    'Bardo': 'cha', 'Bruxo': 'cha', 'Feiticeiro': 'cha', 'Paladino': 'cha',
+    'Clérigo': 'wis', 'Druida': 'wis', 'Guardião': 'wis',
+    'Mago': 'int',
+};
 
 // Fallback local: usado quando o motor 3D de dados não responde
 // (ex.: assets offline). Garante que a rolagem ainda aconteça e chegue ao chat.
@@ -319,7 +335,7 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
         const faces = parseInt(match[2]);
         const baseModifier = match[3] ? parseInt(match[3]) : 0;
         const attributeModifier = attribute ? getModifier(draft?.stats?.[attribute] ?? 0) : 0;
-        const profBonus = isProficient ? (draft?.proficiencyBonus ?? 2) : 0;
+        const profBonus = isProficient ? proficiencyByLevel(draft?.level ?? 1) : 0;
         const totalModifier = baseModifier + attributeModifier + profBonus;
 
         return `${quantity}d${faces}${totalModifier !== 0 ? (totalModifier > 0 ? `+${totalModifier}` : `${totalModifier}`) : ''}`;
@@ -935,7 +951,7 @@ return (
                                                         value={levelValue}
                                                         onChange={(e) => {
                                                             const nextLevel = Number(e.target.value);
-                                                            const nextProf = Math.ceil(nextLevel / 4) + 1;
+                                                            const nextProf = proficiencyByLevel(nextLevel);
                                                             setDraft(prev => prev ? { ...prev, level: nextLevel, proficiencyBonus: nextProf } : prev);
                                                         }}
                                                     />
@@ -944,7 +960,7 @@ return (
                                                 <div className="rounded-2xl border border-[#1a2a1a] bg-[#0a120a] p-2 text-center shadow-[0_0_12px_rgba(0,0,0,0.2)] w-20">
                                                     <span className="block text-[10px] font-black uppercase tracking-[0.2em] text-[#4a5a4a]">Prof.</span>
                                                     <div className="mt-1 text-2xl font-black text-[#00ff66] leading-none">
-                                                        +{draft?.proficiencyBonus ?? 2}
+                                                        +{proficiencyByLevel(draft.level)}
                                                     </div>
                                                 </div>
                                                 <div className="rounded-2xl border border-[#1a2a1a] bg-[#0a120a] p-2 text-center shadow-[0_0_12px_rgba(0,0,0,0.2)] w-24">
@@ -1031,23 +1047,22 @@ return (
                                                     title="Clique para rolar Iniciativa (1d20 + DES)"
                                                     onClick={() => rollD20('Iniciativa', getModifier(draft?.stats?.dex ?? 0))}
                                                 >
-                                                    <Zap className="mx-auto text-[#f1e5ac] mb-1" size={16} />
                                                     <div className="text-2xl font-black text-white leading-none">{initiativeValue}</div>
                                                     <span className="mt-1 block text-[10px] font-black uppercase tracking-[0.2em] text-[#4a5a4a]">Iniciativa</span>
                                                 </div>
                                             </div>
 
-                                            {/* CD de Magia = 8 + Proficiência + Mod do atributo de conjuração */}
+                                            {/* CD de Magia = 8 + Proficiência + Mod do atributo de conjuração da CLASSE.
+                                                Classes sem conjuração (Bárbaro, Guerreiro, Ladino, Monge...) não exibem CD. */}
                                             {(() => {
-                                                const prof = draft?.proficiencyBonus ?? 2;
-                                                const intMod = getModifier(draft?.stats?.int ?? 10);
-                                                const wisMod = getModifier(draft?.stats?.wis ?? 10);
-                                                const chaMod = getModifier(draft?.stats?.cha ?? 10);
-                                                const spellMod = Math.max(intMod, wisMod, chaMod);
+                                                const spellAttr = SPELL_ATTR_BY_CLASS[draft.class];
+                                                if (!spellAttr) return null;
+                                                const prof = proficiencyByLevel(draft.level);
+                                                const spellMod = getModifier(draft?.stats?.[spellAttr] ?? 10);
                                                 const spellDC = 8 + prof + spellMod;
                                                 return (
                                                     <div className="rounded-xl border border-[#1a2a1a] bg-black/30 px-3 py-2 flex items-center justify-between">
-                                                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[#4a5a4a]">CD de Magia</span>
+                                                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[#4a5a4a]">CD de Magia <span className="text-[#2a3a2a]">({statLabels[spellAttr]})</span></span>
                                                         <span className="text-[16px] font-black text-[#a78bfa]">{spellDC}</span>
                                                     </div>
                                                 );
@@ -1098,7 +1113,7 @@ return (
                                                         {(['str', 'dex', 'con', 'int', 'wis', 'cha'] as const).map((s) => {
                                                             const proficient = draft.savingThrows?.[s];
                                                             const mod = getModifier(draft.stats[s]);
-                                                            const total = mod + (proficient ? (draft.proficiencyBonus ?? 2) : 0);
+                                                            const total = mod + (proficient ? proficiencyByLevel(draft.level) : 0);
                                                             return (
                                                                 <div
                                                                     key={s}
@@ -1130,7 +1145,7 @@ return (
                                                         )}
                                                     </div>
                                                     
-                                                    <div className="max-h-[320px] overflow-y-auto space-y-1.5 pr-1 mb-2">
+                                                    <div className="max-h-[460px] overflow-y-auto space-y-1.5 pr-1 mb-2">
                                                         {/* Traços Raciais Estáticos */}
                                                         {RACE_DATA[draft.race]?.traits.split(', ').map((trait) => (
                                                             <div key={trait} className="bg-[#0a1a0a] p-1.5 rounded border border-[#1a2a1a]/60 flex justify-between items-center">
@@ -1181,7 +1196,7 @@ return (
                                     {Object.entries(skillsData).map(([key, info]) => {
                                         const mod = getModifier(draft.stats[info.attr]);
                                         const proficient = draft.skills?.[key];
-                                        const total = mod + (proficient ? (draft.proficiencyBonus ?? 2) : 0);
+                                        const total = mod + (proficient ? proficiencyByLevel(draft.level) : 0);
                                         return (
                                             <div
                                                 key={key}
