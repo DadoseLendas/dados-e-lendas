@@ -146,6 +146,61 @@ export function ModalButtons({
     </div>
   );
 }
+
+interface ConfirmModalProps {
+  isOpen: boolean;
+  title: string;
+  message?: string;
+  confirmLabel: string;
+  cancelLabel?: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+}
+
+export function ConfirmModal({
+  isOpen,
+  title,
+  message = 'Esta ação não pode ser desfeita.',
+  confirmLabel,
+  cancelLabel = 'Cancelar',
+  onConfirm,
+  onCancel,
+}: ConfirmModalProps) {
+  if (!isOpen) return null;
+
+  return (
+    <div
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80"
+      onClick={onCancel}
+    >
+      <div
+        className="bg-[#0a120a] border border-[#1a2a1a] rounded-2xl p-6 w-80 flex flex-col gap-5"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h3 className="text-[#f1e5ac] font-serif text-lg font-bold text-center">
+          {title}
+        </h3>
+        <p className="text-[#a0a0a0] text-sm text-center">{message}</p>
+        <div className="flex gap-3">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="flex-1 py-2 rounded-lg border border-[#2a3a2a] text-[#a0a0a0] hover:text-white hover:border-[#3a4a3a] transition-colors"
+          >
+            {cancelLabel}
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            className="flex-1 py-2 rounded-lg bg-red-900/60 border border-red-800 text-red-300 hover:bg-red-800/80 transition-colors font-semibold"
+          >
+            {confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 /*
  // Funções de modal
   const toggleModal = (show: boolean) => {

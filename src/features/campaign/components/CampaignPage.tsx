@@ -4,7 +4,7 @@ import Navbar from '@/shared/components/navbar';
 import Footer from '@/shared/components/footer';
 import type { ChangeEvent } from 'react';
 import Card from '@/shared/components/card';
-import { FormModal, TextInput, ImageUpload, ModalButtons } from '@/shared/components/modal';
+import { FormModal, TextInput, ImageUpload, ModalButtons, ConfirmModal } from '@/shared/components/modal';
 import { Plus, Check, Copy } from 'lucide-react';
 import { createClient } from '@/utils/supabase/client';
 
@@ -24,6 +24,8 @@ interface Character {
   id: string | number;
   name: string;
 }
+
+const campaignPlaceholderImage = '/assets/campaign-placeholder.svg';
 
 export default function CampanhasPage() {
   const supabase = useMemo(() => createClient(), []);
@@ -143,7 +145,7 @@ export default function CampanhasPage() {
             code: c.code,
             date: new Date(c.created_at).toLocaleDateString('pt-BR'),
             isOwner: c.dm_id === currentUserId,
-            img: c.image_url || 'https://via.placeholder.com/400x200/0a120a/00ff66?text=RPG'
+            img: c.image_url || campaignPlaceholderImage
           }));
         setCampaigns(formatted);
       } else {
@@ -236,7 +238,7 @@ export default function CampanhasPage() {
             code: createdCampaign.code,
             date: new Date(createdCampaign.created_at).toLocaleDateString('pt-BR'),
             isOwner: createdCampaign.dm_id === currentUserId,
-            img: campaignImg || createdCampaign.image_url || 'https://via.placeholder.com/400x200/0a120a/00ff66?text=RPG'
+            img: campaignImg || createdCampaign.image_url || campaignPlaceholderImage
           };
 
           return [newCampaign, ...prev];
@@ -423,7 +425,7 @@ export default function CampanhasPage() {
       return {
         ...campaign,
         name: updatedCampaign.name,
-        img: updatedCampaign.image_url || 'https://via.placeholder.com/400x200/0a120a/00ff66?text=RPG'
+        img: updatedCampaign.image_url || campaignPlaceholderImage
       };
     }));
 
@@ -569,36 +571,21 @@ export default function CampanhasPage() {
         <ModalButtons primaryText={step === 1 ? "Próximo" : "Entrar"} primaryType="submit" onSecondary={() => setShowJoinModal(false)} />
       </FormModal>
 
-      {confirmAction !== null && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80">
-          <div className="bg-[#0a120a] border border-[#1a2a1a] rounded-2xl p-6 w-80 flex flex-col gap-5">
-            <h3 className="text-[#f1e5ac] font-serif text-lg font-bold text-center">
-              {confirmAction.type === 'delete' ? 'Excluir campanha?' : 'Sair da campanha?'}
-            </h3>
-            <p className="text-[#a0a0a0] text-sm text-center">Esta ação não pode ser desfeita.</p>
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={() => setConfirmAction(null)}
-                className="flex-1 py-2 rounded-lg border border-[#2a3a2a] text-[#a0a0a0] hover:text-white hover:border-[#3a4a3a] transition-colors"
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  if (confirmAction.type === 'delete') handleDeleteCampaign(confirmAction.id);
-                  else handleLeaveCampaign(confirmAction.id);
-                  setConfirmAction(null);
-                }}
-                className="flex-1 py-2 rounded-lg bg-red-900/60 border border-red-800 text-red-300 hover:bg-red-800/80 transition-colors font-semibold"
-              >
-                {confirmAction.type === 'delete' ? 'Excluir' : 'Sair'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmModal
+        isOpen={confirmAction !== null}
+        title={confirmAction?.type === 'delete' ? 'Excluir campanha?' : 'Sair da campanha?'}
+        message={confirmAction?.type === 'delete'
+          ? 'Essa campanha será removida permanentemente.'
+          : 'Você deixará de participar desta campanha.'}
+        confirmLabel={confirmAction?.type === 'delete' ? 'Excluir' : 'Sair'}
+        onCancel={() => setConfirmAction(null)}
+        onConfirm={() => {
+          if (!confirmAction) return;
+          if (confirmAction.type === 'delete') handleDeleteCampaign(confirmAction.id);
+          else handleLeaveCampaign(confirmAction.id);
+          setConfirmAction(null);
+        }}
+      />
 
       {copiedPopup && (
         <div
