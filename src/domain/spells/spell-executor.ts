@@ -1,14 +1,11 @@
-// utils/spell-executor.ts
-// Lógica de auto-execução de magias na mesa D&D
-
 export interface SpellExecution {
   spellName: string;
-  danoRolagem?: string | null; // ex: "3d6", "2d8+3"
-  areaRaio?: number; // em pixels na mesa
-  areaFormato?: string; // esfera, cone, linha
+  danoRolagem?: string | null;
+  areaRaio?: number;
+  areaFormato?: string;
   areaTexto?: string | null;
-  tipoAlvo?: string; // criatura, objeto, espaço
-  salvacao?: string; // Destreza, Vontade, etc
+  tipoAlvo?: string;
+  salvacao?: string;
   alcanceTexto?: string | null;
   categoriaMagia?: string | null;
   efeitoPrincipal?: string | null;
@@ -18,10 +15,10 @@ export interface SpellExecution {
   cdSalvacao?: number | string | null;
   tipoDano?: string | null;
   tipoAtaque?: string | null;
-  tempoExplosao?: number; // ms até explodir
-  posicao?: { x: number; y: number }; // na mesa
+  tempoExplosao?: number;
+  posicao?: { x: number; y: number };
   numProjeteis?: number;
-  casterLevel?: number; // nível do lançador
+  casterLevel?: number;
   ehConcentracao?: boolean;
 }
 
@@ -29,12 +26,11 @@ export interface SpellEffect {
   id: string;
   spell: SpellExecution;
   startTime: number;
-  atingidosTokens: string[]; // IDs dos tokens atingidos
+  atingidosTokens: string[];
   danoTotal: number;
   status: "ativa" | "resolvida" | "dispersa";
 }
 
-// Calcula o raio de explosão baseado no nível da magia e tipo de efeito
 export function calcularRaioExplosao(
   nivelMagia: number,
   formato: string,
@@ -44,13 +40,12 @@ export function calcularRaioExplosao(
     esfera: 15 + nivelMagia * 5,
     cone: 20 + nivelMagia * 5,
     linha: 5 + nivelMagia * 5,
-    alvo: 0, // sem raio, alvo único
+    alvo: 0,
   };
 
   return baseRadius[formato] || 15;
 }
 
-// Parse de fórmula de dano (ex: "3d6+5" -> { dados: 3, lados: 6, modificador: 5 })
 export function parsearDano(danoPorMagia: string | null | undefined): {
   dados: number;
   lados: number;
@@ -106,7 +101,6 @@ export function parseDistanciaTexto(
   return valor;
 }
 
-// Rola dado de dano
 export function rolarDano(danoParsed: {
   dados: number;
   lados: number;
@@ -119,7 +113,6 @@ export function rolarDano(danoParsed: {
   return total + danoParsed.modificador;
 }
 
-// Detecta tokens dentro de uma área de efeito
 export function detectarTokensNaArea(
   tokensPosicoes: Array<{ id: string; x: number; y: number; raio: number }>,
   epicentro: { x: number; y: number },
@@ -130,12 +123,11 @@ export function detectarTokensNaArea(
       const distancia = Math.sqrt(
         Math.pow(token.x - epicentro.x, 2) + Math.pow(token.y - epicentro.y, 2)
       );
-      return distancia <= raioArea + token.raio; // contabiliza raio do token também
+      return distancia <= raioArea + token.raio;
     })
     .map((token) => token.id);
 }
 
-// Trata salvas contra a magia
 export function testarSalvacao(
   salvacaoTipo: string,
   dificuldade: number,
@@ -148,18 +140,24 @@ export function testarSalvacao(
   };
 }
 
-// Calcula dificuldade de salvação baseado no nível do caster
-export function calcularCD(nivelMagia: number, modificadorCaster: number = 3): number {
+export function calcularCD(
+  nivelMagia: number, 
+  modificadorCaster: number = 3, 
+  cdExplicita?: number | string | null
+): number {
+  if (cdExplicita) {
+    const parsed = parseInt(String(cdExplicita), 10);
+    if (!isNaN(parsed)) return parsed;
+  }
   const baseCD = 8;
   return baseCD + nivelMagia + modificadorCaster;
 }
 
-// Aplica efeitos de magia (dano, condições, etc)
 export interface EffectResult {
   tokenId: string;
   danoRecebido: number;
   salvou: boolean;
-  condicoes: string[]; // "queimado", "congelado", "envenenado", etc
+  condicoes: string[];
   descricaoEfeito: string;
 }
 
@@ -182,22 +180,18 @@ export function aplicarEfeitoMagia(
     return detectarTokensNaArea(tokenPosicoes, spell.posicao!, raioExplosao);
   })();
 
-  // Calcular dano
   const danoParsed = parsearDano(spell.danoRolagem ?? null);
-  if (!danoParsed) return resultados; // sem dano
+  if (!danoParsed) return resultados;
 
-  const cd = calcularCD(spell.casterLevel || 1, casterModificador);
+  const cd = calcularCD(spell.casterLevel || 1, casterModificador, spell.cdSalvacao);
 
-  // Aplicar a cada token atingido
   for (const tokenId of atingidos) {
     const danoBase = rolarDano(danoParsed);
-
-    // Se há salvação, metade do dano se passar
     let danoFinal = danoBase;
     let salvou = false;
 
     if (spell.salvacao) {
-      const teste = testarSalvacao(spell.salvacao, cd, 0); // TODO: obter mod do alvo
+      const teste = testarSalvacao(spell.salvacao, cd, 0); 
       salvou = teste.sucesso;
       if (salvou) {
         danoFinal = Math.ceil(danoBase / 2);
@@ -216,7 +210,6 @@ export function aplicarEfeitoMagia(
   return resultados;
 }
 
-// Extrai condições especiais da magia (ex: "paralisia", "congelamento")
 function extrairCondicoes(spellName: string): string[] {
   const condicoes: Record<string, string[]> = {
     "raio congelante": ["congelado"],
@@ -236,7 +229,6 @@ function extrairCondicoes(spellName: string): string[] {
   return [];
 }
 
-// Animação visual da magia na mesa
 export function criarAnimacaoSpell(spell: SpellExecution): {
   particulas: Array<{ x: number; y: number; duracao: number }>;
   ondaChoque?: { raio: number; duracao: number };
@@ -324,12 +316,7 @@ function gerarParticulasEmLinha(
   return particulas;
 }
 
-/**
- * Combina uma expressão de dano com uma quantidade adicional de dados.
- * Ex: combinarDados("2d6+3", 2) → "4d6+3"
- */
 export function combinarDados(expr: string, qtd: number): string {
   if (!expr || qtd <= 0) return expr;
-  // Encontra o primeiro grupo de dados (ex: "2d6")
   return expr.replace(/(\d+)(d\d+)/i, (_, n, d) => `${parseInt(n) + qtd}${d}`);
 }

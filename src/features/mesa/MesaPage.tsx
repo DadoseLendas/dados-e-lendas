@@ -62,11 +62,11 @@ export default function TelaDeMesa() {
   }, [currentUserId, currentUserName]);
 
   const {
-    mapaUrl, gridSize, gridDistanceInfo, showMapEditor, mapPreviewUrl,
+    mapaUrl, mapGridPx, gridSize, gridDistanceInfo, showMapEditor, mapPreviewUrl,
     zoom, offset, isDraggingMap,
     setZoom, setOffset, setIsDraggingMap, setShowMapEditor, setMapPreviewUrl,
     getGridBgStyle, footprintForCategory, getLocalPointFromMouse,
-    handleFileUpload, handleMapEditorConfirm,
+    handleFileUpload, handleMapEditorConfirm, reopenMapEditor,
   } = useMesaMap(campaignId, campaignSettings);
 
   const mapContentRef = useRef<HTMLDivElement | null>(null);
@@ -202,6 +202,7 @@ export default function TelaDeMesa() {
           onTogglePlayerList={handleTogglePlayerList}
           onToggleBooks={handleToggleBooks}
           onOpenMapUpload={() => setModalAtivo('Mapa')}
+          onReopenMapEditor={reopenMapEditor}
           onOpenTokenLibrary={handleOpenTokenLibrary}
           onToggleSidebar={toggleSidebar}
         />

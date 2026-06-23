@@ -56,7 +56,6 @@ export function useMesaSpellCaster(
   }, [setShowSpellModal]);
 
   const handleSpellCast = useCallback((results: EffectResult[]) => {
-    // Feedback imediato na barra de HP do token no mapa.
     setTokens(prev => prev.map(token => {
       const result = results.find(item => item.tokenId === token.id);
       if (!result) return token;
@@ -65,17 +64,13 @@ export function useMesaSpellCaster(
       return { ...token, hp: Math.max(0, Math.min(maxHp, currentHp - result.danoRecebido)), maxHp };
     }));
 
-    // Persistência autoritativa: lê o PV no banco e aplica o delta.
-    // danoRecebido > 0 = dano (reduz); < 0 = cura (aumenta). Monstro a 0 NÃO é removido.
     for (const r of results) {
       const token = tokens.find(t => t.id === r.tokenId);
       if (!token) continue;
       const delta = -r.danoRecebido;
       if (token.characterId) {
-        // jogador -> characters.hp_current (reflete em realtime na ficha do mestre e do jogador)
         void applyHpDeltaToCharacter(token.characterId, delta).catch(() => {});
       } else {
-        // monstro/NPC -> campaign_tokens.hp_current
         void applyHpDeltaToMonsterToken(token.id, delta).catch(() => {});
       }
     }

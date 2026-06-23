@@ -1,5 +1,5 @@
 'use client';
-import { ChevronLeft, ChevronRight, UserRound, Users, Home, BookOpen, Map as MapIcon, ShieldCheck } from 'lucide-react';
+import { ChevronLeft, ChevronRight, UserRound, Users, Home, BookOpen, Map as MapIcon, ShieldCheck, Grid3X3 } from 'lucide-react';
 import { FiBook } from 'react-icons/fi';
 import { GiSpellBook } from 'react-icons/gi';
 
@@ -16,6 +16,7 @@ interface SidebarProps {
   onTogglePlayerList: () => void;
   onToggleBooks: () => void;
   onOpenMapUpload: () => void;
+  onReopenMapEditor?: () => void;
   onOpenTokenLibrary: () => void;
   onToggleSidebar: () => void;
 }
@@ -24,7 +25,7 @@ export default function Sidebar({
   sidebarAberta, isDM, fichaCharacterId, showSpellModal,
   showPlayerList, showBooks,
   onHome, onOpenCharacterSheet, onOpenSpellBook,
-  onTogglePlayerList, onToggleBooks, onOpenMapUpload, onOpenTokenLibrary,
+  onTogglePlayerList, onToggleBooks, onOpenMapUpload, onReopenMapEditor, onOpenTokenLibrary,
   onToggleSidebar,
 }: SidebarProps) {
   return (
@@ -85,6 +86,14 @@ export default function Sidebar({
               title="Alterar Mapa"
             >
               <MapIcon size={22} />
+            </button>
+
+            <button
+              onClick={onReopenMapEditor}
+              className="p-2 text-white/30 hover:text-[#00ff66] hover:drop-shadow-[0_0_8px_#00ff66] transition-all duration-300"
+              title="Ajustar Grid"
+            >
+              <Grid3X3 size={22} />
             </button>
 
             <button

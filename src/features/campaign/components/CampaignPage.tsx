@@ -61,6 +61,22 @@ export default function CampanhasPage() {
 
   const [copiedPopup, setCopiedPopup] = useState<{ code: string; name: string } | null>(null);
 
+  const [showConditionsModal, setShowConditionsModal] = useState(false);
+  
+  const conditionsList = [
+    { name: "Agarrado", desc: "Deslocamento se torna 0." },
+    { name: "Amedrontado", desc: "Desvantagem em testes de habilidade e ataques. Não pode se aproximar da fonte do medo." },
+    { name: "Atordoado", desc: "Incapacitado, não se move, falha automática em For/Des. Ataques contra têm vantagem." },
+    { name: "Caído", desc: "Só rasteja. Ataques a 1.5m têm vantagem, de longe têm desvantagem." },
+    { name: "Cego", desc: "Falha automática em visão. Desvantagem para atacar, inimigos têm vantagem." },
+    { name: "Enfeitiçado", desc: "Não pode atacar o charmoso. O charmoso tem vantagem em testes sociais." },
+    { name: "Envenenado", desc: "Desvantagem em jogadas de ataque e testes de habilidade." },
+    { name: "Incapacitado", desc: "Não pode realizar ações ou reações." },
+    { name: "Invisível", desc: "Impossível de ser visto (escondido). Vantagem para atacar, inimigos têm desvantagem." },
+    { name: "Paralisado", desc: "Incapacitado. Falha automática em For/Des. Acertos a 1.5m são críticos." },
+    { name: "Surdo", desc: "Falha automática em testes que requerem audição." }
+  ];
+
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       const target = event.target as HTMLElement;
@@ -469,6 +485,9 @@ export default function CampanhasPage() {
               Campanhas: {campaigns.length}
             </h3>
             <div className="flex gap-3">
+              <button onClick={() => setShowConditionsModal(true)} className="flex items-center gap-2 border border-[#f1e5ac] text-[#f1e5ac] px-4 py-2 rounded-lg text-[10px] font-black uppercase hover:bg-[#f1e5ac] hover:text-black transition-all">
+                Condições
+              </button>
               <button onClick={() => setShowJoinModal(true)} className="flex items-center gap-2 border border-[#00ff66] text-[#00ff66] px-4 py-2 rounded-lg text-[10px] font-black uppercase hover:bg-[#00ff66] hover:text-black transition-all">
                 <Plus size={14} /> Juntar
               </button>
@@ -628,6 +647,19 @@ export default function CampanhasPage() {
           </div>
         </div>
       )}
+
+      {/* MODAL DE CONDIÇÕES */}
+      <FormModal isOpen={showConditionsModal} onClose={() => setShowConditionsModal(false)} title="Condições (D&D 5e)" onSubmit={(e) => { e.preventDefault(); setShowConditionsModal(false); }}>
+        <div className="max-h-[60vh] overflow-y-auto space-y-2 pr-2">
+          {conditionsList.map(c => (
+            <div key={c.name} className="bg-[#050a05] border border-[#1a2a1a] p-3 rounded-lg">
+              <span className="text-[#f1e5ac] font-black uppercase text-[11px] tracking-widest block mb-1">{c.name}</span>
+              <span className="text-gray-400 text-xs leading-relaxed">{c.desc}</span>
+            </div>
+          ))}
+        </div>
+        <ModalButtons primaryText="Fechar" primaryType="submit" onSecondary={() => setShowConditionsModal(false)} />
+      </FormModal>
 
       <Footer />
     </>

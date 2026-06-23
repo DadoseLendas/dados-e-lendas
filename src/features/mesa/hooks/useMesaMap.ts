@@ -43,6 +43,7 @@ interface UseMesaMapReturn {
   getLocalPointFromMouse: (clientX: number, clientY: number, container: HTMLDivElement | null) => { x: number; y: number } | null;
   handleFileUpload: (e: React.ChangeEvent<HTMLInputElement>, onUploadComplete?: () => void) => Promise<void>;
   handleMapEditorConfirm: (gridPx: number, mapScale: number, gridColor: string, gridOpacity: number, gridThickness: number, gridDashed: boolean, gridDashFrequency: number, gridDimension: string, broadcast: (event: string, payload: Record<string, unknown>) => void) => Promise<void>;
+  reopenMapEditor: () => void;
 }
 
 export function useMesaMap(campaignId: string, campaignSettings: CampaignMapSettings | null): UseMesaMapReturn {
@@ -195,12 +196,21 @@ export function useMesaMap(campaignId: string, campaignSettings: CampaignMapSett
     broadcast('map-change', { mapUrl: mapPreviewUrl, gridPx, mapScale, gridColor, gridOpacity, gridThickness, gridDashed, gridDashFrequency, gridDimension });
   };
 
+  const reopenMapEditor = useCallback(() => {
+    if (mapaUrl) {
+      setMapPreviewUrl(mapaUrl);
+      setShowMapEditor(true);
+    } else {
+      alert("Nenhum mapa carregado para editar.");
+    }
+  }, [mapaUrl]);
+
   return {
     mapaUrl, mapGridPx, mapScale, gridColor, gridOpacity, gridThickness,
     gridDashed, gridDashFrequency, gridDimension, showMapEditor, mapPreviewUrl,
     zoom, offset, isDraggingMap, gridSize, gridDistanceInfo,
     setZoom, setOffset, setIsDraggingMap, setShowMapEditor, setMapPreviewUrl,
     getGridBgStyle, footprintForCategory, getLocalPointFromMouse,
-    handleFileUpload, handleMapEditorConfirm,
+    handleFileUpload, handleMapEditorConfirm, reopenMapEditor,
   };
 }

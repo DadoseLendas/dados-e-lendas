@@ -39,8 +39,6 @@ interface SpellCasterProps {
   gridUnit: 'm' | 'pes';
   casterLevel: number;
   casterModificador: number;
-  /** Converte coordenadas de tela (clientX/Y) para coordenadas do CONTEÚDO do mapa
-   *  (mesmo sistema dos tokens, já dividido pelo zoom). Passe getLocalPointFromMouse do MesaPage. */
   resolvePoint?: (clientX: number, clientY: number) => { x: number; y: number } | null;
   onClose: () => void;
   onSpellCast?: (resultado: EffectResult[]) => void;
@@ -66,7 +64,6 @@ export default function SpellCaster({
   const supabase = createClient();
   const overlayRef = useRef<HTMLDivElement | null>(null);
 
-  // defensive defaults shared across functions
   const gs = (gridSize && gridSize > 0) ? gridSize : 50;
   const gv = (gridValue && gridValue > 0) ? gridValue : 1;
 
@@ -80,7 +77,6 @@ export default function SpellCaster({
   } | null>(null);
   const [recentCasts, setRecentCasts] = useState<Array<{ spell: SpellExecution; time: number }>>([]);
   const [loading, setLoading] = useState(false);
-  // Alvos desmarcados pelo usuário no painel de alcance (item 6). Vazio = todos selecionados.
   const [excludedIds, setExcludedIds] = useState<Set<string>>(new Set());
 
   const isHealingSpell = useCallback((currentSpell: SpellExecution) => {
@@ -99,8 +95,6 @@ export default function SpellCaster({
   }, []);
 
   const getMousePoint = useCallback((e: React.MouseEvent<HTMLDivElement>): { x: number; y: number } | null => {
-    // Usa a MESMA conversão dos tokens (divide pelo zoom, origem = mapContentRef),
-    // garantindo que mira e token fiquem alinhados em qualquer zoom/pan.
     if (resolvePoint) return resolvePoint(e.clientX, e.clientY);
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
     return {
@@ -116,7 +110,6 @@ export default function SpellCaster({
     const areaTextoStr = (spell.areaTexto || "").toLowerCase();
     const alcanceTextoStr = (spell.alcanceTexto || "").toLowerCase();
 
-    // Combine formato + area for shape keyword detection
     const shapeText = formatoTexto || areaTextoStr;
 
     const areaUnits =
@@ -129,10 +122,8 @@ export default function SpellCaster({
       Math.pow(point.x - casterPoint.x, 2) + Math.pow(point.y - casterPoint.y, 2)
     );
 
-    // distance in map units (meters or feet) using grid conversion
     const distanceFromCasterUnits = (distanceFromCasterPx / gs) * gv;
 
-    // Helpers
     const pointToSegmentDistance = (px: number, py: number, x1: number, y1: number, x2: number, y2: number) => {
       const A = px - x1;
       const B = py - y1;
@@ -162,19 +153,14 @@ export default function SpellCaster({
       return Math.abs(px - cx) <= halfSide && Math.abs(py - cy) <= halfSide;
     };
 
-    // Determine range type
     const isPessoal = alcanceTextoStr.includes("pessoal") || alcanceTextoStr.includes("self");
     const isToque = alcanceTextoStr.includes("toque") || alcanceTextoStr.includes("touch");
-
-    // Determine shape from formato + area combined
     const isAura = shapeText.includes("aura");
     const isCube = shapeText.includes("cubo") || shapeText.includes("quadrado") || shapeText.includes("caixa");
     const isLine = shapeText.includes("linha") || shapeText.includes("line");
     const isCircle = shapeText.includes("circulo") || shapeText.includes("círculo") || shapeText.includes("esfera");
-    // Single target: formato vazio + area sem palavra-chave de formato + não é pessoal
     const isAlvo = !isAura && !isCube && !isLine && !isCircle && (formatoTexto === "" || shapeText.includes("alvo") || shapeText.includes("único") || shapeText.includes("unico"));
 
-    // Pessoal (self): caster is the target
     if (isPessoal) {
       const selfToken = tokens.find((t) => {
         const dx = t.x - casterPoint.x;
@@ -182,7 +168,6 @@ export default function SpellCaster({
         return Math.sqrt(dx * dx + dy * dy) < gs * 0.5;
       });
       if (isAura || isCircle) {
-        // Self-centered area effect
         const raioPreview = areaUnits == null ? gs * 1.5 : (areaUnits / gv) * gs;
         const atingidos = tokens.filter((token) => {
           const distancia = Math.sqrt(Math.pow(token.x - casterPoint.x, 2) + Math.pow(token.y - casterPoint.y, 2));
@@ -190,12 +175,10 @@ export default function SpellCaster({
         });
         return { x: casterPoint.x, y: casterPoint.y, raioPreview, inRange: true, atingidos };
       }
-      // Self single target
       const atingidos = selfToken ? [selfToken] : [];
       return { x: casterPoint.x, y: casterPoint.y, raioPreview: gs * 0.5, inRange: true, atingidos };
     }
 
-    // Touch: hits all tokens in the 8 adjacent squares around caster
     if (isToque) {
       const raioPreview = gs * 1.5;
       const atingidos = tokens.filter((token) => {
@@ -205,7 +188,6 @@ export default function SpellCaster({
       return { x: casterPoint.x, y: casterPoint.y, raioPreview, inRange: true, atingidos };
     }
 
-    // Aura: centered on caster
     if (isAura) {
       const raioPreview = areaUnits == null ? gridSize * 1.5 : (areaUnits / gridValue) * gridSize;
       const atingidos = tokens.filter((token) => {
@@ -215,7 +197,6 @@ export default function SpellCaster({
       return { x: casterPoint.x, y: casterPoint.y, raioPreview, inRange: true, atingidos };
     }
 
-    // Single target (alvo unico): closest token to click point
     if (isAlvo) {
       const inRange = rangeUnitsParsed == null ? true : distanceFromCasterUnits <= rangeUnitsParsed;
       let closest: Token | null = null;
@@ -231,10 +212,8 @@ export default function SpellCaster({
       return { x: point.x, y: point.y, raioPreview: gs * 0.5, inRange, atingidos };
     }
 
-    // For area shapes compute inRange based on distance from caster to target point
     const inRange = rangeUnitsParsed == null ? true : distanceFromCasterUnits <= rangeUnitsParsed;
 
-    // Circle / esfera
     if (isCircle) {
       if (areaUnits == null) return null;
       const raioPreview = (areaUnits / gv) * gs;
@@ -242,7 +221,6 @@ export default function SpellCaster({
       return { x: point.x, y: point.y, raioPreview, inRange, atingidos };
     }
 
-    // Cube / square
     if (isCube) {
       if (areaUnits == null) return null;
       const sidePx = (areaUnits / gv) * gs;
@@ -251,7 +229,6 @@ export default function SpellCaster({
       return { x: point.x, y: point.y, raioPreview: halfSide, inRange, atingidos };
     }
 
-    // Line / ray (from caster to target point)
     if (isLine) {
       if (!casterPoint) return null;
       const lengthPx = Math.sqrt(Math.pow(point.x - casterPoint.x, 2) + Math.pow(point.y - casterPoint.y, 2));
@@ -273,48 +250,9 @@ export default function SpellCaster({
     }
   }, [isOpen]);
 
-  // Zera a seleção de alvos ao trocar de magia ou fechar (item 6)
   useEffect(() => {
     setExcludedIds(new Set());
   }, [spell, isOpen]);
-
-  const atualizarPVsToken = async (tokenId: string, deltaPV: number) => {
-    const token = tokens.find((t) => t.id === tokenId);
-    if (!token) return;
-    try {
-      const { data, error } = await supabase
-        .from("campaign_tokens")
-        .select("data")
-        .eq("id", tokenId)
-        .single();
-
-      if (error || !data) {
-        console.warn("[PV] coluna data nao encontrada, HP salvo apenas localmente");
-        return;
-      }
-
-      const currentData = typeof data?.data === "string"
-        ? JSON.parse(data.data || "{}")
-        : (data?.data || {});
-
-      const currentPV = Number(token.pvAtuais ?? currentData.pvAtuais ?? token.pvMax ?? currentData.pvMax ?? 0);
-      const maxPV = Number(token.pvMax ?? currentData.pvMax ?? currentPV);
-      const nextPV = Math.max(0, Math.min(maxPV || 0, currentPV + deltaPV));
-
-      await supabase
-        .from("campaign_tokens")
-        .update({
-          data: JSON.stringify({
-            ...currentData,
-            pvAtuais: nextPV,
-            pvMax: maxPV,
-          }),
-        })
-        .eq("id", tokenId);
-    } catch (e) {
-      console.warn("[PV] erro ao persistir HP:", e);
-    }
-  };
 
   const resolverNomesAlvos = (resultados: EffectResult[], resolvedTokens?: Map<string, { nome: string | null; bonusPorAtributo: Record<string, number> }>) => {
     const nomes = resultados
@@ -331,7 +269,14 @@ export default function SpellCaster({
     return `${unicos[0]}, ${unicos[1]} e mais ${unicos.length - 2}`;
   };
 
-  const salvarCastDoChatLog = async (spellToLog: SpellExecution, resultados: EffectResult[], kind: "dano" | "cura" | "efeito", resolvedTokens?: Map<string, { nome: string | null; bonusPorAtributo: Record<string, number> }>) => {
+  const salvarCastDoChatLog = async (
+    spellToLog: SpellExecution, 
+    resultados: EffectResult[], 
+    kind: "dano" | "cura" | "efeito", 
+    resolvedTokens?: Map<string, { nome: string | null; bonusPorAtributo: Record<string, number> }>,
+    danoTotal?: number,
+    danoRolls?: number[]
+  ) => {
     if (resultados.length === 0) {
       const { data: authData } = await supabase.auth.getUser();
       const userId = authData.user?.id ?? null;
@@ -383,7 +328,9 @@ export default function SpellCaster({
         : spellToLog.danoRolagem
           ? `Tipo: dano` 
           : "Tipo: efeito",
-      spellToLog.danoRolagem ? `Rolagem de dano: ${spellToLog.danoRolagem}` : null,
+      spellToLog.danoRolagem && (danoTotal !== undefined)
+        ? `Rolagem: ${danoRolls && danoRolls.length > 0 ? `[${danoRolls.join(', ')}] = ` : ''}${danoTotal}` 
+        : null,
       `Atingidos: ${resultados.length} alvo(s)`,
       '',
       ...linhas,
@@ -485,15 +432,12 @@ export default function SpellCaster({
     const preview = buildPreview(point);
     if (!preview || !preview.inRange) return;
 
-    // Item 6: aplica só aos alvos selecionados (não-excluídos) no painel de alcance.
-    // Reatribuir aqui faz todos os ramos do executeSpell respeitarem a seleção.
     preview.atingidos = preview.atingidos.filter((t) => !excludedIds.has(t.id));
     if (preview.atingidos.length === 0) { onClose(); return; }
 
     try {
       setLoading(true);
 
-      // Determine if spell has an area or is single target
       const formatoTexto = ((spell as any).formato || "").toString().toLowerCase();
       const areaTextoStr = (spell.areaTexto || "").toLowerCase();
       const alcanceTextoStr = (spell.alcanceTexto || "").toLowerCase();
@@ -518,14 +462,6 @@ export default function SpellCaster({
         areaRaio: areaRadiusPx,
       };
 
-      const tokenPositions = tokens.map((t) => ({
-        id: t.id,
-        x: t.x,
-        y: t.y,
-        raio: t.raio,
-      }));
-
-      // Resolve real names (and save bonuses) for all affected tokens from DB
       const resolvedTokens = new Map<string, { nome: string | null; bonusPorAtributo: Record<string, number> }>();
       const resolvePromises = preview.atingidos.map(async (t) => {
         const tokenData = await buscaDadosToken(t.id, t.characterId);
@@ -536,10 +472,22 @@ export default function SpellCaster({
       const healing = isHealingSpell(spellExecution);
       const resultados: EffectResult[] = [];
       let sentPerTargetMessages = false;
+      let danoRolls: number[] = [];
+      let rollTotalCache = 0;
 
       if (healing) {
         const healParsed = parsearDano(spellExecution.danoRolagem || null);
-        const healAmount = healParsed ? rolarDano(healParsed) : 0;
+        let healAmount = 0;
+        
+        if (healParsed && onRollDice) {
+           const rollResult = await onRollDice(spellExecution.danoRolagem!, false, 'normal');
+           healAmount = rollResult?.finalValue ?? rolarDano(healParsed);
+           danoRolls = rollResult?.values || [];
+        } else if (healParsed) {
+           healAmount = rolarDano(healParsed);
+        }
+        rollTotalCache = healAmount;
+
         for (const token of preview.atingidos) {
           const realNome = resolvedTokens.get(token.id)?.nome || token.nome;
           resultados.push({
@@ -549,7 +497,6 @@ export default function SpellCaster({
             condicoes: [],
             descricaoEfeito: `${realNome} curou ${healAmount} PV`,
           });
-          await atualizarPVsToken(token.id, healAmount);
         }
       } else if (spellExecution.danoRolagem) {
         let danoTotal = 0;
@@ -558,17 +505,22 @@ export default function SpellCaster({
           if (onRollDice) {
             const rollResult = await onRollDice(spellExecution.danoRolagem!, false, 'normal');
             danoTotal = rollResult?.finalValue ?? rolarDano(danoParsed);
+            danoRolls = rollResult?.values || [];
           } else {
             danoTotal = rolarDano(danoParsed);
           }
         }
+        rollTotalCache = danoTotal;
 
-        // Save logic
         if (spellExecution.salvacao && onRollDice) {
           const saveAbil = mapSalvacaoParaAtributo(spellExecution.salvacao);
-          const cd = typeof spellExecution.cdSalvacao === 'number'
-            ? spellExecution.cdSalvacao
-            : 8 + (spellExecution.casterLevel || 1) + casterModificador;
+          
+          const rawCD = spellExecution.cdSalvacao;
+          const cd = (typeof rawCD === 'number' && rawCD > 0)
+            ? rawCD
+            : (typeof rawCD === 'string' && !isNaN(parseInt(rawCD, 10)))
+              ? parseInt(rawCD, 10)
+              : 8 + (spellExecution.casterLevel || 1) + casterModificador;
 
           for (const token of preview.atingidos) {
             const td = resolvedTokens.get(token.id);
@@ -610,9 +562,6 @@ export default function SpellCaster({
                     : `${realNome}: Falhou! Dano total (${danoFinal})`,
             });
 
-            await atualizarPVsToken(token.id, -danoFinal);
-
-            // Send save chat message
             sentPerTargetMessages = true;
             const { data: authData } = await supabase.auth.getUser();
             const profileName = authData.user?.user_metadata?.full_name || authData.user?.email?.split('@')[0] || 'Mestre';
@@ -639,7 +588,6 @@ export default function SpellCaster({
             });
           }
         } else {
-          // No save: apply full damage to all targets
           for (const token of preview.atingidos) {
             const realNome = resolvedTokens.get(token.id)?.nome || token.nome;
             resultados.push({
@@ -649,7 +597,6 @@ export default function SpellCaster({
               condicoes: [],
               descricaoEfeito: `${realNome} recebeu ${danoTotal} de dano`,
             });
-            await atualizarPVsToken(token.id, -danoTotal);
           }
         }
       } else {
@@ -671,7 +618,14 @@ export default function SpellCaster({
       });
 
       if (!sentPerTargetMessages) {
-        await salvarCastDoChatLog(spellExecution, resultados, healing ? "cura" : spellExecution.danoRolagem ? "dano" : "efeito", resolvedTokens);
+        await salvarCastDoChatLog(
+          spellExecution, 
+          resultados, 
+          healing ? "cura" : spellExecution.danoRolagem ? "dano" : "efeito", 
+          resolvedTokens,
+          rollTotalCache,
+          danoRolls
+        );
       }
 
       setRecentCasts((prev) => [...prev, { spell: spellExecution, time: Date.now() }].slice(-10));
@@ -692,8 +646,6 @@ export default function SpellCaster({
       setPreviewArea(null);
       setHoverPoint(null);
 
-      // Item 7b: registra efeitos (condições + benefício/restrição) na ficha dos alvos selecionados.
-      // Aplica a TODOS os selecionados (mesmo magias sem dano, como buffs).
       for (const alvo of preview.atingidos) {
         const cond = resultados.find((r) => r.tokenId === alvo.id)?.condicoes ?? [];
         const efeitos = efeitosDaMagia(spell, cond);
@@ -758,13 +710,30 @@ export default function SpellCaster({
         </button>
       </div>
 
-      {/* Item 6: alvos no alcance — contagem + nomes + seleção */}
       {previewArea && previewArea.inRange && previewArea.atingidos.length > 0 && (
-        <div className="absolute right-4 top-16 z-[121] w-56 rounded-2xl border border-white/10 bg-black/85 p-3 shadow-[0_0_24px_rgba(0,0,0,0.5)]">
+        <div className="absolute right-4 top-16 z-[121] w-64 rounded-2xl border border-white/10 bg-black/85 p-3 shadow-[0_0_24px_rgba(0,0,0,0.5)]">
           <div className="mb-2 flex items-center justify-between text-[10px] font-black uppercase tracking-[0.15em] text-[#00ff66]">
             <span>No alcance</span>
             <span>{previewArea.atingidos.filter((t) => !excludedIds.has(t.id)).length}/{previewArea.atingidos.length}</span>
           </div>
+          
+          <div className="mb-2 flex gap-1">
+            <button
+              type="button"
+              onClick={() => setExcludedIds(new Set())}
+              className="flex-1 rounded border border-white/20 bg-white/5 py-1 text-[9px] uppercase text-white hover:bg-white/10 transition-colors"
+            >
+              Todos
+            </button>
+            <button
+              type="button"
+              onClick={() => setExcludedIds(new Set(previewArea.atingidos.map(t => t.id)))}
+              className="flex-1 rounded border border-white/20 bg-white/5 py-1 text-[9px] uppercase text-white hover:bg-white/10 transition-colors"
+            >
+              Nenhum
+            </button>
+          </div>
+
           <div className="max-h-48 space-y-1 overflow-y-auto">
             {previewArea.atingidos.map((t) => {
               const sel = !excludedIds.has(t.id);
@@ -783,6 +752,9 @@ export default function SpellCaster({
                     {sel && <Check className="h-2.5 w-2.5" />}
                   </span>
                   <span className="truncate">{t.nome}</span>
+                  <span className="ml-auto opacity-60 text-[10px]">
+                    {t.pvAtuais !== undefined ? `${t.pvAtuais}/${t.pvMax}` : '?'} PV
+                  </span>
                 </button>
               );
             })}
@@ -803,7 +775,12 @@ export default function SpellCaster({
         <div className="absolute left-4 top-4 z-[121] rounded-2xl border border-white/10 bg-black/80 px-3 py-2 text-[11px] font-bold text-white/75 shadow-[0_0_24px_rgba(0,0,0,0.5)]">
           <div>Alcance: {rangeLabel}</div>
           <div>Área: {areaLabel}</div>
-          <div className={previewArea?.inRange ? "text-gray-200" : "text-red-300"}>
+          {spell.salvacao && (
+             <div className="text-yellow-300">
+               CD {spell.cdSalvacao || "Calc"} ({spell.salvacao})
+             </div>
+          )}
+          <div className={previewArea?.inRange ? "text-gray-200 mt-1" : "text-red-300 mt-1"}>
             {previewArea?.inRange ? "Dentro do alcance" : "Fora do alcance"}
           </div>
         </div>
@@ -890,7 +867,6 @@ export default function SpellCaster({
               );
             }
 
-            // Circle / Aura (centered)
             const size = previewArea.raioPreview * 2;
             const left = previewArea.x - previewArea.raioPreview;
             const top = previewArea.y - previewArea.raioPreview;
@@ -920,7 +896,6 @@ export default function SpellCaster({
           })()
         )}
 
-        {/* Histórico */}
         {recentCasts.length > 0 && (
           <div className="absolute bottom-4 right-4 space-y-1 text-xs text-gray-400">
             {recentCasts.slice(-3).map((cast, i) => (

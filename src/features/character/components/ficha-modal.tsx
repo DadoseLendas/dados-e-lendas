@@ -3,8 +3,9 @@ import { useEffect, useState, useRef, useMemo } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import type { ActiveEffect } from '@/features/mesa/utils/character-effects';
 import { setCharacterEffects } from '@/features/mesa/services/mesa-service';
+import SpellModal from '@/features/spells/components/spell-modal';
 import {
-    ArrowLeft, Shield, ShieldAlert, Sparkles, Save, Trash2, Pencil, Sword, ShieldHalf, FlaskConical, Backpack, Wand2, Eye, EyeOff, Plus, X
+    ArrowLeft, Shield, ShieldAlert, Sparkles, Save, Trash2, Pencil, Sword, ShieldHalf, FlaskConical, Backpack, BookOpen, Wand2, Eye, EyeOff, Plus, X
 } from 'lucide-react';
 
 // ─── Dados estáticos (espelho de personagens/page.tsx) ────────────────────────
@@ -263,6 +264,8 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
     const [showInventoryForm, setShowInventoryForm] = useState(false);
     const [rollPopup, setRollPopup] = useState<{ label: string; modifier: number; isSecret: boolean } | null>(null);
 
+    const [showSpellModal, setShowSpellModal] = useState(false);
+
     useEffect(() => {
         const fetchUser = async () => {
             const { data: { user } } = await supabase.auth.getUser();
@@ -341,7 +344,7 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
         return `${quantity}d${faces}${totalModifier !== 0 ? (totalModifier > 0 ? `+${totalModifier}` : `${totalModifier}`) : ''}`;
     };
 
-    const rollWeaponFormula = async (itemName: string, formula: string, label: 'ataque' | 'dano', attribute?: WeaponAttribute, isProficient?: boolean) => {
+    const rollWeaponFormula = async (itemName: string, formula: string, label: 'ataque' | 'dano' | 'efeito', attribute?: WeaponAttribute, isProficient?: boolean) => {
         if (readOnly) return; // mestre em modo visualização não rola pelo jogador
         const resolvedFormula = buildWeaponFormula(formula, attribute, isProficient);
         if (!resolvedFormula) {
@@ -362,7 +365,7 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
             await supabase.from('chat_messages').insert([{
                 campaign_id: campaignId,
                 user_name: currentUserName,
-                text: `${currentUserName} rolou ${label} da arma ${itemName}: ${resolvedFormula} = ${finalValue}`,
+                text: `${currentUserName} rolou ${label === 'efeito' ? 'efeito do item' : `${label} da arma`} ${itemName}: ${resolvedFormula} = ${finalValue}`,
                 is_roll: true,
                 is_secret: false,
                 channel: 'campanha',
@@ -1138,11 +1141,22 @@ return (
                                                         <h3 className="text-[#f1e5ac] text-[13px] font-black uppercase flex items-center gap-2">
                                                             <Sparkles size={12} /> Habilidades 
                                                         </h3>
-                                                        {!readOnly && (
-                                                            <button onClick={() => { resetSpellForm(); setShowSpellForm(true); }} className="w-6 h-6 rounded-md bg-[#f1e5ac] text-black flex items-center justify-center text-xs font-black transition-all hover:brightness-110 shadow-[0_0_8px_rgba(241,229,172,0.4)]" title="Adicionar Habilidade/Magia">
-                                                                <Plus size={12} />
+                                                        <div className="flex gap-2">
+                                                            {/*BOTÃO DE GRIMÓRIO*/}
+                                                            <button 
+                                                                onClick={() => setShowSpellModal(true)} 
+                                                                className="flex items-center gap-1 px-2 py-1 rounded-md bg-black/40 border border-[#f1e5ac]/40 text-[#f1e5ac] text-[10px] uppercase font-black hover:bg-[#f1e5ac]/10 transition-colors"
+                                                                title="Abrir Grimório"
+                                                            >
+                                                                <BookOpen size={12} /> Grimório
                                                             </button>
-                                                        )}
+                                                            
+                                                            {!readOnly && (
+                                                                <button onClick={() => { resetSpellForm(); setShowSpellForm(true); }} className="w-6 h-6 rounded-md bg-[#f1e5ac] text-black flex items-center justify-center text-xs font-black transition-all hover:brightness-110 shadow-[0_0_8px_rgba(241,229,172,0.4)]" title="Adicionar Habilidade/Magia">
+                                                                    <Plus size={12} />
+                                                                </button>
+                                                            )}
+                                                        </div>
                                                     </div>
                                                     
                                                     <div className="max-h-[460px] overflow-y-auto space-y-1.5 pr-1 mb-2">
@@ -1282,6 +1296,9 @@ return (
                                                         {item.dano && (
                                                             <button onClick={() => rollWeaponFormula(item.nome || item.name || 'arma', item.dano ?? '', 'dano', item.atributo, item.proficiente)} className="bg-red-900/30 border border-red-800/40 text-red-400 px-2 py-0.5 rounded text-[10px] font-black uppercase hover:bg-red-800/40 transition-colors">DMG</button>
                                                         )}
+                                                        {item.efeito && (
+                                                            <button onClick={() => rollWeaponFormula(item.nome || item.name || 'item', item.efeito ?? '', 'efeito')} className="bg-purple-900/30 border border-purple-800/40 text-purple-400 px-2 py-0.5 rounded text-[10px] font-black uppercase hover:bg-purple-800/40 transition-colors">USAR</button>
+                                                        )}
                                                         <button onClick={() => editInventoryItem(item)} className="text-gray-400 hover:text-white p-1"><Pencil size={12} /></button>
                                                         <button onClick={() => removeInventoryItem(item.id)} className="text-red-500 hover:text-red-400 p-1"><Trash2 size={12} /></button>
                                                     </div>
@@ -1325,6 +1342,21 @@ return (
                 </div>
             </div>
         )}
+
+        <SpellModal
+            isOpen={showSpellModal}
+            onClose={async () => {
+                setShowSpellModal(false);
+                // Busca as novas magias no banco caso o usuário tenha adicionado/removido algo
+                if (draft) {
+                    const { data } = await supabase.from('characters').select('spells').eq('id', draft.id).single();
+                    if (data) updateDraft('spells', data.spells);
+                }
+            }}
+            characterId={draft?.id ?? null}
+            campaignId={campaignId}
+        />
+        
     </>
 );
 }

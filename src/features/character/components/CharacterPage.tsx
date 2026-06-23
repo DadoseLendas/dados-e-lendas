@@ -5,6 +5,7 @@ import { createClient } from '@/utils/supabase/client';
 import Navbar from '@/shared/components/navbar';
 import Footer from '@/shared/components/footer';
 import Card from '@/shared/components/card';
+import SpellModal from '@/features/spells/components/spell-modal';
 import CharacterGrimorioPanel from '@/features/character/components/grimorio_ficha';
 import type { JSX } from 'react';
 import { Plus, ArrowLeft, ShieldAlert, Sparkles, Trash2, Save, Shield, Zap, BookOpen, Backpack, ScrollText, Sword, FlaskConical, Pencil, Coins, ChevronDown } from 'lucide-react';
@@ -179,6 +180,7 @@ export default function PersonagensPage() {
 
   const [raceModalOpen, setRaceModalOpen] = useState(false);
   const [raceModalSelections, setRaceModalSelections] = useState<Record<string, string>>({});
+  const [showSpellModal, setShowSpellModal] = useState(false);
 
   const getModifier = (value: number) => {
     const normalizedValue = Math.floor(Number(value) || 0);
@@ -587,10 +589,8 @@ export default function PersonagensPage() {
             </button>
             <button
               type="button"
-              onClick={() => setSheetView('grimorio')}
-              className={`flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-[12px] font-black uppercase tracking-widest transition-all ${sheetView === 'grimorio'
-                ? 'bg-[#00ff66]/18 border-[#00ff66]/60 text-[#00ff66]'
-                : 'bg-black/40 border-[#1a2a1a] text-[#4a5a4a] hover:border-[#00ff66]/30 hover:text-[#8a9a8a]'}`}
+              onClick={() => setShowSpellModal(true)}
+              className={`flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-[12px] font-black uppercase tracking-widest transition-all bg-black/40 border-[#1a2a1a] text-[#4a5a4a] hover:border-[#00ff66]/30 hover:text-[#00ff66]`}
             >
               <BookOpen size={14} /> Grimório
             </button>
@@ -1241,6 +1241,19 @@ export default function PersonagensPage() {
                     </div>
                   </div>
                 </div>
+              )}
+              {/* RENDER DO MODAL DE MAGIAS */}
+              {showSpellModal && activeCharacter && (
+                <SpellModal
+                  isOpen={showSpellModal}
+                  onClose={async () => {
+                    setShowSpellModal(false);
+                    // Recarrega a ficha silenciosamente para puxar magias adicionadas
+                    await openCharacter(activeCharacter.id); 
+                  }}
+                  characterId={activeCharacter.id}
+                  campaignId={null} // fora da campanha, as magias criadas ficam atreladas ao usuário
+                />
               )}
       </div>
     );
