@@ -5,7 +5,7 @@ import type { ActiveEffect } from '@/features/mesa/utils/character-effects';
 import { setCharacterEffects } from '@/features/mesa/services/mesa-service';
 import SpellModal from '@/features/spells/components/spell-modal';
 import {
-    ArrowLeft, Shield, ShieldAlert, Sparkles, Save, Trash2, Pencil, Sword, ShieldHalf, FlaskConical, Backpack, BookOpen, Wand2, Eye, EyeOff, Plus, X
+    ArrowLeft, Shield, ShieldAlert, Sparkles, Save, Trash2, Pencil, Sword, FlaskConical, Backpack, BookOpen, Eye, EyeOff, Plus, Zap
 } from 'lucide-react';
 
 // ─── Dados estáticos (espelho de personagens/page.tsx) ────────────────────────
@@ -94,24 +94,17 @@ const getModifier = (value: number) => {
 };
 const fmtMod = (mod: number) => (mod >= 0 ? `+${mod}` : `${mod}`);
 
-// Bônus de proficiência derivado do nível (D&D 5e):
-// nv 1-4 = +2, 5-8 = +3, 9-12 = +4, 13-16 = +5, 17-20 = +6.
 const proficiencyByLevel = (level: number) => {
     const lv = Math.min(Math.max(Math.floor(Number(level)) || 1, 1), 20);
     return Math.ceil(lv / 4) + 1;
 };
 
-// Atributo de conjuração por classe (CD de Magia = 8 + proficiência + mod do atributo).
-// Classes não listadas não exibem CD de magia (sem conjuração).
-// Guerreiro/Cavaleiro Arcano e Ladino/Trapaceiro Arcano foram desconsiderados (Notion).
 const SPELL_ATTR_BY_CLASS: Record<string, 'int' | 'wis' | 'cha'> = {
     'Bardo': 'cha', 'Bruxo': 'cha', 'Feiticeiro': 'cha', 'Paladino': 'cha',
     'Clérigo': 'wis', 'Druida': 'wis', 'Guardião': 'wis',
     'Mago': 'int',
 };
 
-// Fallback local: usado quando o motor 3D de dados não responde
-// (ex.: assets offline). Garante que a rolagem ainda aconteça e chegue ao chat.
 const rollDie = (sides: number) => Math.floor(Math.random() * sides) + 1;
 
 const localD20Roll = (mode: 'normal' | 'advantage' | 'disadvantage') => {
@@ -214,14 +207,12 @@ const EMPTY_FORM: InventoryFormState = {
 type SpellFormState = {
     name: string;
     level: string;
-    tipo: string;
     desc: string;
 };
 
 const EMPTY_SPELL_FORM: SpellFormState = {
     name: '',
     level: '',
-    tipo: 'Magia',
     desc: '',
 };
 
@@ -251,10 +242,11 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
     const [saveSuccess, setSaveSuccess] = useState(false);
+    
     const [newInventoryItem, setNewInventoryItem] = useState<InventoryFormState>(EMPTY_FORM);
     const [editingInventoryId, setEditingInventoryId] = useState<number | null>(null);
     
-    // Estados para o Pop-up de Habilidades
+    // Estados Habilidades da Raça/Classe
     const [newSpellItem, setNewSpellItem] = useState<SpellFormState>(EMPTY_SPELL_FORM);
     const [editingSpellId, setEditingSpellId] = useState<number | null>(null);
     const [showSpellForm, setShowSpellForm] = useState(false);
@@ -279,7 +271,7 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
     }, [supabase]);
 
     const rollD20 = (label: string, modifier: number) => {
-        if (readOnly) return; // mestre em modo visualização não rola pelo jogador
+        if (readOnly) return; 
         setRollPopup({ label, modifier, isSecret: false });
     };
 
@@ -290,7 +282,6 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
 
         let result = await onRollDice('d20', isSecret, mode);
         if (!result) {
-            // Motor 3D indisponível → rola localmente para não travar a ficha
             result = localD20Roll(mode);
         }
 
@@ -347,7 +338,7 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
     };
 
     const rollWeaponFormula = async (itemName: string, formula: string, label: 'ataque' | 'dano' | 'efeito', attribute?: WeaponAttribute, isProficient?: boolean) => {
-        if (readOnly) return; // mestre em modo visualização não rola pelo jogador
+        if (readOnly) return; 
         const resolvedFormula = buildWeaponFormula(formula, attribute, isProficient);
         if (!resolvedFormula) {
             alert('Fórmula inválida. Use algo como 1d20+5, 2d6+3 ou d20.');
@@ -356,7 +347,6 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
 
         let rawResult = await onRollDice(resolvedFormula, false, 'normal');
         if (rawResult === null || rawResult === undefined) {
-            // Motor 3D indisponível → rola localmente
             rawResult = localFormulaRoll(resolvedFormula);
         }
         if (rawResult === null) return;
@@ -365,20 +355,18 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
             : Number(rawResult);
         
         if (label === 'efeito') {
-            // Ampliando as palavras-chave para garantir que pegue itens de cura
             const isHealing = /(poção|cura|heal|potion|restaura|vida)/i.test(itemName + formula);
             
             if (isHealing && draft) {
                 const currentHp = Number(draft.hp_current) || 0;
                 const maxHp = Number(draft.hp_max) || 0;
                 const val = Number(finalValue) || 0;
-                const newHp = Math.min(maxHp, currentHp + val); // Soma matemática segura
+                const newHp = Math.min(maxHp, currentHp + val); 
                 
                 updateDraft('hp_current', newHp);
                 await supabase.from('characters').update({ hp_current: newHp }).eq('id', draft.id);
             }
 
-            // Reduz a quantidade e some do inventário se chegar a 0
             if (draft && draft.inventory) {
                 const invIndex = draft.inventory.findIndex(i => i.nome === itemName || i.name === itemName);
                 if (invIndex >= 0) {
@@ -503,7 +491,6 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
             payload = { ...base, tipo: newInventoryItem.tipo.trim() || 'Item' };
         }
 
-        // SALVAMENTO AUTOMÁTICO
         const nextInv = editingInventoryId !== null
             ? (draft.inventory ?? []).map(i => i.id === editingInventoryId ? payload : i)
             : [...(draft.inventory ?? []), payload];
@@ -522,7 +509,7 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
         await supabase.from('characters').update({ inventory: nextInv }).eq('id', draft.id);
     };
 
-    // Funções de Gerenciamento das Habilidades
+    // --- HABILIDADES DE RAÇA E CLASSE ---
     const resetSpellForm = () => {
         setNewSpellItem(EMPTY_SPELL_FORM);
         setEditingSpellId(null);
@@ -532,7 +519,6 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
         setNewSpellItem({
             name: spell.name || '',
             level: spell.level || '',
-            tipo: spell.tipo || 'Magia',
             desc: spell.desc || '',
         });
         setEditingSpellId(spell.id);
@@ -542,21 +528,26 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
     const addSpellItem = async () => {
         if (!draft || !newSpellItem.name.trim()) return;
 
-        const payload = {
-            id: editingSpellId ?? Date.now(),
-            name: newSpellItem.name.trim(),
-            level: newSpellItem.level.trim(),
-            tipo: (newSpellItem.tipo ?? '').trim() || 'Magia',
-            desc: newSpellItem.desc.trim(),
-        };
-
-        // SALVAMENTO AUTOMÁTICO
-        const nextSpells = editingSpellId !== null
-            ? (draft.spells ?? []).map(s => s.id === editingSpellId ? payload : s)
-            : [...(draft.spells ?? []), payload];
-
-        updateDraft('spells', nextSpells);
-        await supabase.from('characters').update({ spells: nextSpells }).eq('id', draft.id);
+        if (editingSpellId !== null) {
+            const nextSpells = (draft.spells ?? []).map(s => 
+                s.id === editingSpellId 
+                    ? { ...s, name: newSpellItem.name.trim(), level: newSpellItem.level.trim(), desc: newSpellItem.desc.trim(), tipo: s.tipo || 'Habilidade' } 
+                    : s
+            );
+            updateDraft('spells', nextSpells);
+            await supabase.from('characters').update({ spells: nextSpells }).eq('id', draft.id);
+        } else {
+            const payload = {
+                id: Date.now(),
+                name: newSpellItem.name.trim(),
+                level: newSpellItem.level.trim(),
+                tipo: 'Habilidade',
+                desc: newSpellItem.desc.trim(),
+            };
+            const nextSpells = [...(draft.spells ?? []), payload];
+            updateDraft('spells', nextSpells);
+            await supabase.from('characters').update({ spells: nextSpells }).eq('id', draft.id);
+        }
 
         resetSpellForm();
         setShowSpellForm(false);
@@ -642,8 +633,6 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
         fetchCharacter();
     }, [isOpen, characterId, supabase]);
 
-    // Item 7a: reflete em tempo real mudanças de PV feitas por fora (ex.: magia do mestre)
-    // na ficha aberta — tanto na visão do mestre quanto na do jogador.
     useEffect(() => {
         if (!isOpen || !characterId) return;
         const channel = supabase
@@ -671,7 +660,6 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
 
     const inputCls = "w-full bg-black/40 border border-[#1a2a1a] px-2 py-1 text-[14px] rounded text-white outline-none focus:border-[#00ff66]/50 transition-colors";
     const selectCls = "w-full bg-[#050a05] border border-[#1a2a1a] px-2 py-1 text-[14px] rounded text-white outline-none focus:border-[#00ff66]/50 transition-colors cursor-pointer";
-    const numInputCls = "w-full bg-black/40 border border-[#1a2a1a] px-2 py-1 text-[14px] rounded text-[#00ff66] font-bold text-center outline-none focus:border-[#00ff66]/50 transition-colors";
 
     const hpCurrent = draft?.hp_current ?? 0;
     const hpMax = Math.max(draft?.hp_max ?? 0, 1);
@@ -681,15 +669,12 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
 
 return (
     <>
-        {/* POPUP ROLAGEM DE DADOS */}
         {rollPopup && (
             <div
                 className="fixed inset-0 z-[200] flex items-center justify-center bg-black/75 backdrop-blur-sm"
                 onClick={(e) => e.target === e.currentTarget && setRollPopup(null)}
             >
                 <div className="bg-[#080f08] border border-[#1a2a1a] rounded-2xl w-[320px] shadow-[0_0_60px_rgba(0,0,0,0.95)] overflow-hidden">
-
-                    {/* Header */}
                     <div className="relative flex items-center justify-center px-5 pt-5 pb-3">
                         <div className="text-center">
                             <p className="text-[10px] text-[#4a5a4a] font-black uppercase tracking-[0.25em] mb-1">Rolagem</p>
@@ -700,7 +685,6 @@ return (
                                 D20 {rollPopup.modifier >= 0 ? `+${rollPopup.modifier}` : rollPopup.modifier}
                             </p>
                         </div>
-                        {/* Secret toggle */}
                         <button
                             onClick={() => setRollPopup(prev => prev ? { ...prev, isSecret: !prev.isSecret } : null)}
                             className={`absolute right-4 top-4 p-2 rounded-lg border transition-all flex items-center justify-center
@@ -713,7 +697,6 @@ return (
                         </button>
                     </div>
 
-                    {/* Secret warning */}
                     <div className="h-6 flex items-center justify-center mb-1">
                         {rollPopup.isSecret && (
                             <span className="flex items-center gap-1.5 text-[9px] font-black tracking-[0.2em] text-red-400/80 uppercase animate-pulse">
@@ -722,8 +705,6 @@ return (
                         )}
                     </div>
                     
-
-                    {/* Roll mode buttons */}
                     <div className="px-4 pb-2 grid grid-cols-3 gap-2">
                         <button
                             onClick={() => executeRoll('disadvantage')}
@@ -748,7 +729,6 @@ return (
                         </button>
                     </div>
 
-                    {/* Cancel */}
                     <button
                         onClick={() => setRollPopup(null)}
                         className="w-full py-3 text-[10px] text-[#2a3a2a] hover:text-[#4a5a4a] uppercase tracking-[0.25em] font-black transition-colors border-t border-[#1a2a1a]/50"
@@ -759,7 +739,6 @@ return (
             </div>
         )}
 
-        {/* POPUP ADICIONAR/EDITAR INVENTÁRIO */}
         {showInventoryForm && (
             <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 backdrop-blur-sm">
                 <div className="bg-[#0a120a] border border-[#1a2a1a] rounded-2xl p-6 w-[400px] shadow-[0_0_50px_rgba(0,0,0,0.95)] space-y-4 max-h-[90vh] overflow-y-auto">
@@ -846,39 +825,28 @@ return (
             </div>
         )}
 
-        {/* POPUP ADICIONAR/EDITAR HABILIDADE (IGUAL AO INVENTÁRIO) */}
+        {/* POPUP ADICIONAR/EDITAR HABILIDADE DE RAÇA/CLASSE */}
         {showSpellForm && (
-            <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-                <div className="bg-[#0a120a] border border-[#1a2a1a] rounded-2xl p-6 w-full max-w-[600px] shadow-[0_0_50px_rgba(0,0,0,0.95)] space-y-4 max-h-[90vh] overflow-y-auto flex flex-col">
-                    <h3 className="text-[#f1e5ac] text-sm font-black uppercase tracking-widest text-center shrink-0">
+            <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4" onClick={(e) => e.target === e.currentTarget && setShowSpellForm(false)}>
+                <div className="bg-[#0a120a] border border-[#1a2a1a] rounded-2xl p-6 w-[400px] shadow-[0_0_50px_rgba(0,0,0,0.95)] space-y-4">
+                    <h3 className="text-[#f1e5ac] text-sm font-black uppercase tracking-widest text-center">
                         {editingSpellId !== null ? 'Editar Habilidade' : 'Nova Habilidade'}
                     </h3>
-                    <div className="space-y-3 flex-1 flex flex-col min-h-0">
-                        <div className="shrink-0">
-                            <label className="text-[10px] text-[#4a5a4a] font-black uppercase tracking-widest block mb-1">Nome da Habilidade</label>
-                            <input type="text" className={inputCls} value={newSpellItem.name} onChange={e => setNewSpellItem(prev => ({ ...prev, name: e.target.value }))} />
+                    <div className="space-y-3">
+                        <div>
+                            <label className="text-[10px] text-[#4a5a4a] font-black uppercase tracking-widest block mb-1">Nome</label>
+                            <input type="text" className="w-full bg-black/40 border border-[#1a2a1a] px-2 py-1 text-white rounded outline-none focus:border-[#00ff66]/50 transition-colors" value={newSpellItem.name} onChange={(e) => setNewSpellItem(prev => ({ ...prev, name: e.target.value }))} />
                         </div>
-                        <div className="grid grid-cols-2 gap-2 shrink-0">
-                            <div>
-                                <label className="text-[10px] text-[#4a5a4a] font-black uppercase tracking-widest block mb-1">Tipo</label>
-                                <select className={selectCls} value={newSpellItem.tipo} onChange={e => setNewSpellItem(prev => ({ ...prev, tipo: e.target.value }))}>
-                                    <option value="Magia">Magia</option>
-                                    <option value="Poder">Poder</option>
-                                    <option value="Passiva">Passiva</option>
-                                    <option value="Talento">Talento</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label className="text-[10px] text-[#4a5a4a] font-black uppercase tracking-widest block mb-1">Nível / Custo</label>
-                                <input type="text" placeholder="ex: 1º Círculo, 2 PM" className={inputCls} value={newSpellItem.level} onChange={e => setNewSpellItem(prev => ({ ...prev, level: e.target.value }))} />
-                            </div>
+                        <div>
+                            <label className="text-[10px] text-[#4a5a4a] font-black uppercase tracking-widest block mb-1">Nível / Custo</label>
+                            <input type="text" className="w-full bg-black/40 border border-[#1a2a1a] px-2 py-1 text-white rounded outline-none focus:border-[#00ff66]/50 transition-colors" value={newSpellItem.level} onChange={(e) => setNewSpellItem(prev => ({ ...prev, level: e.target.value }))} />
                         </div>
-                        <div className="flex-1 flex flex-col min-h-[150px]">
-                            <label className="text-[10px] text-[#4a5a4a] font-black uppercase tracking-widest block mb-1 shrink-0">Descrição</label>
-                            <textarea className={inputCls + " flex-1 min-h-[100px] resize-y"} value={newSpellItem.desc} onChange={e => setNewSpellItem(prev => ({ ...prev, desc: e.target.value }))} />
+                        <div>
+                            <label className="text-[10px] text-[#4a5a4a] font-black uppercase tracking-widest block mb-1">Descrição</label>
+                            <textarea rows={4} className="w-full bg-black/40 border border-[#1a2a1a] px-2 py-1 text-white rounded resize-none outline-none focus:border-[#00ff66]/50 transition-colors" value={newSpellItem.desc} onChange={(e) => setNewSpellItem(prev => ({ ...prev, desc: e.target.value }))} />
                         </div>
                     </div>
-                    <div className="flex gap-2 pt-2 shrink-0">
+                    <div className="flex gap-2 pt-2">
                         <button onClick={() => { resetSpellForm(); setShowSpellForm(false); }} className="flex-1 bg-transparent border border-[#1a2a1a] text-[#4a5a4a] hover:text-white uppercase text-[11px] font-black tracking-widest py-2 rounded-xl transition-colors">Cancelar</button>
                         <button onClick={addSpellItem} className="flex-1 bg-[#f1e5ac] text-black uppercase text-[11px] font-black tracking-widest py-2 rounded-xl hover:brightness-110 transition-all">Salvar</button>
                     </div>
@@ -886,7 +854,6 @@ return (
             </div>
         )}
 
-        {/* CONTAINER PRINCIPAL DO MODAL */}
         <div
             className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-8"
             onClick={(e) => e.target === e.currentTarget && onClose()}
@@ -903,7 +870,6 @@ return (
 
                     {!loading && draft && (
                         <>
-                            {/* Barra de navegação */}
                                 <div className="flex justify-between items-center mb-6">
                                     <button
                                         onClick={onClose}
@@ -935,7 +901,6 @@ return (
 
                             <div className={`bg-black/65 border border-[#1a2a1a] rounded-2xl p-3 sm:p-4 space-y-4 shadow-[0_0_24px_rgba(0,0,0,0.35)] mb-6 ${readOnly ? 'pointer-events-none select-none' : ''}`}>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {/* LADO ESQUERDO */}
                                     <div className="space-y-3">
                                         <div className="flex flex-col items-start gap-3">
                                             <div
@@ -949,7 +914,6 @@ return (
                                                 <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/15 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                                             </div>
 
-                                            {/* NOME, RAÇA E CLASSE ESTRUTURADOS DEBAIXO DA FOTO, AINDA ESTÁTICOS */}
                                             <div className="w-full space-y-2 mt-1">
                                                 <div className="space-y-1">
                                                     <label className="text-[11px] text-[#4a5a4a] font-black uppercase tracking-widest block text-left">Nome</label>
@@ -982,7 +946,6 @@ return (
                                                         }}
                                                     />
                                                 </div>
-                                                {/* Bônus de Proficiência — calculado automaticamente pelo nível */}
                                                 <div className="rounded-2xl border border-[#1a2a1a] bg-[#0a120a] p-2 text-center shadow-[0_0_12px_rgba(0,0,0,0.2)] w-20">
                                                     <span className="block text-[10px] font-black uppercase tracking-[0.2em] text-[#4a5a4a]">Prof.</span>
                                                     <div className="mt-1 text-2xl font-black text-[#00ff66] leading-none">
@@ -1067,7 +1030,6 @@ return (
                                                     />
                                                     <span className="mt-1 block text-[10px] font-black uppercase tracking-[0.2em] text-[#4a5a4a]">CA</span>
                                                 </div>
-                                                {/* Iniciativa: clique para rolar automaticamente com o modificador de DES */}
                                                 <div
                                                     className="rounded-2xl border border-[#1a2a1a] bg-[#0a150a] p-2 text-center flex flex-col cursor-pointer hover:border-[#f1e5ac]/40 hover:bg-[#1a150a] transition-all"
                                                     title="Clique para rolar Iniciativa (1d20 + DES)"
@@ -1078,8 +1040,6 @@ return (
                                                 </div>
                                             </div>
 
-                                            {/* CD de Magia = 8 + Proficiência + Mod do atributo de conjuração da CLASSE.
-                                                Classes sem conjuração (Bárbaro, Guerreiro, Ladino, Monge...) não exibem CD. */}
                                             {(() => {
                                                 const spellAttr = SPELL_ATTR_BY_CLASS[draft.class];
                                                 if (!spellAttr) return null;
@@ -1101,7 +1061,7 @@ return (
                                         </div>
                                     </div>
 
-                                    {/* LADO DIREITO - Atributos, Salvaguardas e Habilidades */}
+                                    {/* LADO DIREITO */}
                                     <div className="space-y-3">
                                         <div className="space-y-3">
                                             {/* Atributos */}
@@ -1133,7 +1093,7 @@ return (
                                                 {/* Salvaguardas */}
                                                 <div className="bg-black/40 border border-[#1a2a1a] p-3 rounded-xl">
                                                     <h3 className="text-[13px] text-[#4a5a4a] font-black uppercase mb-2 flex items-center gap-2">
-                                                        <ShieldAlert size={11} /> Salvaguardas
+                                                        Salvaguardas
                                                     </h3>
                                                     <div className="grid grid-cols-2 gap-x-4 gap-y-1">
                                                         {(['str', 'dex', 'con', 'int', 'wis', 'cha'] as const).map((s) => {
@@ -1158,32 +1118,22 @@ return (
                                                     </div>
                                                 </div>
 
-                                                {/* BLOCO DE HABILIDADES - IGUAL À LÓGICA DO INVENTÁRIO COM POPUP */}
+                                                {/* BLOCO DE HABILIDADES DE CLASSE E RAÇA */}
                                                 <div className="bg-[#050a05] border border-[#1a2a1a] p-3 rounded-xl">
                                                     <div className="flex items-center justify-between mb-3">
                                                         <h3 className="text-[#f1e5ac] text-[13px] font-black uppercase flex items-center gap-2">
-                                                            <Sparkles size={12} /> Habilidades 
+                                                            Habilidades 
                                                         </h3>
                                                         <div className="flex gap-2">
-                                                            {/*BOTÃO DE GRIMÓRIO*/}
-                                                            <button 
-                                                                onClick={() => setShowSpellModal(true)} 
-                                                                className="flex items-center gap-1 px-2 py-1 rounded-md bg-black/40 border border-[#f1e5ac]/40 text-[#f1e5ac] text-[10px] uppercase font-black hover:bg-[#f1e5ac]/10 transition-colors"
-                                                                title="Abrir Grimório"
-                                                            >
-                                                                <BookOpen size={12} /> Grimório
-                                                            </button>
-                                                            
                                                             {!readOnly && (
-                                                                <button onClick={() => { resetSpellForm(); setShowSpellForm(true); }} className="w-6 h-6 rounded-md bg-[#f1e5ac] text-black flex items-center justify-center text-xs font-black transition-all hover:brightness-110 shadow-[0_0_8px_rgba(241,229,172,0.4)]" title="Adicionar Habilidade/Magia">
+                                                                <button onClick={() => { resetSpellForm(); setShowSpellForm(true); }} className="w-6 h-6 rounded-md bg-[#f1e5ac] text-black flex items-center justify-center text-xs font-black transition-all hover:brightness-110 shadow-[0_0_8px_rgba(241,229,172,0.4)]" title="Adicionar Habilidade de Raça/Classe">
                                                                     <Plus size={12} />
                                                                 </button>
                                                             )}
                                                         </div>
                                                     </div>
                                                     
-                                                    <div className="max-h-[460px] overflow-y-auto space-y-1.5 pr-1 mb-2">
-                                                        {/* Traços Raciais Estáticos */}
+                                                    <div className="max-h-[220px] overflow-y-auto space-y-1.5 pr-1 mb-2">
                                                         {RACE_DATA[draft.race]?.traits.split(', ').map((trait) => (
                                                             <div key={trait} className="bg-[#0a1a0a] p-1.5 rounded border border-[#1a2a1a]/60 flex justify-between items-center">
                                                                 <span className="text-[13px] uppercase font-bold text-[#4a7a4a]">{trait}</span>
@@ -1192,7 +1142,7 @@ return (
                                                         ))}
                                                         {RACE_DATA[draft.race]?.traits && draft.spells?.length > 0 && <div className="border-t border-[#1a2a1a] my-1" />}
                                                         
-                                                        {/* Lista Dinâmica com Expansão e Edição de Habilidades (apenas Habilidades, sem Magias) */}
+                                                        {/* FILTRO: ESCONDE TUDO QUE É MAGIA OU VEM DO GRIMÓRIO */}
                                                         {draft.spells?.filter((s: any) => s.tipo !== 'Magia').map((spell: any) => {
                                                             const isSpellExpanded = expandedSpellId === spell.id;
                                                             return (
@@ -1200,10 +1150,7 @@ return (
                                                                     <div className="p-1.5 flex justify-between items-center cursor-pointer hover:bg-white/5" onClick={() => setExpandedSpellId(isSpellExpanded ? null : spell.id)}>
                                                                         <div className="min-w-0">
                                                                             <span className="text-[13px] uppercase font-bold text-gray-300 block truncate">{spell.name}</span>
-                                                                            <div className="flex gap-2 text-[10px] text-gray-500 uppercase">
-                                                                                <span>{spell.tipo || 'Magia'}</span>
-                                                                                {spell.level && <span>• {spell.level}</span>}
-                                                                            </div>
+                                                                            {spell.level && <div className="text-[10px] text-gray-500 uppercase mt-0.5">{spell.level}</div>}
                                                                         </div>
                                                                         <div className="flex gap-1 shrink-0" onClick={e => e.stopPropagation()}>
                                                                             <button onClick={() => editSpellItem(spell)} className="text-gray-400 hover:text-[#f1e5ac] transition-colors p-1"><Pencil size={11} /></button>
@@ -1370,7 +1317,6 @@ return (
             isOpen={showSpellModal}
             onClose={async () => {
                 setShowSpellModal(false);
-                // Busca as novas magias no banco caso o usuário tenha adicionado/removido algo
                 if (draft) {
                     const { data } = await supabase.from('characters').select('spells').eq('id', draft.id).single();
                     if (data) updateDraft('spells', data.spells);
