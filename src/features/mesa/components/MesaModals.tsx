@@ -84,6 +84,7 @@ export default function MesaModals({
       {showFicha && fichaCharacterId && (
         <FichaModal isOpen={showFicha} characterId={fichaCharacterId} campaignId={campaignId}
           onClose={onCloseFicha}
+          onLaunchSpell={onLaunchSpell}
           onRollDice={rollDiceFunc ?? (async () => null)} />
       )}
 

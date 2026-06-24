@@ -61,7 +61,6 @@ export default function CampanhasPage() {
 
   const [copiedPopup, setCopiedPopup] = useState<{ code: string; name: string } | null>(null);
 
-  const [showConditionsModal, setShowConditionsModal] = useState(false);
   
   const conditionsList = [
     { name: "Agarrado", desc: "Deslocamento se torna 0." },
@@ -485,9 +484,6 @@ export default function CampanhasPage() {
               Campanhas: {campaigns.length}
             </h3>
             <div className="flex gap-3">
-              <button onClick={() => setShowConditionsModal(true)} className="flex items-center gap-2 border border-[#f1e5ac] text-[#f1e5ac] px-4 py-2 rounded-lg text-[10px] font-black uppercase hover:bg-[#f1e5ac] hover:text-black transition-all">
-                Condições
-              </button>
               <button onClick={() => setShowJoinModal(true)} className="flex items-center gap-2 border border-[#00ff66] text-[#00ff66] px-4 py-2 rounded-lg text-[10px] font-black uppercase hover:bg-[#00ff66] hover:text-black transition-all">
                 <Plus size={14} /> Juntar
               </button>
@@ -647,20 +643,6 @@ export default function CampanhasPage() {
           </div>
         </div>
       )}
-
-      {/* MODAL DE CONDIÇÕES */}
-      <FormModal isOpen={showConditionsModal} onClose={() => setShowConditionsModal(false)} title="Condições (D&D 5e)" onSubmit={(e) => { e.preventDefault(); setShowConditionsModal(false); }}>
-        <div className="max-h-[60vh] overflow-y-auto space-y-2 pr-2">
-          {conditionsList.map(c => (
-            <div key={c.name} className="bg-[#050a05] border border-[#1a2a1a] p-3 rounded-lg">
-              <span className="text-[#f1e5ac] font-black uppercase text-[11px] tracking-widest block mb-1">{c.name}</span>
-              <span className="text-gray-400 text-xs leading-relaxed">{c.desc}</span>
-            </div>
-          ))}
-        </div>
-        <ModalButtons primaryText="Fechar" primaryType="submit" onSecondary={() => setShowConditionsModal(false)} />
-      </FormModal>
-
       <Footer />
     </>
   );

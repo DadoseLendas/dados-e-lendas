@@ -289,13 +289,14 @@ export default function SpellCaster({
         sender_id: userId,
         receiver_id: null,
         text: [
-          `🎯 Magia lancada: ${spellToLog.spellName}`,
+          `Magia lancada: ${spellToLog.spellName}`,
           `Nenhum alvo estava na área de efeito.`,
         ].join('\n'),
         is_roll: false,
         is_secret: false,
         channel: 'campanha',
       });
+      
       return;
     }
 
@@ -306,10 +307,10 @@ export default function SpellCaster({
         return `- ${nome}: curou ${Math.abs(resultado.danoRecebido)} PV`;
       }
       if (resultado.salvou && resultado.danoRecebido === 0) {
-        return `- ${nome}: 🛡️ sucesso crítico — nenhum dano`;
+        return `- ${nome}: sucesso crítico — nenhum dano`;
       }
       if (!resultado.salvou && resultado.danoRecebido > 0 && resultado.descricaoEfeito.includes("CRÍTICA")) {
-        return `- ${nome}: 💥 falha crítica — ${resultado.danoRecebido} de dano`;
+        return `- ${nome}: falha crítica — ${resultado.danoRecebido} de dano`;
       }
       if (kind === "efeito") {
         const desc = spellToLog.beneficioConcedido || spellToLog.efeitoPrincipal || spellToLog.restricaoConcedida || spellToLog.descricao || "Efeito aplicado";
@@ -319,7 +320,7 @@ export default function SpellCaster({
     });
 
     const mensagem = [
-      `🎯 Magia lancada: ${spellToLog.spellName}`,
+      `Magia lancada: ${spellToLog.spellName}`,
       `Alvo(s): ${resolverNomesAlvos(resultados, resolvedTokens)}`,
       spellToLog.alcanceTexto ? `Alcance: ${spellToLog.alcanceTexto}` : null,
       spellToLog.areaTexto ? `Area: ${spellToLog.areaTexto}` : null,
@@ -574,7 +575,7 @@ export default function SpellCaster({
               sender_id: authData.user?.id ?? null,
               receiver_id: null,
               text: [
-                `🎲 Teste de Resistência — ${spellExecution.spellName}`,
+                `Teste de Resistência — ${spellExecution.spellName}`,
                 `**Alvo:** ${realNome}`,
                 `**${saveLabel}:** d20 **${naturalRoll}** ${saveSign}${saveBonus} = **${totalWithBonus}** vs CD **${cd}** — ${resultLabel}`,
                 `**Dano recebido:** ${danoFinal} PV`,
@@ -688,102 +689,86 @@ export default function SpellCaster({
 
   return (
     <div className="absolute inset-0 z-[120] bg-black/55 backdrop-blur-[2px]">
-      <div className="absolute right-4 top-4 z-[121] flex items-center gap-2 rounded-2xl border border-white/10 bg-black/80 px-3 py-2 text-[11px] font-black uppercase tracking-[0.15em] text-white/75">
-        {formatoLabel.includes("aura") ? (
-          <Shield className="h-4 w-4 text-[#00ff66]" />
-        ) : formatoLabel.includes("linha") || formatoLabel.includes("line") ? (
-          <ArrowRight className="h-4 w-4 text-[#00ff66]" />
-        ) : formatoLabel.includes("cubo") || formatoLabel.includes("quadrado") ? (
-          <Square className="h-4 w-4 text-[#00ff66]" />
-        ) : formatoLabel.includes("alvo") || formatoLabel === "" ? (
-          <Crosshair className="h-4 w-4 text-[#00ff66]" />
-        ) : (
-          <Circle className="h-4 w-4 text-[#00ff66]" />
-        )}
-        {spell.spellName}
-        <button
-          type="button"
-          onClick={onClose}
-          className="ml-2 rounded-md border border-white/10 px-2 py-1 text-white/50 hover:border-[#00ff66]/40 hover:text-[#00ff66]"
-        >
-          <X className="h-3.5 w-3.5" />
-        </button>
-      </div>
+      {/* PAINEL DE CONTROLE UNIFICADO (Todas as infos em um só lugar) */}
+      <div className="absolute right-4 top-4 z-[130] w-72 flex flex-col gap-3">
+        
+        {/* Cabeçalho da Magia */}
+        <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-black/80 px-4 py-3 shadow-lg">
+          <div className="flex items-center gap-2 text-[12px] font-black uppercase tracking-[0.15em] text-[#00ff66]">
+            <Zap className="h-4 w-4" />
+            <span className="truncate max-w-[150px]">{spell.spellName}</span>
+          </div>
+          <button onClick={onClose} className="rounded-md border border-white/10 px-2 py-1 text-white/50 hover:border-red-500/40 hover:text-red-400 transition-colors">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
 
-      {previewArea && previewArea.inRange && previewArea.atingidos.length > 0 && (
-        <div className="absolute right-4 top-16 z-[121] w-64 rounded-2xl border border-white/10 bg-black/85 p-3 shadow-[0_0_24px_rgba(0,0,0,0.5)]">
-          <div className="mb-2 flex items-center justify-between text-[10px] font-black uppercase tracking-[0.15em] text-[#00ff66]">
-            <span>No alcance</span>
-            <span>{previewArea.atingidos.filter((t) => !excludedIds.has(t.id)).length}/{previewArea.atingidos.length}</span>
+        {/* Informações Técnicas */}
+        <div className="rounded-2xl border border-white/10 bg-black/80 p-4 shadow-lg text-[11px] font-bold text-white/75">
+          <div className="flex justify-between mb-1">
+            <span className="text-white/40">Alcance:</span> <span>{rangeLabel}</span>
           </div>
-          
-          <div className="mb-2 flex gap-1">
-            <button
-              type="button"
-              onClick={() => setExcludedIds(new Set())}
-              className="flex-1 rounded border border-white/20 bg-white/5 py-1 text-[9px] uppercase text-white hover:bg-white/10 transition-colors"
-            >
-              Todos
-            </button>
-            <button
-              type="button"
-              onClick={() => setExcludedIds(new Set(previewArea.atingidos.map(t => t.id)))}
-              className="flex-1 rounded border border-white/20 bg-white/5 py-1 text-[9px] uppercase text-white hover:bg-white/10 transition-colors"
-            >
-              Nenhum
-            </button>
+          <div className="flex justify-between mb-1">
+            <span className="text-white/40">Área:</span> <span>{areaLabel}</span>
           </div>
-
-          <div className="max-h-48 space-y-1 overflow-y-auto">
-            {previewArea.atingidos.map((t) => {
-              const sel = !excludedIds.has(t.id);
-              return (
-                <button
-                  key={t.id}
-                  type="button"
-                  onClick={() => setExcludedIds((prev) => {
-                    const next = new Set(prev);
-                    if (next.has(t.id)) next.delete(t.id); else next.add(t.id);
-                    return next;
-                  })}
-                  className={`flex w-full items-center gap-2 rounded-lg border px-2 py-1.5 text-left text-[11px] transition-colors ${sel ? "border-[#00ff66]/40 bg-[#00ff66]/10 text-white" : "border-white/10 text-white/40"}`}
-                >
-                  <span className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded border ${sel ? "border-[#00ff66] bg-[#00ff66] text-black" : "border-white/30"}`}>
-                    {sel && <Check className="h-2.5 w-2.5" />}
-                  </span>
-                  <span className="truncate">{t.nome}</span>
-                  <span className="ml-auto opacity-60 text-[10px]">
-                    {t.pvAtuais !== undefined ? `${t.pvAtuais}/${t.pvMax}` : '?'} PV
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-          <div className="mt-2 text-[9px] leading-tight text-white/40">
-            Clique nos nomes para incluir/excluir • clique no mapa para lançar
+          {spell.salvacao && (
+            <div className="flex justify-between mb-1">
+              <span className="text-white/40">Resistência:</span> <span className="text-yellow-300">CD {spell.cdSalvacao || "Calc"} ({spell.salvacao})</span>
+            </div>
+          )}
+          <div className={`mt-2 text-center py-1 rounded border ${previewArea?.inRange ? "border-[#00ff66]/30 text-[#00ff66] bg-[#00ff66]/10" : "border-red-500/30 text-red-400 bg-red-500/10"}`}>
+            {previewArea?.inRange ? "Área Válida" : "Fora do alcance"}
           </div>
         </div>
-      )}
 
+        {/* Alvos e HP */}
+        {previewArea && previewArea.inRange && previewArea.atingidos.length > 0 && (
+          <div className="rounded-2xl border border-white/10 bg-black/90 p-4 shadow-xl">
+            <div className="mb-3 flex items-center justify-between text-[10px] font-black uppercase tracking-[0.15em] text-[#00ff66]">
+              <span>Alvos na mira</span>
+              <span>{previewArea.atingidos.filter((t) => !excludedIds.has(t.id)).length}/{previewArea.atingidos.length}</span>
+            </div>
+            
+            <div className="mb-3 flex gap-1">
+              <button type="button" onClick={() => setExcludedIds(new Set())} className="flex-1 rounded border border-white/20 bg-white/5 py-1.5 text-[9px] uppercase text-white hover:bg-white/10 transition-colors">
+                Todos
+              </button>
+              <button type="button" onClick={() => setExcludedIds(new Set(previewArea.atingidos.map(t => t.id)))} className="flex-1 rounded border border-white/20 bg-white/5 py-1.5 text-[9px] uppercase text-white hover:bg-white/10 transition-colors">
+                Nenhum
+              </button>
+            </div>
+
+            <div className="max-h-48 space-y-1.5 overflow-y-auto pr-1 custom-scrollbar">
+              {previewArea.atingidos.map((t) => {
+                const sel = !excludedIds.has(t.id);
+                return (
+                  <button key={t.id} type="button" onClick={() => setExcludedIds((prev) => { const next = new Set(prev); if (next.has(t.id)) next.delete(t.id); else next.add(t.id); return next; })} className={`flex w-full items-center gap-2 rounded-lg border px-2 py-2 text-left text-[11px] transition-colors ${sel ? "border-[#00ff66]/40 bg-[#00ff66]/10 text-white" : "border-white/10 text-white/40"}`}>
+                    <span className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border ${sel ? "border-[#00ff66] bg-[#00ff66] text-black" : "border-white/30"}`}>
+                      {sel && <Check className="h-3 w-3" />}
+                    </span>
+                    <span className="truncate font-bold">{t.nome}</span>
+                    <span className="ml-auto opacity-80 text-[10px] bg-black/40 px-1.5 py-0.5 rounded">
+                      {t.pvAtuais !== undefined ? `${t.pvAtuais}/${t.pvMax}` : '?'} PV
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+            <div className="mt-3 text-center text-[9px] leading-tight text-white/40 uppercase font-black">
+              Clique no mapa para disparar
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Camada do Mapa (Overlay) */}
       <div
         ref={overlayRef}
-        className="absolute inset-0 cursor-crosshair"
+        className="absolute inset-0 cursor-crosshair z-[121]"
         onMouseMove={handleMouseMove}
         onMouseDown={(e) => e.preventDefault()}
         onClick={handleClick}
       >
-        <div className="absolute left-4 top-4 z-[121] rounded-2xl border border-white/10 bg-black/80 px-3 py-2 text-[11px] font-bold text-white/75 shadow-[0_0_24px_rgba(0,0,0,0.5)]">
-          <div>Alcance: {rangeLabel}</div>
-          <div>Área: {areaLabel}</div>
-          {spell.salvacao && (
-             <div className="text-yellow-300">
-               CD {spell.cdSalvacao || "Calc"} ({spell.salvacao})
-             </div>
-          )}
-          <div className={previewArea?.inRange ? "text-gray-200 mt-1" : "text-red-300 mt-1"}>
-            {previewArea?.inRange ? "Dentro do alcance" : "Fora do alcance"}
-          </div>
-        </div>
 
         {previewArea && (
           (() => {

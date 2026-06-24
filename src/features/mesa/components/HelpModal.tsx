@@ -9,7 +9,7 @@ interface HelpModalProps {
 }
 
 export default function HelpModal({ isOpen, onToggle }: HelpModalProps) {
-  const [ajudaTab, setAjudaTab] = useState<'condicoes' | 'jogador' | 'mestre'>('jogador');
+  const [ajudaTab, setAjudaTab] = useState<'condicoes'>('condicoes');
   const [buscaCondicao, setBuscaCondicao] = useState("");
   const [itemExpandido, setItemExpandido] = useState<string | null>(null);
   const [tutorialExpandido, setTutorialExpandido] = useState<string | null>(null);
@@ -31,8 +31,6 @@ export default function HelpModal({ isOpen, onToggle }: HelpModalProps) {
             <button onClick={onToggle} className="text-white/20 hover:text-white"><X size={18} /></button>
           </div>
           <div className="flex bg-[#00ff66]/5 border-b border-white/5 shrink-0">
-            <button onClick={() => setAjudaTab('jogador')} className={`flex-1 py-3 text-[10px] font-black uppercase tracking-widest transition-colors ${ajudaTab === 'jogador' ? 'text-[#00ff66] border-b-2 border-[#00ff66]' : 'text-white/40 hover:text-white/70'}`}>Jogador</button>
-            <button onClick={() => setAjudaTab('mestre')} className={`flex-1 py-3 text-[10px] font-black uppercase tracking-widest transition-colors ${ajudaTab === 'mestre' ? 'text-[#00ff66] border-b-2 border-[#00ff66]' : 'text-white/40 hover:text-white/70'}`}>Mestre</button>
             <button onClick={() => setAjudaTab('condicoes')} className={`flex-1 py-3 text-[10px] font-black uppercase tracking-widest transition-colors ${ajudaTab === 'condicoes' ? 'text-[#00ff66] border-b-2 border-[#00ff66]' : 'text-white/40 hover:text-white/70'}`}>Condições</button>
           </div>
 

@@ -233,6 +233,7 @@ interface FichaModalProps {
     campaignId: string;
     onRollDice: (diceType: string, isSecret: boolean, mode: 'normal' | 'advantage' | 'disadvantage') => Promise<unknown | null>;
     readOnly?: boolean;
+    onLaunchSpell?: (spell: any) => void;
 }
 
 const categoriaIcons: Record<ItemCategoria, React.ReactNode> = {
@@ -242,7 +243,8 @@ const categoriaIcons: Record<ItemCategoria, React.ReactNode> = {
     item: <Backpack size={14} className="text-[#f1e5ac]" />,
 };
 
-export default function FichaModal({ isOpen, onClose, characterId, onUpdate, campaignId, onRollDice, readOnly = false }: FichaModalProps) {
+export default function FichaModal({ isOpen, onClose, characterId, onUpdate, campaignId, onRollDice, readOnly = false, onLaunchSpell }: FichaModalProps) {
+    
     const supabase = useMemo(() => createClient(), []);
     const [draft, setDraft] = useState<Character | null>(null);
     const [initialChar, setInitialChar] = useState<Character | null>(null);
@@ -361,6 +363,39 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
         const finalValue: number = typeof rawResult === 'object' && rawResult !== null 
             ? Number((rawResult as { finalValue: number }).finalValue) 
             : Number(rawResult);
+        
+        if (label === 'efeito') {
+            // Ampliando as palavras-chave para garantir que pegue itens de cura
+            const isHealing = /(poção|cura|heal|potion|restaura|vida)/i.test(itemName + formula);
+            
+            if (isHealing && draft) {
+                const currentHp = Number(draft.hp_current) || 0;
+                const maxHp = Number(draft.hp_max) || 0;
+                const val = Number(finalValue) || 0;
+                const newHp = Math.min(maxHp, currentHp + val); // Soma matemática segura
+                
+                updateDraft('hp_current', newHp);
+                await supabase.from('characters').update({ hp_current: newHp }).eq('id', draft.id);
+            }
+
+            // Reduz a quantidade e some do inventário se chegar a 0
+            if (draft && draft.inventory) {
+                const invIndex = draft.inventory.findIndex(i => i.nome === itemName || i.name === itemName);
+                if (invIndex >= 0) {
+                    const newInv = [...draft.inventory];
+                    let qty = Number(newInv[invIndex].quantidade) || 1;
+                    qty -= 1;
+                    
+                    if (qty <= 0) {
+                        newInv.splice(invIndex, 1);
+                    } else {
+                        newInv[invIndex] = { ...newInv[invIndex], quantidade: qty };
+                    }
+                    updateDraft('inventory', newInv);
+                    await supabase.from('characters').update({ inventory: newInv }).eq('id', draft.id);
+                }
+            }
+        }
         if (currentUserId) {
             await supabase.from('chat_messages').insert([{
                 campaign_id: campaignId,
@@ -445,7 +480,7 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
         setShowInventoryForm(true);
     };
 
-    const addInventoryItem = () => {
+    const addInventoryItem = async () => {
         if (!draft || !newInventoryItem.nome.trim()) return;
 
         const base = {
@@ -458,52 +493,36 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
         };
 
         let payload: InventoryItem;
-
         if (newInventoryItem.categoria === 'arma') {
-            payload = {
-                ...base,
-                tipo: 'Arma',
-                atributo: newInventoryItem.atributo || undefined,
-                ataque: newInventoryItem.ataque.trim(),
-                dano: newInventoryItem.dano.trim(),
-            };
+            payload = { ...base, tipo: 'Arma', atributo: newInventoryItem.atributo || undefined, ataque: newInventoryItem.ataque.trim(), dano: newInventoryItem.dano.trim() };
         } else if (newInventoryItem.categoria === 'armadura') {
-            payload = {
-                ...base,
-                tipo: 'Armadura',
-                tipoArmadura: newInventoryItem.tipoArmadura || undefined,
-                caBase: newInventoryItem.caBase ? Number(newInventoryItem.caBase) : undefined,
-            };
+            payload = { ...base, tipo: 'Armadura', tipoArmadura: newInventoryItem.tipoArmadura || undefined, caBase: newInventoryItem.caBase ? Number(newInventoryItem.caBase) : undefined };
         } else if (newInventoryItem.categoria === 'consumivel') {
-            payload = {
-                ...base,
-                tipo: 'Consumível',
-                quantidade: newInventoryItem.quantidade ? Number(newInventoryItem.quantidade) : 1,
-                efeito: newInventoryItem.efeito.trim(),
-            };
+            payload = { ...base, tipo: 'Consumível', quantidade: newInventoryItem.quantidade ? Number(newInventoryItem.quantidade) : 1, efeito: newInventoryItem.efeito.trim() };
         } else {
-            payload = {
-                ...base,
-                tipo: newInventoryItem.tipo.trim() || 'Item',
-            };
+            payload = { ...base, tipo: newInventoryItem.tipo.trim() || 'Item' };
         }
 
-        if (editingInventoryId !== null) {
-            updateDraft('inventory', (draft.inventory ?? []).map(i =>
-                i.id === editingInventoryId ? payload : i
-            ));
-        } else {
-            updateDraft('inventory', [...(draft.inventory ?? []), payload]);
-        }
+        // SALVAMENTO AUTOMÁTICO
+        const nextInv = editingInventoryId !== null
+            ? (draft.inventory ?? []).map(i => i.id === editingInventoryId ? payload : i)
+            : [...(draft.inventory ?? []), payload];
+            
+        updateDraft('inventory', nextInv);
+        await supabase.from('characters').update({ inventory: nextInv }).eq('id', draft.id);
 
         resetInventoryForm();
         setShowInventoryForm(false);
     };
 
-    const removeInventoryItem = (id: number) =>
-        setDraft(prev => prev ? { ...prev, inventory: prev.inventory.filter(i => i.id !== id) } : prev);
+    const removeInventoryItem = async (id: number) => {
+        if (!draft) return;
+        const nextInv = draft.inventory.filter(i => i.id !== id);
+        updateDraft('inventory', nextInv);
+        await supabase.from('characters').update({ inventory: nextInv }).eq('id', draft.id);
+    };
 
-    // Funções de Gerenciamento das Habilidades via Pop-up
+    // Funções de Gerenciamento das Habilidades
     const resetSpellForm = () => {
         setNewSpellItem(EMPTY_SPELL_FORM);
         setEditingSpellId(null);
@@ -520,7 +539,7 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
         setShowSpellForm(true);
     };
 
-    const addSpellItem = () => {
+    const addSpellItem = async () => {
         if (!draft || !newSpellItem.name.trim()) return;
 
         const payload = {
@@ -531,20 +550,24 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
             desc: newSpellItem.desc.trim(),
         };
 
-        if (editingSpellId !== null) {
-            updateDraft('spells', (draft.spells ?? []).map(s =>
-                s.id === editingSpellId ? payload : s
-            ));
-        } else {
-            updateDraft('spells', [...(draft.spells ?? []), payload]);
-        }
+        // SALVAMENTO AUTOMÁTICO
+        const nextSpells = editingSpellId !== null
+            ? (draft.spells ?? []).map(s => s.id === editingSpellId ? payload : s)
+            : [...(draft.spells ?? []), payload];
+
+        updateDraft('spells', nextSpells);
+        await supabase.from('characters').update({ spells: nextSpells }).eq('id', draft.id);
 
         resetSpellForm();
         setShowSpellForm(false);
     };
 
-    const removeSpell = (id: number) =>
-        setDraft(prev => prev ? { ...prev, spells: prev.spells.filter(s => s.id !== id) } : prev);
+    const removeSpell = async (id: number) => {
+        if (!draft) return;
+        const nextSpells = draft.spells.filter(s => s.id !== id);
+        updateDraft('spells', nextSpells);
+        await supabase.from('characters').update({ spells: nextSpells }).eq('id', draft.id);
+    };
 
     const saveCharacter = async () => {
         if (!draft || !initialChar) return;
@@ -1355,6 +1378,7 @@ return (
             }}
             characterId={draft?.id ?? null}
             campaignId={campaignId}
+            onLaunchSpell={onLaunchSpell}
         />
         
     </>
