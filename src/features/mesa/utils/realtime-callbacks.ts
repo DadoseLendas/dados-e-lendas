@@ -5,10 +5,13 @@ interface RealtimeCallbacksInput {
   setTokens: React.Dispatch<React.SetStateAction<Token[]>>;
   setRulers: React.Dispatch<React.SetStateAction<Map<string, UserRuler>>>;
   fetchPlayerCharacters: () => Promise<void>;
+  onFogUpdate?: (payload: Record<string, unknown>) => void;
+  onFogToggle?: (payload: Record<string, unknown>) => void;
+  onFogConfig?: (payload: Record<string, unknown>) => void;
 }
 
 export function buildRealtimeCallbacks({
-  setTokens, setRulers, fetchPlayerCharacters,
+  setTokens, setRulers, fetchPlayerCharacters, onFogUpdate, onFogToggle, onFogConfig,
 }: RealtimeCallbacksInput) {
   return {
     onTokenMove: ({ tokenId, x, y, rotation }: { tokenId: string; x: number; y: number; rotation?: number }) => {
@@ -56,5 +59,8 @@ export function buildRealtimeCallbacks({
       setTokens(prev => prev.filter(t => t.id !== (row as any).id));
     },
     onMembersChange: () => { fetchPlayerCharacters(); },
+    onFogUpdate,
+    onFogToggle,
+    onFogConfig,
   };
 }

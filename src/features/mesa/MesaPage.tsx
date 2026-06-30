@@ -13,7 +13,7 @@ import { useMesaSpellCaster } from '@/features/mesa/hooks/useMesaSpellCaster';
 import { useTokenSheet } from '@/features/mesa/hooks/useTokenSheet';
 import { registerMesaCharacterShortcuts } from '@/features/mesa/utils/mesa-keyboard-shortcuts';
 import { buildRealtimeCallbacks } from '@/features/mesa/utils/realtime-callbacks';
-import { Token, RollDiceFunc } from '@/features/mesa/types';
+import { Token, RollDiceFunc, UserRuler } from '@/features/mesa/types';
 import SpellCaster from '@/features/spells/components/spell-caster';
 import ChatWidget from '@/features/chat/components/chat-widget';
 import CampaignBooksWidget from '@/features/mesa/components/campaign-books-widget';
@@ -23,15 +23,16 @@ import TokenLayer from '@/features/mesa/components/TokenLayer';
 import PlayerStatusWidget from '@/features/mesa/components/player-status-widget';
 import Sidebar from '@/features/mesa/components/Sidebar';
 import PlayerListPanel from '@/features/mesa/components/PlayerListPanel';
-import RulerBar from '@/features/mesa/components/RulerBar';
 import MapRegua from '@/features/mesa/components/MapRegua';
 import MesaModals from '@/features/mesa/components/MesaModals';
+import FogOfWarLayer from '@/features/mesa/components/FogOfWarLayer';
+import BottomToolbar from '@/features/mesa/components/BottomToolbar';
+import { useFogOfWar } from '@/features/mesa/hooks/useFogOfWar';
+import type { RulerShape } from '@/features/mesa/components/MapRegua';
 
 export default function TelaDeMesa() {
   const router = useRouter();
   const params = useParams();
-  // UUID validation — previne SQL injection em queries .or() com campaignId
-  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   const campaignId = params.id as string;
 
   const {
@@ -71,7 +72,6 @@ export default function TelaDeMesa() {
 
   const mapContentRef = useRef<HTMLDivElement | null>(null);
 
-  // UI state
   const [sidebarAberta, toggleSidebar] = useToggle(true);
   const [modalAtivo, setModalAtivo] = useState<'Mapa' | null>(null);
   const [showTokenLibrary, toggleTokenLibrary, setShowTokenLibrary] = useToggle(false);
@@ -85,7 +85,6 @@ export default function TelaDeMesa() {
   const [fichaCharacterIdDM, setFichaCharacterIdDM] = useState<number | string | null>(null);
   const [playerCharacters, setPlayerCharacters] = useState<{ id: number; name: string; img: string | null; imgOffsetX: number; imgOffsetY: number }[]>([]);
 
-  // Abrir um painel DM fecha os outros (evita sobreposição)
   const handleTogglePlayerList = useCallback(() => {
     togglePlayerList();
     setShowBooks(false);
@@ -123,23 +122,45 @@ export default function TelaDeMesa() {
     handleAutoFillTokenSheet, handleAutoFillTokenSheetFromText, closeTokenSheet,
   } = useTokenSheet({ tokens, setTokens, campaignId, selectedToken, isDM });
 
-  // realtime
   const fetchPlayerCharacters = useCallback(async () => {
     const chars = await loadPlayerCharacters();
     if (chars.length > 0) setPlayerCharacters(chars);
   }, [loadPlayerCharacters]);
 
-  // Busca inicial (real-time só pega mudanças posteriores)
   useEffect(() => {
     if (campaignLoaded && isDM) fetchPlayerCharacters();
   }, [campaignLoaded, isDM, fetchPlayerCharacters]);
 
+  const broadcastRef = useRef<(event: string, payload: Record<string, unknown>) => void>(() => {});
+  const broadcastForFog = useCallback((event: string, payload: Record<string, unknown>) => {
+    broadcastRef.current(event, payload);
+  }, []);
+
+  const {
+    fowConfig, setFowConfig,
+    hiddenCells,
+    fogTool, setFogTool,
+    brushSize, setBrushSize,
+    applyFogAtCell,
+    resetLastCell,
+    revealAll: fogRevealAll,
+    applyRemoteFogUpdate,
+    applyRemoteFogConfig,
+  } = useFogOfWar(broadcastForFog, campaignId);
+
+  const [rulerShape, setRulerShape] = useState<RulerShape>('line');
+  const [fogActive, setFogActive] = useState(false);
+
   const realtimeCallbacks = useMemo(() => buildRealtimeCallbacks({
     setTokens, setRulers, fetchPlayerCharacters,
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [setTokens, setRulers, fetchPlayerCharacters]);
+    onFogUpdate: (payload) => applyRemoteFogUpdate(payload),
+    onFogToggle: (payload) => { if (!isDM) applyRemoteFogConfig(payload); },
+    onFogConfig: (payload) => { if (!isDM) applyRemoteFogConfig(payload); },
+  }), [setTokens, setRulers, fetchPlayerCharacters, applyRemoteFogUpdate, applyRemoteFogConfig, isDM]);
 
   const { realtimeChannelRef, broadcast } = useMesaRealtime(campaignId, currentUserId, realtimeCallbacks);
+
+  useEffect(() => { broadcastRef.current = broadcast; }, [broadcast]);
 
   const {
     handleMouseDown, handleMouseMove, handleMouseUp,
@@ -156,7 +177,40 @@ export default function TelaDeMesa() {
     campaignId, mapContentRef,
   });
 
-  // shortcuts
+  const updateRulerPosition = useCallback((userId: string, startX: number, startY: number, endX: number, endY: number) => {
+    const ruler = rulers.get(userId);
+    if (!ruler) return;
+
+    const updatedRuler: UserRuler = {
+      ...ruler,
+      rulerStart: { x: startX, y: startY },
+      rulerEnd: { x: endX, y: endY }
+    };
+
+    setRulers(prev => {
+      const next = new Map(prev);
+      next.set(userId, updatedRuler);
+      return next;
+    });
+
+    broadcast('ruler:move', {
+      userId,
+      ruler: updatedRuler
+    });
+  }, [rulers, setRulers, broadcast]);
+
+ const handleToggleRuler = useCallback(() => {
+  if (currentUserId) {
+    toggleMyRuler(currentUserId, currentUserName || '', rulers, broadcast);
+  }
+}, [currentUserId, currentUserName, rulers, broadcast, toggleMyRuler]);
+
+  const handleClearRuler = useCallback(() => {
+  if (currentUserId) {
+    clearMyRuler(currentUserId, currentUserName || '', broadcast);
+  }
+}, [currentUserId, currentUserName, broadcast, clearMyRuler]);
+
   const openCharacterSheet = useCallback(() => {
     if (!fichaCharacterId) { alert('Você não vinculou um personagem a esta mesa!'); return; }
     setShowFicha(true);
@@ -217,7 +271,6 @@ export default function TelaDeMesa() {
           />
         )}
 
-        {/* main area */}
         <main
           className="flex-grow relative overflow-hidden bg-black cursor-default"
           onMouseDown={(e) => handleMouseDown(e)}
@@ -226,16 +279,28 @@ export default function TelaDeMesa() {
             setZoom(prev => Math.min(Math.max(0.1, prev + delta), 5));
           }}
         >
-          <RulerBar
+          <BottomToolbar
             currentUserId={currentUserId}
             currentUserName={currentUserName || ''}
+            isDM={isDM}
             rulers={rulers}
             gridSize={gridSize}
             gridDistanceInfo={gridDistanceInfo}
-            onToggleRuler={toggleMyRuler}
-            onClearRuler={clearMyRuler}
+            onToggleRuler={handleToggleRuler}
+            onClearRuler={handleClearRuler}
             getRulerDistance={getRulerDistance}
             broadcast={broadcast}
+            rulerShape={rulerShape}
+            onRulerShape={setRulerShape}
+            fowConfig={fowConfig}
+            onFowConfig={setFowConfig}
+            fogActive={fogActive}
+            onFogActiveToggle={() => setFogActive(p => !p)}
+            fogTool={fogTool}
+            onFogTool={setFogTool}
+            brushSize={brushSize}
+            onBrushSize={setBrushSize}
+            onRevealAll={fogRevealAll}
           />
 
           <div
@@ -251,9 +316,7 @@ export default function TelaDeMesa() {
                   className="w-[1000px] h-[800px] flex flex-col items-center justify-center gap-6 relative overflow-hidden select-none"
                   style={{ backgroundImage: `radial-gradient(ellipse 60% 50% at 50% 50%, #0d1a0d 0%, #060c06 60%, #030703 100%)` }}
                 >
-                  {/* Grid sutil */}
                   <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: 'linear-gradient(to right, rgba(0,255,102,0.04) 1px, transparent 1px), linear-gradient(to bottom, rgba(0,255,102,0.04) 1px, transparent 1px)', backgroundSize: '50px 50px' }} />
-                  {/* Glow central */}
                   <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                     <div className="w-80 h-80 rounded-full" style={{ background: 'radial-gradient(circle, rgba(0,255,102,0.04) 0%, transparent 70%)' }} />
                   </div>
@@ -283,6 +346,8 @@ export default function TelaDeMesa() {
                 getRulerDistance={getRulerDistance}
                 clearUserRuler={clearUserRuler}
                 broadcast={broadcast}
+                rulerShape={rulerShape}
+                updateRulerPosition={updateRulerPosition}
               />
 
               <div className="absolute inset-0 pointer-events-none" style={getGridBgStyle()} />
@@ -315,6 +380,20 @@ export default function TelaDeMesa() {
                   return null;
                 }}
               />
+
+              {fowConfig.enabled && (
+                <FogOfWarLayer
+                  hiddenCells={hiddenCells}
+                  gridSize={gridSize}
+                  mapWidth={mapContentRef.current?.offsetWidth ?? 1000}
+                  mapHeight={mapContentRef.current?.offsetHeight ?? 800}
+                  fowConfig={fowConfig}
+                  isDM={isDM}
+                  fogActive={fogActive}
+                  onFogPaint={isDM && fogActive ? applyFogAtCell : undefined}
+                  onFogPaintEnd={resetLastCell}
+                />
+              )}
             </div>
           </div>
         </main>
@@ -334,15 +413,12 @@ export default function TelaDeMesa() {
         campaignId={campaignId}
         isDM={isDM}
         rollDiceFunc={rollDiceFunc}
-
         showFicha={showFicha}
         onCloseFicha={() => setShowFicha(false)}
         fichaCharacterId={fichaCharacterId}
-
         showSpellModal={showSpellModal}
         onCloseSpellModal={() => setShowSpellModal(false)}
         onLaunchSpell={handleSpellLaunch}
-
         showTokenSheet={showTokenSheet}
         tokenSheet={tokenSheet}
         tokenSheetLoading={tokenSheetLoading}
@@ -356,18 +432,14 @@ export default function TelaDeMesa() {
         onAutoFillTokenSheet={handleAutoFillTokenSheet}
         onAutoFillTokenSheetFromText={handleAutoFillTokenSheetFromText}
         onCloseTokenSheet={closeTokenSheet}
-
         showFichaDM={showFichaDM}
         onCloseFichaDM={() => setShowFichaDM(false)}
         fichaCharacterIdDM={fichaCharacterIdDM}
-
         modalAjuda={modalAjuda}
         onToggleAjuda={toggleModalAjuda}
-
         modalAtivo={modalAtivo}
         onCloseMapUpload={() => setModalAtivo(null)}
         onMapFileUpload={(e) => handleFileUpload(e, () => setModalAtivo(null))}
-
         showMapEditor={showMapEditor}
         mapPreviewUrl={mapPreviewUrl}
         onMapEditorConfirm={(gPx, mScale, gColor, gOpacity, gThickness, gDashed, gDashFreq, gDim) =>

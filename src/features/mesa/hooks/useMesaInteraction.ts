@@ -95,14 +95,8 @@ export function useMesaInteraction(params: UseMesaInteractionParams): UseMesaInt
   const handleMouseDown = useCallback((e: React.MouseEvent, tokenId?: string) => {
     const myRuler = rulers.get(currentUserId || '');
 
-    if (tokenId) {
-      setTokenSelecionado(tokenId);
-      setIsDraggingToken(true);
-      dragMovedRef.current = false;
-      const token = tokensRef.current.find(t => t.id === tokenId);
-      if (token) draggingPosRef.current = { x: token.x, y: token.y };
-      e.stopPropagation();
-    } else if (myRuler?.showRuler && !myRuler.rulerLocked && e.button === 0) {
+    // Se régua estiver ativa, ela tem prioridade — não mova tokens
+    if (myRuler?.showRuler && !myRuler.rulerLocked && e.button === 0) {
       const point = getLocalPointFromMouse(e.clientX, e.clientY, mapContentRef.current);
       if (!point) return;
       isDraggingRulerRef.current = true;
@@ -110,6 +104,17 @@ export function useMesaInteraction(params: UseMesaInteractionParams): UseMesaInt
         rulerStart: point, rulerEnd: point, rulerLocked: false, isRulerDragging: true,
       }, broadcast);
       e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+
+    if (tokenId) {
+      setTokenSelecionado(tokenId);
+      setIsDraggingToken(true);
+      dragMovedRef.current = false;
+      const token = tokensRef.current.find(t => t.id === tokenId);
+      if (token) draggingPosRef.current = { x: token.x, y: token.y };
+      e.stopPropagation();
     } else if (e.button === 1) {
       setIsDraggingMap(true);
       e.preventDefault();

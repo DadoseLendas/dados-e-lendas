@@ -44,6 +44,9 @@ interface RealtimeCallbacks {
   onTokenInsert: (row: Record<string, unknown>) => void;
   onTokenDeletePostgres: (row: Record<string, unknown>) => void;
   onMembersChange: () => void;
+  onFogUpdate?: (payload: Record<string, unknown>) => void;
+  onFogToggle?: (payload: Record<string, unknown>) => void;
+  onFogConfig?: (payload: Record<string, unknown>) => void;
 }
 
 interface MesaRealtime {
@@ -91,6 +94,15 @@ export function useMesaRealtime(
       })
       .on('broadcast', { event: 'ruler-change' }, ({ payload }) => {
         cb().onRulerChange(payload as UserRuler, currentUserIdRef.current);
+      })
+      .on('broadcast', { event: 'fog-update' }, ({ payload }) => {
+        cb().onFogUpdate?.(payload as Record<string, unknown>);
+      })
+      .on('broadcast', { event: 'fog-toggle' }, ({ payload }) => {
+        cb().onFogToggle?.(payload as Record<string, unknown>);
+      })
+      .on('broadcast', { event: 'fog-config' }, ({ payload }) => {
+        cb().onFogConfig?.(payload as Record<string, unknown>);
       })
       .on(
         'postgres_changes',
