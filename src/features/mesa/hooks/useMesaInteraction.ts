@@ -2,6 +2,23 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { Token, UserRuler } from '@/features/mesa/types';
 
+// Distância de um ponto a um segmento de reta (para hit-test da régua)
+function distanceToSegment(
+  px: number, py: number,
+  ax: number, ay: number,
+  bx: number, by: number,
+): number {
+  const dx = bx - ax;
+  const dy = by - ay;
+  const lengthSq = dx * dx + dy * dy;
+  if (lengthSq === 0) return Math.hypot(px - ax, py - ay);
+  let t = ((px - ax) * dx + (py - ay) * dy) / lengthSq;
+  t = Math.max(0, Math.min(1, t));
+  const cx = ax + t * dx;
+  const cy = ay + t * dy;
+  return Math.hypot(px - cx, py - cy);
+}
+
 interface UseMesaInteractionParams {
   currentUserId: string | null;
   currentUserName: string;
@@ -92,10 +109,41 @@ export function useMesaInteraction(params: UseMesaInteractionParams): UseMesaInt
     campaignId, mapContentRef,
   } = params;
 
+  const isTranslatingRulerRef = useRef(false);
+  const rulerGrabOffsetRef = useRef({ x: 0, y: 0 });
+  const rulerLengthRef = useRef({ dx: 0, dy: 0 });
+
   const handleMouseDown = useCallback((e: React.MouseEvent, tokenId?: string) => {
     const myRuler = rulers.get(currentUserId || '');
 
-    // Se régua estiver ativa, ela tem prioridade — não mova tokens
+    // Régua já travada: se o clique for perto da linha/handles, arraste-a inteira
+    if (myRuler?.showRuler && myRuler.rulerLocked && myRuler.rulerStart && myRuler.rulerEnd && e.button === 0) {
+      const point = getLocalPointFromMouse(e.clientX, e.clientY, mapContentRef.current);
+      if (point) {
+        const hitRadius = Math.max(20, gridSize * 0.35);
+        const dist = distanceToSegment(
+          point.x, point.y,
+          myRuler.rulerStart.x, myRuler.rulerStart.y,
+          myRuler.rulerEnd.x, myRuler.rulerEnd.y,
+        );
+        if (dist <= hitRadius) {
+          isTranslatingRulerRef.current = true;
+          rulerGrabOffsetRef.current = {
+            x: point.x - myRuler.rulerStart.x,
+            y: point.y - myRuler.rulerStart.y,
+          };
+          rulerLengthRef.current = {
+            dx: myRuler.rulerEnd.x - myRuler.rulerStart.x,
+            dy: myRuler.rulerEnd.y - myRuler.rulerStart.y,
+          };
+          e.preventDefault();
+          e.stopPropagation();
+          return;
+        }
+      }
+    }
+
+    // Se régua estiver ativa (e não travada), ela tem prioridade — não mova tokens
     if (myRuler?.showRuler && !myRuler.rulerLocked && e.button === 0) {
       const point = getLocalPointFromMouse(e.clientX, e.clientY, mapContentRef.current);
       if (!point) return;
@@ -127,6 +175,22 @@ export function useMesaInteraction(params: UseMesaInteractionParams): UseMesaInt
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     const myRuler = rulers.get(currentUserId || '');
 
+    if (isTranslatingRulerRef.current) {
+      const point = getLocalPointFromMouse(e.clientX, e.clientY, mapContentRef.current);
+      if (point) {
+        const newStart = {
+          x: point.x - rulerGrabOffsetRef.current.x,
+          y: point.y - rulerGrabOffsetRef.current.y,
+        };
+        const newEnd = {
+          x: newStart.x + rulerLengthRef.current.dx,
+          y: newStart.y + rulerLengthRef.current.dy,
+        };
+        updateMyRuler(currentUserId!, currentUserName, { rulerStart: newStart, rulerEnd: newEnd }, broadcast);
+      }
+      return;
+    }
+
     if (isDraggingMap) {
       setOffset(prev => ({ x: prev.x + e.movementX, y: prev.y + e.movementY }));
     } else if (isDraggingToken && tokenSelecionado) {
@@ -154,6 +218,10 @@ export function useMesaInteraction(params: UseMesaInteractionParams): UseMesaInt
 
   const handleMouseUp = useCallback(() => {
     const myRuler = rulers.get(currentUserId || '');
+
+    if (isTranslatingRulerRef.current) {
+      isTranslatingRulerRef.current = false;
+    }
 
     if (isDraggingToken && tokenSelecionado) {
       if (!dragMovedRef.current) {

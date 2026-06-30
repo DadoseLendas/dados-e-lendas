@@ -1,5 +1,4 @@
 'use client';
-import { useRef, useState, useCallback, useEffect } from 'react';
 import { Trash2 } from 'lucide-react';
 import { UserRuler } from '@/features/mesa/types';
 
@@ -21,22 +20,19 @@ interface MapRulersProps {
   clearUserRuler: (userId: string, isDM: boolean, broadcast: (event: string, payload: Record<string, unknown>) => void) => void;
   broadcast: (event: string, payload: Record<string, unknown>) => void;
   rulerShape: RulerShape;
-  updateRulerPosition?: (userId: string, startX: number, startY: number, endX: number, endY: number) => void;
 }
 
 const USER_COLORS = ['#00ff66', '#ff4444', '#4488ff', '#ffaa44', '#ff44ff', '#44ffaa', '#ffff44', '#aa44ff'];
 
 function ShapeOverlay({
-  ruler, color, gridSize, gridDistanceInfo, shape, onDragStart, onDragMove, onDragEnd,
+  ruler, color, gridSize, gridDistanceInfo, shape, isLocked,
 }: {
   ruler: UserRuler;
   color: string;
   gridSize: number;
   gridDistanceInfo: { value: number; unit: string };
   shape: RulerShape;
-  onDragStart?: (e: React.MouseEvent, userId: string) => void;
-  onDragMove?: (e: React.MouseEvent, userId: string) => void;
-  onDragEnd?: (e: React.MouseEvent, userId: string) => void;
+  isLocked: boolean;
 }) {
   if (!ruler.rulerStart || !ruler.rulerEnd) return null;
 
@@ -60,43 +56,45 @@ function ShapeOverlay({
   const fill = color + '22';
   const stroke = color;
 
-  const handleMouseDown = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (onDragStart) onDragStart(e, ruler.userId);
-  };
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (onDragMove) onDragMove(e, ruler.userId);
-  };
-
-  const handleMouseUp = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (onDragEnd) onDragEnd(e, ruler.userId);
-  };
+  // pointer-events:auto somente na área da régua, permitindo que o handler global
+  // (useMesaInteraction) capture o mousedown e mova a régua travada inteira.
+  const grabCursor = isLocked ? 'grab' : 'default';
 
   if (shape === 'line') {
     const angleDeg = angle * (180 / Math.PI);
     return (
       <>
         <div
-          className="absolute left-0 top-0 pointer-events-none"
+          className="absolute left-0 top-0"
           style={{
             transform: `translate(${sx}px, ${sy}px) rotate(${angleDeg}deg)`,
             transformOrigin: '0 0',
+            pointerEvents: isLocked ? 'auto' : 'none',
+            cursor: grabCursor,
           }}
         >
           <div
-            className="h-[2px] rounded-full"
-            style={{ width: `${dist}px`, backgroundColor: stroke, boxShadow: `0 0 6px ${stroke}60` }}
-          />
+            className="h-[10px] -translate-y-1/2"
+            style={{ width: `${dist}px` }}
+          >
+            <div
+              className="h-[2px] rounded-full mt-1"
+              style={{ width: `${dist}px`, backgroundColor: stroke, boxShadow: `0 0 6px ${stroke}60` }}
+            />
+          </div>
         </div>
         <div
-          className="absolute pointer-events-none rounded-full bg-black/80 px-2 py-0.5 text-[9px] font-bold whitespace-nowrap"
-          style={{ left: midX, top: midY, transform: 'translate(-50%, -50%)', border: `1px solid ${stroke}`, color: stroke, cursor: 'grab' }}
-          onMouseDown={handleMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp}
+          className="absolute rounded-lg px-2 py-1 text-[10px] font-black whitespace-nowrap"
+          style={{
+            left: midX, top: midY, transform: 'translate(-50%, -50%)',
+            backgroundColor: 'rgba(10,18,10,0.88)',
+            backdropFilter: 'blur(8px)',
+            border: `1px solid ${stroke}55`,
+            color: stroke,
+            cursor: grabCursor,
+            boxShadow: `0 0 12px ${stroke}30`,
+            pointerEvents: isLocked ? 'auto' : 'none',
+          }}
         >
           {label}
         </div>
@@ -117,21 +115,12 @@ function ShapeOverlay({
     const r = dist;
     return (
       <svg style={svgStyle}>
-        <circle cx={sx} cy={sy} r={r} fill={fill} stroke={stroke} strokeWidth={2} strokeDasharray="6 3" />
+        <circle cx={sx} cy={sy} r={r} fill={fill} stroke={stroke} strokeWidth={2} strokeDasharray="6 3"
+          style={{ pointerEvents: isLocked ? 'auto' : 'none', cursor: grabCursor }} />
         <circle cx={sx} cy={sy} r={4} fill={stroke} />
         <line x1={sx} y1={sy} x2={ex} y2={ey} stroke={stroke} strokeWidth={1.5} strokeDasharray="4 3" />
         <text x={midX} y={midY - 8} fill={stroke} fontSize={11} fontWeight="bold" textAnchor="middle"
           style={{ filter: 'drop-shadow(0 1px 2px black)' }}>{label}</text>
-        <circle
-          cx={midX} cy={midY}
-          r={15}
-          fill="transparent"
-          stroke="transparent"
-          onMouseDown={handleMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp}
-          style={{ cursor: 'grab', pointerEvents: 'auto' }}
-        />
       </svg>
     );
   }
@@ -147,7 +136,8 @@ function ShapeOverlay({
     const d = `M ${sx} ${sy} L ${x1} ${y1} A ${dist} ${dist} 0 0 1 ${x2} ${y2} Z`;
     return (
       <svg style={svgStyle}>
-        <path d={d} fill={fill} stroke={stroke} strokeWidth={2} />
+        <path d={d} fill={fill} stroke={stroke} strokeWidth={2}
+          style={{ pointerEvents: isLocked ? 'auto' : 'none', cursor: grabCursor }} />
         <circle cx={sx} cy={sy} r={4} fill={stroke} />
         <text
           x={sx + dist * 0.6 * Math.cos(angle)}
@@ -155,16 +145,6 @@ function ShapeOverlay({
           fill={stroke} fontSize={11} fontWeight="bold" textAnchor="middle"
           style={{ filter: 'drop-shadow(0 1px 2px black)' }}
         >{label}</text>
-        <circle
-          cx={midX} cy={midY}
-          r={15}
-          fill="transparent"
-          stroke="transparent"
-          onMouseDown={handleMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp}
-          style={{ cursor: 'grab', pointerEvents: 'auto' }}
-        />
       </svg>
     );
   }
@@ -176,21 +156,12 @@ function ShapeOverlay({
       <svg style={svgStyle}>
         <g transform={`rotate(${angleDeg}, ${sx}, ${sy})`}>
           <rect x={sx} y={sy - size / 2} width={size} height={size}
-            fill={fill} stroke={stroke} strokeWidth={2} />
+            fill={fill} stroke={stroke} strokeWidth={2}
+            style={{ pointerEvents: isLocked ? 'auto' : 'none', cursor: grabCursor }} />
         </g>
         <circle cx={sx} cy={sy} r={4} fill={stroke} />
         <text x={midX} y={midY - 8} fill={stroke} fontSize={11} fontWeight="bold" textAnchor="middle"
           style={{ filter: 'drop-shadow(0 1px 2px black)' }}>{label}</text>
-        <circle
-          cx={midX} cy={midY}
-          r={15}
-          fill="transparent"
-          stroke="transparent"
-          onMouseDown={handleMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp}
-          style={{ cursor: 'grab', pointerEvents: 'auto' }}
-        />
       </svg>
     );
   }
@@ -200,66 +171,8 @@ function ShapeOverlay({
 
 export default function MapRegua({
   visibleRulers, currentUserId, isDM, rulers, gridSize, gridDistanceInfo,
-  getRulerDistance, clearUserRuler, broadcast, rulerShape, updateRulerPosition,
+  getRulerDistance, clearUserRuler, broadcast, rulerShape,
 }: MapRulersProps) {
-  const [draggingRuler, setDraggingRuler] = useState<string | null>(null);
-  const [dragOffset, setDragOffset] = useState<{ x: number; y: number } | null>(null);
-  const [dragStartRuler, setDragStartRuler] = useState<UserRuler | null>(null);
-
-  const handleDragStart = useCallback((e: React.MouseEvent, userId: string) => {
-    const ruler = visibleRulers.find(r => r.userId === userId)?.ruler;
-    if (!ruler || !ruler.rulerStart || !ruler.rulerEnd) return;
-    
-    setDraggingRuler(userId);
-    setDragStartRuler(ruler);
-    
-    const midX = (ruler.rulerStart.x + ruler.rulerEnd.x) / 2;
-    const midY = (ruler.rulerStart.y + ruler.rulerEnd.y) / 2;
-    
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
-    
-    setDragOffset({ x: mouseX - midX, y: mouseY - midY });
-  }, [visibleRulers]);
-
-  const handleDragMove = useCallback((e: React.MouseEvent, userId: string) => {
-    if (draggingRuler !== userId || !dragOffset || !dragStartRuler) return;
-    
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
-    
-    const newCenterX = mouseX - dragOffset.x;
-    const newCenterY = mouseY - dragOffset.y;
-    
-    const dx = dragStartRuler.rulerStart!.x - (dragStartRuler.rulerStart!.x + dragStartRuler.rulerEnd!.x) / 2;
-    const dy = dragStartRuler.rulerStart!.y - (dragStartRuler.rulerStart!.y + dragStartRuler.rulerEnd!.y) / 2;
-    
-    const newStartX = newCenterX + dx;
-    const newStartY = newCenterY + dy;
-    const newEndX = newCenterX - dx;
-    const newEndY = newCenterY - dy;
-    
-    if (updateRulerPosition) {
-      updateRulerPosition(userId, newStartX, newStartY, newEndX, newEndY);
-    }
-  }, [draggingRuler, dragOffset, dragStartRuler, updateRulerPosition]);
-
-  const handleDragEnd = useCallback(() => {
-    setDraggingRuler(null);
-    setDragOffset(null);
-    setDragStartRuler(null);
-  }, []);
-
-  useEffect(() => {
-    if (draggingRuler) {
-      const handleGlobalMouseUp = () => handleDragEnd();
-      window.addEventListener('mouseup', handleGlobalMouseUp);
-      return () => window.removeEventListener('mouseup', handleGlobalMouseUp);
-    }
-  }, [draggingRuler, handleDragEnd]);
-
   return (
     <div
       className="absolute inset-0 pointer-events-none"
@@ -271,16 +184,14 @@ export default function MapRegua({
         const rulerColor = ruler.color || (isMyRuler ? '#00ff66' : USER_COLORS[Array.from(rulers.keys()).indexOf(userId) % USER_COLORS.length]);
 
         return (
-          <div key={userId} className="absolute inset-0 pointer-events-none">
+          <div key={userId} className="absolute inset-0">
             <ShapeOverlay
               ruler={ruler}
               color={rulerColor}
               gridSize={gridSize}
               gridDistanceInfo={gridDistanceInfo}
               shape={rulerShape}
-              onDragStart={handleDragStart}
-              onDragMove={handleDragMove}
-              onDragEnd={handleDragEnd}
+              isLocked={isMyRuler && ruler.rulerLocked}
             />
             {!isMyRuler && isDM && ruler.rulerStart && (
               <div

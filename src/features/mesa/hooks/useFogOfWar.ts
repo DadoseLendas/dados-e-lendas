@@ -58,15 +58,22 @@ export function useFogOfWar(
   }, [hiddenCells, campaignId, isLoading]);
 
   const applyFogAtCell = useCallback((x: number, y: number) => {
-    const key = `${x},${y}`;
+    const r = Math.max(1, brushSize) - 1; // brushSize=1 → single cell, 2 → 3x3, etc.
+    const keys: string[] = [];
+    for (let dx = -r; dx <= r; dx++) {
+      for (let dy = -r; dy <= r; dy++) {
+        keys.push(`${x + dx},${y + dy}`);
+      }
+    }
+
     setHiddenCells(prev => {
       const next = new Set(prev);
       if (fogTool === 'brush') {
-        next.add(key);
+        keys.forEach(k => next.add(k));
       } else {
-        next.delete(key);
+        keys.forEach(k => next.delete(k));
       }
-      
+
       broadcast('fog:update', {
         cells: Array.from(next).map(k => {
           const [cx, cy] = k.split(',').map(Number);
@@ -74,10 +81,10 @@ export function useFogOfWar(
         }),
         tool: fogTool
       });
-      
+
       return next;
     });
-  }, [fogTool, broadcast]);
+  }, [fogTool, brushSize, broadcast]);
 
   const resetLastCell = useCallback(() => {
     setLastCell(null);
