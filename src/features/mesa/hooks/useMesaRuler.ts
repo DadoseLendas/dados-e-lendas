@@ -15,6 +15,7 @@ interface UserRuler {
   rulerLocked: boolean;
   isRulerDragging: boolean;
   color: string;
+  rulerShape?: 'line' | 'circle' | 'cone' | 'square';
 }
 
 interface MesaRuler {

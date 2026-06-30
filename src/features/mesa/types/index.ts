@@ -25,6 +25,7 @@ export interface UserRuler {
   rulerLocked: boolean;
   isRulerDragging: boolean;
   color: string;
+  rulerShape?: 'line' | 'circle' | 'cone' | 'square';
 }
 
 export type RollDiceFunc = (formula: string, isSecret: boolean, mode: 'normal' | 'advantage' | 'disadvantage') => Promise<any | null>;

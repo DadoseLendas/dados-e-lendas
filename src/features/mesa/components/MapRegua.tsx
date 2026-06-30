@@ -19,7 +19,6 @@ interface MapRulersProps {
   getRulerDistance: (ruler: UserRuler, gridSize: number, info: { value: number; unit: string }) => RulerDistance | null;
   clearUserRuler: (userId: string, isDM: boolean, broadcast: (event: string, payload: Record<string, unknown>) => void) => void;
   broadcast: (event: string, payload: Record<string, unknown>) => void;
-  rulerShape: RulerShape;
 }
 
 const USER_COLORS = ['#00ff66', '#ff4444', '#4488ff', '#ffaa44', '#ff44ff', '#44ffaa', '#ffff44', '#aa44ff'];
@@ -171,7 +170,7 @@ function ShapeOverlay({
 
 export default function MapRegua({
   visibleRulers, currentUserId, isDM, rulers, gridSize, gridDistanceInfo,
-  getRulerDistance, clearUserRuler, broadcast, rulerShape,
+  getRulerDistance, clearUserRuler, broadcast,
 }: MapRulersProps) {
   return (
     <div
@@ -190,7 +189,7 @@ export default function MapRegua({
               color={rulerColor}
               gridSize={gridSize}
               gridDistanceInfo={gridDistanceInfo}
-              shape={rulerShape}
+              shape={ruler.rulerShape ?? 'line'}
               isLocked={isMyRuler && ruler.rulerLocked}
             />
             {!isMyRuler && isDM && ruler.rulerStart && (

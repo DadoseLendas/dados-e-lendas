@@ -131,7 +131,31 @@ export default function TelaDeMesa() {
     if (campaignLoaded && isDM) fetchPlayerCharacters();
   }, [campaignLoaded, isDM, fetchPlayerCharacters]);
 
+  // Refs para quebrar o ciclo de dependência entre Realtime e Fog of War
+  const fowCallbacksRef = useRef<{
+    update: (payload: any) => void;
+    config: (payload: any) => void;
+    revealAll: () => void;
+  }>({
+    update: () => {},
+    config: () => {},
+    revealAll: () => {},
+  });
+
+  const realtimeCallbacks = useMemo(() => buildRealtimeCallbacks({
+    setTokens, setRulers, fetchPlayerCharacters,
+    onFogUpdate: (payload) => fowCallbacksRef.current.update(payload),
+    onFogToggle: (payload) => { if (!isDM) fowCallbacksRef.current.config(payload); },
+    onFogConfig: (payload) => { if (!isDM) fowCallbacksRef.current.config(payload); },
+    onFogRevealAll: () => fowCallbacksRef.current.revealAll(),
+  }), [setTokens, setRulers, fetchPlayerCharacters, isDM]);
+
+  const { realtimeChannelRef, broadcast } = useMesaRealtime(campaignId, currentUserId, realtimeCallbacks);
+
   const broadcastRef = useRef<(event: string, payload: Record<string, unknown>) => void>(() => {});
+  
+  useEffect(() => { broadcastRef.current = broadcast; }, [broadcast]);
+
   const broadcastForFog = useCallback((event: string, payload: Record<string, unknown>) => {
     broadcastRef.current(event, payload);
   }, []);
@@ -146,21 +170,28 @@ export default function TelaDeMesa() {
     revealAll: fogRevealAll,
     applyRemoteFogUpdate,
     applyRemoteFogConfig,
+    applyRemoteFogRevealAll,
   } = useFogOfWar(broadcastForFog, campaignId);
 
+  // Sincroniza as funções reais do useFogOfWar com a nossa Ref estável usada no realtime
+  useEffect(() => {
+    fowCallbacksRef.current = {
+      update: applyRemoteFogUpdate,
+      config: applyRemoteFogConfig,
+      revealAll: applyRemoteFogRevealAll,
+    };
+  }, [applyRemoteFogUpdate, applyRemoteFogConfig, applyRemoteFogRevealAll]);
+
   const [rulerShape, setRulerShape] = useState<RulerShape>('line');
+
+  const handleRulerShapeChange = useCallback((shape: RulerShape) => {
+    setRulerShape(shape);
+    if (currentUserId) {
+      updateMyRuler(currentUserId, currentUserName || '', { rulerShape: shape }, broadcast);
+    }
+  }, [currentUserId, currentUserName, updateMyRuler, broadcast]);
+  
   const [fogActive, setFogActive] = useState(false);
-
-  const realtimeCallbacks = useMemo(() => buildRealtimeCallbacks({
-    setTokens, setRulers, fetchPlayerCharacters,
-    onFogUpdate: (payload) => applyRemoteFogUpdate(payload),
-    onFogToggle: (payload) => { if (!isDM) applyRemoteFogConfig(payload); },
-    onFogConfig: (payload) => { if (!isDM) applyRemoteFogConfig(payload); },
-  }), [setTokens, setRulers, fetchPlayerCharacters, applyRemoteFogUpdate, applyRemoteFogConfig, isDM]);
-
-  const { realtimeChannelRef, broadcast } = useMesaRealtime(campaignId, currentUserId, realtimeCallbacks);
-
-  useEffect(() => { broadcastRef.current = broadcast; }, [broadcast]);
 
   const {
     handleMouseDown, handleMouseMove, handleMouseUp,
@@ -177,18 +208,17 @@ export default function TelaDeMesa() {
     campaignId, mapContentRef,
   });
 
-
- const handleToggleRuler = useCallback(() => {
-  if (currentUserId) {
-    toggleMyRuler(currentUserId, currentUserName || '', rulers, broadcast);
-  }
-}, [currentUserId, currentUserName, rulers, broadcast, toggleMyRuler]);
+  const handleToggleRuler = useCallback(() => {
+    if (currentUserId) {
+      toggleMyRuler(currentUserId, currentUserName || '', rulers, broadcast);
+    }
+  }, [currentUserId, currentUserName, rulers, broadcast, toggleMyRuler]);
 
   const handleClearRuler = useCallback(() => {
-  if (currentUserId) {
-    clearMyRuler(currentUserId, currentUserName || '', broadcast);
-  }
-}, [currentUserId, currentUserName, broadcast, clearMyRuler]);
+    if (currentUserId) {
+      clearMyRuler(currentUserId, currentUserName || '', broadcast);
+    }
+  }, [currentUserId, currentUserName, broadcast, clearMyRuler]);
 
   const openCharacterSheet = useCallback(() => {
     if (!fichaCharacterId) { alert('Você não vinculou um personagem a esta mesa!'); return; }
@@ -270,7 +300,7 @@ export default function TelaDeMesa() {
             getRulerDistance={getRulerDistance}
             broadcast={broadcast}
             rulerShape={rulerShape}
-            onRulerShape={setRulerShape}
+            onRulerShape={handleRulerShapeChange}
             fowConfig={fowConfig}
             onFowConfig={setFowConfig}
             fogActive={fogActive}
@@ -325,7 +355,6 @@ export default function TelaDeMesa() {
                 getRulerDistance={getRulerDistance}
                 clearUserRuler={clearUserRuler}
                 broadcast={broadcast}
-                rulerShape={rulerShape}
               />
 
               <div className="absolute inset-0 pointer-events-none" style={getGridBgStyle()} />
