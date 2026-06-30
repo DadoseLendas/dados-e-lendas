@@ -177,27 +177,6 @@ export default function TelaDeMesa() {
     campaignId, mapContentRef,
   });
 
-  const updateRulerPosition = useCallback((userId: string, startX: number, startY: number, endX: number, endY: number) => {
-    const ruler = rulers.get(userId);
-    if (!ruler) return;
-
-    const updatedRuler: UserRuler = {
-      ...ruler,
-      rulerStart: { x: startX, y: startY },
-      rulerEnd: { x: endX, y: endY }
-    };
-
-    setRulers(prev => {
-      const next = new Map(prev);
-      next.set(userId, updatedRuler);
-      return next;
-    });
-
-    broadcast('ruler:move', {
-      userId,
-      ruler: updatedRuler
-    });
-  }, [rulers, setRulers, broadcast]);
 
  const handleToggleRuler = useCallback(() => {
   if (currentUserId) {
@@ -347,7 +326,6 @@ export default function TelaDeMesa() {
                 clearUserRuler={clearUserRuler}
                 broadcast={broadcast}
                 rulerShape={rulerShape}
-                updateRulerPosition={updateRulerPosition}
               />
 
               <div className="absolute inset-0 pointer-events-none" style={getGridBgStyle()} />
