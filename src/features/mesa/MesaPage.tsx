@@ -13,6 +13,7 @@ import { useMesaSpellCaster } from '@/features/mesa/hooks/useMesaSpellCaster';
 import { useTokenSheet } from '@/features/mesa/hooks/useTokenSheet';
 import { registerMesaCharacterShortcuts } from '@/features/mesa/utils/mesa-keyboard-shortcuts';
 import { buildRealtimeCallbacks } from '@/features/mesa/utils/realtime-callbacks';
+import { updateTokenPosition } from '@/features/mesa/services/mesa-service';
 import { Token, RollDiceFunc, UserRuler } from '@/features/mesa/types';
 import SpellCaster from '@/features/spells/components/spell-caster';
 import ChatWidget from '@/features/chat/components/chat-widget';
@@ -86,6 +87,7 @@ export default function TelaDeMesa() {
   const [rollDiceFunc, setRollDiceFunc] = useState<RollDiceFunc | null>(null);
   const [fichaCharacterIdDM, setFichaCharacterIdDM] = useState<number | string | null>(null);
   const [playerCharacters, setPlayerCharacters] = useState<{ id: number; name: string; img: string | null; imgOffsetX: number; imgOffsetY: number }[]>([]);
+  const characterTokenSyncRef = useRef(false);
 
   const handleTogglePlayerList = useCallback(() => {
     togglePlayerList();
@@ -129,10 +131,15 @@ export default function TelaDeMesa() {
     if (chars.length > 0) setPlayerCharacters(chars);
   }, [loadPlayerCharacters]);
 
-  useEffect(() => {
-    if (campaignLoaded && isDM) fetchPlayerCharacters();
-  }, [campaignLoaded, isDM, fetchPlayerCharacters]);
+  const getMapCenterPoint = useCallback(() => {
+    const width = mapContentRef.current?.offsetWidth ?? 1000;
+    const height = mapContentRef.current?.offsetHeight ?? 800;
+    return { x: width / 2, y: height / 2 };
+  }, []);
 
+useEffect(() => {
+  if (campaignLoaded && isDM) fetchPlayerCharacters();
+}, [campaignLoaded, isDM, fetchPlayerCharacters]);
   // Refs para quebrar o ciclo de dependência entre Realtime e Fog of War
   const fowCallbacksRef = useRef<{
     update: (payload: any) => void;
@@ -159,6 +166,93 @@ export default function TelaDeMesa() {
   }), [setTokens, setRulers, fetchPlayerCharacters, isDM]);
 
   const { realtimeChannelRef, broadcast } = useMesaRealtime(campaignId, currentUserId, realtimeCallbacks);
+
+  const centerAllTokensOnMap = useCallback(async () => {
+    if (!isDM) return;
+
+    const currentTokens = tokensRef.current;
+    if (currentTokens.length === 0) return;
+
+    const center = getMapCenterPoint();
+    const spacing = Math.max(48, gridSize);
+    const columns = Math.max(1, Math.ceil(Math.sqrt(currentTokens.length)));
+    const rows = Math.max(1, Math.ceil(currentTokens.length / columns));
+    const startX = center.x - ((columns - 1) * spacing) / 2;
+    const startY = center.y - ((rows - 1) * spacing) / 2;
+
+    const repositionedTokens = currentTokens.map((token, index) => {
+      const column = index % columns;
+      const row = Math.floor(index / columns);
+      return {
+        ...token,
+        x: startX + (column * spacing),
+        y: startY + (row * spacing),
+      };
+    });
+
+    setTokens(repositionedTokens);
+    await Promise.all(
+      repositionedTokens.map((token) => updateTokenPosition(token.id, token.x, token.y)),
+    );
+    repositionedTokens.forEach((token) => {
+      realtimeChannelRef.current?.send({
+        type: 'broadcast',
+        event: 'token-move',
+        payload: { tokenId: token.id, x: token.x, y: token.y },
+      });
+    });
+  }, [getMapCenterPoint, gridSize, isDM, realtimeChannelRef, setTokens]);
+
+  useEffect(() => {
+    if (!campaignLoaded || !isDM || playerCharacters.length === 0) return;
+    if (characterTokenSyncRef.current) return;
+
+    const existingCharacterIds = new Set(
+      tokensRef.current
+        .filter((token) => token.characterId != null)
+        .map((token) => String(token.characterId)),
+    );
+    const missingCharacters = playerCharacters.filter((character) => !existingCharacterIds.has(String(character.id)));
+
+    if (missingCharacters.length === 0) return;
+
+    characterTokenSyncRef.current = true;
+    const run = async () => {
+      const center = getMapCenterPoint();
+      const spacing = Math.max(48, gridSize);
+      const columns = Math.max(1, Math.ceil(Math.sqrt(missingCharacters.length)));
+      const startX = center.x - ((columns - 1) * spacing) / 2;
+      const startY = center.y - ((Math.ceil(missingCharacters.length / columns) - 1) * spacing) / 2;
+
+      try {
+        for (const [index, character] of missingCharacters.entries()) {
+          const column = index % columns;
+          const row = Math.floor(index / columns);
+          await addTokenToMap(
+            {
+              name: character.name,
+              url: character.img ?? '',
+              characterId: character.id,
+              isMonster: false,
+              imgOffsetX: character.imgOffsetX,
+              imgOffsetY: character.imgOffsetY,
+              position: {
+                x: startX + (column * spacing),
+                y: startY + (row * spacing),
+              },
+            },
+            campaignId,
+            setTokens,
+            (event, payload) => realtimeChannelRef.current?.send({ type: 'broadcast', event, payload }),
+          );
+        }
+      } finally {
+        characterTokenSyncRef.current = false;
+      }
+    };
+
+    void run();
+  }, [addTokenToMap, campaignId, campaignLoaded, getMapCenterPoint, gridSize, isDM, playerCharacters, realtimeChannelRef, setTokens]);
 
   const broadcastRef = useRef<(event: string, payload: Record<string, unknown>) => void>(() => {});
   
@@ -220,6 +314,7 @@ export default function TelaDeMesa() {
     isDraggingMap, setIsDraggingMap, zoom, setOffset, gridSize, getLocalPointFromMouse,
     tokensRef, setTokens,
     handleTokenSnap, handleTokenRotate, handleTokenDelete,
+    onCenterAllTokens: centerAllTokensOnMap,
     realtimeChannelRef, broadcast,
     setShowFicha, setShowFichaDM, setFichaCharacterIdDM,
     campaignId, mapContentRef,

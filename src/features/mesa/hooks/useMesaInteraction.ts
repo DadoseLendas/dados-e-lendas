@@ -74,6 +74,7 @@ interface UseMesaInteractionParams {
     setTokens: React.Dispatch<React.SetStateAction<Token[]>>,
     broadcast: (event: string, payload: any) => void,
   ) => Promise<void>;
+  onCenterAllTokens: () => Promise<void> | void;
 
   // realtime
   realtimeChannelRef: React.MutableRefObject<any>;
@@ -104,6 +105,7 @@ export function useMesaInteraction(params: UseMesaInteractionParams): UseMesaInt
     isDraggingMap, setIsDraggingMap, zoom, setOffset, gridSize, getLocalPointFromMouse,
     tokensRef, setTokens,
     handleTokenSnap, handleTokenRotate, handleTokenDelete,
+    onCenterAllTokens,
     realtimeChannelRef, broadcast,
     setShowFicha, setShowFichaDM, setFichaCharacterIdDM,
     campaignId, mapContentRef,
@@ -263,7 +265,15 @@ export function useMesaInteraction(params: UseMesaInteractionParams): UseMesaInt
     const handleKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
       const isTypingField = target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT' || target.isContentEditable);
-      if (isTypingField || !tokenSelecionado) return;
+      if (isTypingField) return;
+
+      if (e.key.toLowerCase() === 'r' && isDM) {
+        e.preventDefault();
+        void onCenterAllTokens();
+        return;
+      }
+
+      if (!tokenSelecionado) return;
       const id = tokenSelecionado;
       const token = tokensRef.current.find(t => t.id === id);
       if (!token) return;

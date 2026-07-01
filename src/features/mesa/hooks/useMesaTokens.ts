@@ -24,6 +24,17 @@ interface Token {
   sizeCategory?: 'Tiny' | 'Small' | 'Medium' | 'Large' | 'Huge' | 'Gargantuan';
 }
 
+interface MapTokenCreationInput {
+  name: string;
+  url: string;
+  sizeCategory?: 'Tiny' | 'Small' | 'Medium' | 'Large' | 'Huge' | 'Gargantuan';
+  characterId?: number | null;
+  isMonster?: boolean;
+  imgOffsetX?: number;
+  imgOffsetY?: number;
+  position?: { x: number; y: number };
+}
+
 interface MesaTokens {
   tokenSelecionado: string | null;
   setTokenSelecionado: (id: string | null) => void;
@@ -33,7 +44,7 @@ interface MesaTokens {
   draggingPosRef: React.MutableRefObject<{ x: number; y: number }>;
   lastBroadcastRef: React.MutableRefObject<number>;
   addTokenToMap: (
-    t: { name: string; url: string; sizeCategory?: 'Tiny' | 'Small' | 'Medium' | 'Large' | 'Huge' | 'Gargantuan' },
+    t: MapTokenCreationInput,
     campaignId: string,
     setTokens: React.Dispatch<React.SetStateAction<Token[]>>,
     broadcast: (event: string, payload: any) => void,
@@ -74,16 +85,27 @@ export function useMesaTokens(): MesaTokens {
   const lastBroadcastRef = useRef(0);
 
   const addTokenToMap = useCallback(async (
-    t: { name: string; url: string; sizeCategory?: 'Tiny' | 'Small' | 'Medium' | 'Large' | 'Huge' | 'Gargantuan' },
+    t: MapTokenCreationInput,
     campaignId: string,
     setTokens: React.Dispatch<React.SetStateAction<Token[]>>,
     broadcast: (event: string, payload: any) => void,
   ) => {
     const newId = crypto.randomUUID();
     const defaultSize = t.sizeCategory ?? 'Medium';
+    const position = t.position ?? { x: 0, y: 0 };
+    const isMonster = t.isMonster ?? true;
     const newToken: Token = {
-      id: newId, url: t.url, x: 0, y: 0, rotation: 0,
-      name: t.name, isMonster: true, sizeCategory: defaultSize,
+      id: newId,
+      url: t.url,
+      x: position.x,
+      y: position.y,
+      rotation: 0,
+      name: t.name,
+      characterId: t.characterId ?? null,
+      imgOffsetX: t.imgOffsetX ?? 50,
+      imgOffsetY: t.imgOffsetY ?? 50,
+      isMonster,
+      sizeCategory: defaultSize,
     };
     setTokens(prev => [...prev, newToken]);
     await createTokenService({
@@ -91,9 +113,10 @@ export function useMesaTokens(): MesaTokens {
       campaign_id: campaignId,
       url: t.url,
       name: t.name,
-      x: 0,
-      y: 0,
-      is_monster: true,
+      x: position.x,
+      y: position.y,
+      character_id: t.characterId ?? null,
+      is_monster: isMonster,
       size_category: defaultSize,
     });
     broadcast('token-add', { token: newToken });
