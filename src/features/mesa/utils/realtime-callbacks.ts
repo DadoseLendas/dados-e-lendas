@@ -9,10 +9,11 @@ interface RealtimeCallbacksInput {
   onFogToggle?: (payload: Record<string, unknown>) => void;
   onFogConfig?: (payload: Record<string, unknown>) => void;
   onFogRevealAll?: () => void;
+  onWeatherConfig?: (payload: Record<string, unknown>) => void;
 }
 
 export function buildRealtimeCallbacks({
-  setTokens, setRulers, fetchPlayerCharacters, onFogUpdate, onFogToggle, onFogConfig, onFogRevealAll,
+  setTokens, setRulers, fetchPlayerCharacters, onFogUpdate, onFogToggle, onFogConfig, onFogRevealAll, onWeatherConfig,
 }: RealtimeCallbacksInput) {
   return {
     onTokenMove: ({ tokenId, x, y, rotation }: { tokenId: string; x: number; y: number; rotation?: number }) => {
@@ -64,5 +65,6 @@ export function buildRealtimeCallbacks({
     onFogToggle,
     onFogConfig,
     onFogRevealAll,
+    onWeatherConfig,
   };
 }

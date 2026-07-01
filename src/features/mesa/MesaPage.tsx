@@ -28,6 +28,8 @@ import MesaModals from '@/features/mesa/components/MesaModals';
 import FogOfWarLayer from '@/features/mesa/components/FogOfWarLayer';
 import BottomToolbar from '@/features/mesa/components/BottomToolbar';
 import { useFogOfWar } from '@/features/mesa/hooks/useFogOfWar';
+import { useWeather } from '@/features/mesa/hooks/useWeather';
+import WeatherLayer from '@/features/mesa/components/WeatherLayer';
 import type { RulerShape } from '@/features/mesa/components/MapRegua';
 
 export default function TelaDeMesa() {
@@ -142,12 +144,18 @@ export default function TelaDeMesa() {
     revealAll: () => {},
   });
 
+  // Ref estável para o clima, mesmo motivo: quebrar o ciclo Realtime <-> useWeather
+  const weatherCallbacksRef = useRef<{ config: (payload: any) => void }>({
+    config: () => {},
+  });
+
   const realtimeCallbacks = useMemo(() => buildRealtimeCallbacks({
     setTokens, setRulers, fetchPlayerCharacters,
     onFogUpdate: (payload) => fowCallbacksRef.current.update(payload),
     onFogToggle: (payload) => { if (!isDM) fowCallbacksRef.current.config(payload); },
     onFogConfig: (payload) => { if (!isDM) fowCallbacksRef.current.config(payload); },
     onFogRevealAll: () => fowCallbacksRef.current.revealAll(),
+    onWeatherConfig: (payload) => { if (!isDM) weatherCallbacksRef.current.config(payload); },
   }), [setTokens, setRulers, fetchPlayerCharacters, isDM]);
 
   const { realtimeChannelRef, broadcast } = useMesaRealtime(campaignId, currentUserId, realtimeCallbacks);
@@ -172,6 +180,15 @@ export default function TelaDeMesa() {
     applyRemoteFogConfig,
     applyRemoteFogRevealAll,
   } = useFogOfWar(broadcastForFog, campaignId);
+
+  // ── Clima (chuva/neve/areia/névoa) — mesmo fio do Fog of War ────────────────
+  const {
+    weatherConfig, setWeatherConfig, applyRemoteWeatherConfig,
+  } = useWeather(broadcastForFog, campaignId);
+
+  useEffect(() => {
+    weatherCallbacksRef.current = { config: applyRemoteWeatherConfig };
+  }, [applyRemoteWeatherConfig]);
 
   // Sincroniza as funções reais do useFogOfWar com a nossa Ref estável usada no realtime
   useEffect(() => {
@@ -310,6 +327,8 @@ export default function TelaDeMesa() {
             brushSize={brushSize}
             onBrushSize={setBrushSize}
             onRevealAll={fogRevealAll}
+            weatherConfig={weatherConfig}
+            onWeatherConfig={setWeatherConfig}
           />
 
           <div
@@ -401,6 +420,12 @@ export default function TelaDeMesa() {
                   onFogPaintEnd={resetLastCell}
                 />
               )}
+
+              <WeatherLayer
+                config={weatherConfig}
+                width={mapContentRef.current?.offsetWidth ?? 1000}
+                height={mapContentRef.current?.offsetHeight ?? 800}
+              />
             </div>
           </div>
         </main>

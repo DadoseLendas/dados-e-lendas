@@ -49,6 +49,7 @@ interface RealtimeCallbacks {
   onFogToggle?: (payload: Record<string, unknown>) => void;
   onFogConfig?: (payload: Record<string, unknown>) => void;
   onFogRevealAll?: () => void;
+  onWeatherConfig?: (payload: Record<string, unknown>) => void;
 }
 
 interface MesaRealtime {
@@ -111,6 +112,9 @@ export function useMesaRealtime(
       })
       .on('broadcast', { event: 'fog:revealAll' }, () => {
         cb().onFogRevealAll?.();
+      })
+      .on('broadcast', { event: 'weather-config' }, ({ payload }) => {
+        cb().onWeatherConfig?.(payload as Record<string, unknown>);
       })
       .on(
         'postgres_changes',

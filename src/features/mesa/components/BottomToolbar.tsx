@@ -1,8 +1,9 @@
 'use client';
 import { useState } from 'react';
-import { Ruler, Circle, Triangle, Square, Eye, EyeOff, Eraser, Brush, Maximize2, Trash2, ChevronUp } from 'lucide-react';
+import { Ruler, Circle, Triangle, Square, Eye, EyeOff, Eraser, Brush, Maximize2, Trash2, ChevronUp, CloudRain, Snowflake, CloudFog, Wind } from 'lucide-react';
 import type { RulerShape } from './MapRegua';
 import type { FowConfig } from '@/features/mesa/hooks/useFogOfWar';
+import type { WeatherConfig } from '@/features/mesa/hooks/useWeather';
 import type { UserRuler } from '@/features/mesa/types';
 
 interface RulerDistance {
@@ -32,6 +33,8 @@ interface BottomToolbarProps {
   brushSize: number;
   onBrushSize: (size: number) => void;
   onRevealAll: () => void;
+  weatherConfig: WeatherConfig;
+  onWeatherConfig: (config: WeatherConfig) => void;
 }
 
 const SHAPES: { value: RulerShape; icon: React.ReactNode; label: string }[] = [
@@ -39,6 +42,13 @@ const SHAPES: { value: RulerShape; icon: React.ReactNode; label: string }[] = [
   { value: 'circle', icon: <Circle size={15} />, label: 'Círculo' },
   { value: 'cone', icon: <Triangle size={15} />, label: 'Cone' },
   { value: 'square', icon: <Square size={15} />, label: 'Quadrado' },
+];
+
+const WEATHER_TYPES: { value: WeatherConfig['type']; icon: React.ReactNode; label: string }[] = [
+  { value: 'rain', icon: <CloudRain size={15} />, label: 'Chuva' },
+  { value: 'snow', icon: <Snowflake size={15} />, label: 'Neve' },
+  { value: 'sand', icon: <Wind size={15} />, label: 'Tempestade de Areia' },
+  { value: 'fog', icon: <CloudFog size={15} />, label: 'Névoa Densa' },
 ];
 
 const SEP = () => <div className="w-px h-7 bg-white/10 mx-0.5 flex-shrink-0" />;
@@ -93,8 +103,11 @@ export default function BottomToolbar({
   brushSize,
   onBrushSize,
   onRevealAll,
+  weatherConfig,
+  onWeatherConfig,
 }: BottomToolbarProps) {
   const [showRulerOptions, setShowRulerOptions] = useState(false);
+  const [showWeatherOptions, setShowWeatherOptions] = useState(false);
 
   const myRuler = currentUserId ? rulers.get(currentUserId) : undefined;
   const rulerEnabled = !!myRuler?.showRuler;
@@ -270,6 +283,80 @@ export default function BottomToolbar({
               <span className="text-[9px] text-white/40 w-5 tabular-nums font-bold">{fowConfig.desaturated_blur_radius}</span>
             </div>
           )}
+        </>
+      )}
+
+      {/* ── Clima (DM apenas) ── */}
+      {isDM && (
+        <>
+          <SEP />
+          <div className="relative flex items-center">
+            <ToolbarButton
+              active={weatherConfig.enabled}
+              onClick={() => onWeatherConfig({ ...weatherConfig, enabled: !weatherConfig.enabled })}
+              title={weatherConfig.enabled ? 'Desativar clima' : 'Ativar clima'}
+              accent="#5ec8ff"
+            >
+              <CloudRain size={18} />
+            </ToolbarButton>
+
+            {weatherConfig.enabled && (
+              <button
+                type="button"
+                onClick={() => setShowWeatherOptions(v => !v)}
+                className="p-1 -ml-1 rounded-lg text-white/30 hover:text-[#5ec8ff] transition-colors duration-300"
+                title="Opções de clima"
+              >
+                <ChevronUp size={12} className={`transition-transform duration-300 ${showWeatherOptions ? '' : 'rotate-180'}`} />
+              </button>
+            )}
+
+            {weatherConfig.enabled && showWeatherOptions && (
+              <div
+                className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 flex flex-col gap-2 px-3 py-3 rounded-xl"
+                style={{
+                  backgroundColor: 'rgba(10,18,10,0.92)',
+                  backdropFilter: 'blur(20px)',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  boxShadow: '0 0 24px rgba(0,0,0,0.6)',
+                }}
+              >
+                <div className="flex gap-1">
+                  {WEATHER_TYPES.map((w) => (
+                    <ToolbarButton
+                      key={w.value}
+                      active={weatherConfig.type === w.value}
+                      onClick={() => onWeatherConfig({ ...weatherConfig, type: w.value })}
+                      title={w.label}
+                      accent="#5ec8ff"
+                    >
+                      {w.icon}
+                    </ToolbarButton>
+                  ))}
+                </div>
+
+                <div className="flex items-center gap-2 px-1">
+                  <span className="text-[9px] text-white/30 font-bold uppercase tracking-wider whitespace-nowrap w-12">Intens.</span>
+                  <input
+                    type="range" min={0.1} max={1} step={0.05} value={weatherConfig.intensity}
+                    onChange={(e) => onWeatherConfig({ ...weatherConfig, intensity: Number(e.target.value) })}
+                    className="w-20 accent-[#5ec8ff] cursor-pointer"
+                  />
+                  <span className="text-[9px] text-white/40 w-7 tabular-nums font-bold">{Math.round(weatherConfig.intensity * 100)}%</span>
+                </div>
+
+                <div className="flex items-center gap-2 px-1">
+                  <span className="text-[9px] text-white/30 font-bold uppercase tracking-wider whitespace-nowrap w-12">Vento</span>
+                  <input
+                    type="range" min={-1} max={1} step={0.1} value={weatherConfig.windSpeed}
+                    onChange={(e) => onWeatherConfig({ ...weatherConfig, windSpeed: Number(e.target.value) })}
+                    className="w-20 accent-[#5ec8ff] cursor-pointer"
+                  />
+                  <span className="text-[9px] text-white/40 w-7 tabular-nums font-bold">{weatherConfig.windSpeed.toFixed(1)}</span>
+                </div>
+              </div>
+            )}
+          </div>
         </>
       )}
     </div>
