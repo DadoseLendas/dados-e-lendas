@@ -67,6 +67,8 @@ export default function CompleteProfilePage() {
       return
     }
 
+    // Definir senha e opcional: quem chega aqui vem do Google (sem senha) e pode
+    // criar uma para tambem poder logar por e-mail depois. Se deixar em branco, ignora.
     if (formData.password) {
       if (formData.password !== formData.confirmPassword) {
         setErrorMsg("As senhas não conferem.")
@@ -84,9 +86,21 @@ export default function CompleteProfilePage() {
       })
 
       if (passwordError) {
-        setErrorMsg(`Erro ao definir senha: ${passwordError.message}`)
-        setLoading(false)
-        return
+        // Definir senha em conta Google NAO cria identidade 'email' nem muda providers,
+        // entao numa revisita o usuario pode digitar a MESMA senha ja salva. Nesse caso o
+        // Supabase responde "New password should be different from the old password".
+        // A senha ja esta correta -> ignoramos esse erro especifico e seguimos o fluxo.
+        const msg = (passwordError.message ?? '').toLowerCase()
+        const mesmaSenha =
+          msg.includes('different from the old') ||
+          msg.includes('should be different')
+
+        if (!mesmaSenha) {
+          setErrorMsg(`Erro ao definir senha: ${passwordError.message}`)
+          setLoading(false)
+          return
+        }
+        // senao: senha ja e essa, continua normalmente
       }
     }
 
@@ -158,7 +172,7 @@ export default function CompleteProfilePage() {
 
         {errorMsg && (
           <div className="rounded border border-red-500/50 bg-red-900/20 p-3 text-sm text-red-200 text-center animate-pulse border-l-4 border-l-red-500">
-            ⚠️ {errorMsg}
+            {errorMsg}
           </div>
         )}
 
