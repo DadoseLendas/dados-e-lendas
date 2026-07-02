@@ -112,8 +112,9 @@ export default function CompleteProfilePage() {
       return
     }
 
-    // LGPD Art. 8°: registrar consentimento com timestamp
-    const userMeta = user.user_metadata ?? {};
+    // LGPD: o consentimento (terms_accepted_at / terms_version) ja fica registrado no
+    // user_metadata no momento do signUp, entao NAO duplicamos em profiles -- a tabela
+    // nem possui essas colunas. Aqui gravamos apenas o perfil publico do usuario.
     const { error } = await supabase
       .from('profiles')
       .upsert({
@@ -121,15 +122,6 @@ export default function CompleteProfilePage() {
         nickname: formData.nickname,
         display_name: formData.displayName,
         role: 'user',
-        // Preserva timestamp do aceite dos termos dos metadados do signUp
-        ...(userMeta.terms_accepted_at ? {
-          terms_accepted_at: userMeta.terms_accepted_at,
-          terms_version: userMeta.terms_version ?? '1.0',
-        } : {
-          // Fallback: se chegou aqui sem o metadata, registra agora
-          terms_accepted_at: new Date().toISOString(),
-          terms_version: '1.0',
-        }),
       })
 
     if (error) {

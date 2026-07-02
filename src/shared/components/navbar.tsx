@@ -66,7 +66,7 @@ export default function Navbar({ abaAtiva = '', setAbaAtiva = () => {} }: Navbar
     setIsUserLoggedIn(false);
     setAvatarUrl(null);
     setDisplayName(null);
-    router.push('/login');
+    router.push('/home');
     router.refresh();
   };
 
