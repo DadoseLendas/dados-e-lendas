@@ -13,10 +13,27 @@ function safeRedirectPath(next: string | null): string {
   return '/';
 }
 
+/**
+ * Resolve a URL base publica correta mesmo atras do proxy da Vercel.
+ * Em producao/preview a Vercel entrega o host publico em x-forwarded-host;
+ * usar apenas request.url pode devolver o host interno (ou localhost) errado.
+ */
+function getBaseUrl(request: Request): string {
+  const origin = new URL(request.url).origin
+  if (process.env.NODE_ENV === 'development') return origin
+
+  const forwardedHost = request.headers.get('x-forwarded-host')
+  const forwardedProto = request.headers.get('x-forwarded-proto') ?? 'https'
+  if (forwardedHost) return `${forwardedProto}://${forwardedHost}`
+
+  return origin
+}
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const code = searchParams.get('code')
   const next = safeRedirectPath(searchParams.get('next'))
+  const baseUrl = getBaseUrl(request)
 
   if (code) {
     const supabase = await createClient()
@@ -24,7 +41,7 @@ export async function GET(request: Request) {
 
     if (!error) {
       if (next.startsWith('/auth/update-password')) {
-        return NextResponse.redirect(new URL(next, request.url))
+        return NextResponse.redirect(new URL(next, baseUrl))
       }
 
       const { data: { user } } = await supabase.auth.getUser()
@@ -32,18 +49,20 @@ export async function GET(request: Request) {
       if (user) {
         const { data: profile } = await supabase
           .from('profiles')
-          .select('id')
+          .select('nickname, display_name')
           .eq('id', user.id)
-          .single()
+          .maybeSingle()
 
-        if (!profile) {
-          return NextResponse.redirect(new URL('/completar-cadastro', request.url))
+        // Primeiro login com Google (ou perfil incompleto) -> completar cadastro.
+        const perfilCompleto = Boolean(profile?.nickname) && Boolean(profile?.display_name)
+        if (!perfilCompleto) {
+          return NextResponse.redirect(new URL('/completar-cadastro', baseUrl))
         }
       }
 
-      return NextResponse.redirect(new URL(next, request.url))
+      return NextResponse.redirect(new URL(next, baseUrl))
     }
   }
 
-  return NextResponse.redirect(new URL('/login?error=auth-code-error', request.url))
+  return NextResponse.redirect(new URL('/login?error=auth-code-error', baseUrl))
 }
