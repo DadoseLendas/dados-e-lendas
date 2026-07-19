@@ -16,6 +16,15 @@ const DEFAULT_CONFIG: WeatherConfig = {
   windSpeed: 0,
 };
 
+const isMissingWeatherTableError = (error: unknown) => {
+  if (!error || typeof error !== 'object') return false;
+
+  const typedError = error as { code?: string; message?: string };
+  return typedError.code === 'PGRST205'
+    || typedError.message?.includes("public.campaign_weather")
+    || typedError.message?.includes("campaign_weather");
+};
+
 // Salvar no Supabase com debounce de 500ms para não disparar update a cada drag de slider
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -42,7 +51,15 @@ export function useWeather(
           .eq('campaign_id', campaignId)
           .maybeSingle();
 
-        if (error) throw error;
+        if (error) {
+          if (isMissingWeatherTableError(error)) {
+            setIsLoading(false);
+            loadedRef.current = true;
+            return;
+          }
+
+          throw error;
+        }
 
         if (data?.config) {
           setWeatherConfigState({ ...DEFAULT_CONFIG, ...(data.config as Partial<WeatherConfig>) });
@@ -71,6 +88,7 @@ export function useWeather(
             { onConflict: 'campaign_id' },
           );
       } catch (e) {
+        if (isMissingWeatherTableError(e)) return;
         console.error('[Weather] Erro ao salvar clima:', e);
       }
     }, 500);

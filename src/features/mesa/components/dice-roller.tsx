@@ -40,6 +40,17 @@ export default function DiceRoller({ campaignId, onReady, isDM, currentUserId }:
   useEffect(() => { isDMRef.current = isDM; }, [isDM]);
   useEffect(() => { currentUserIdRef.current = currentUserId; }, [currentUserId]);
 
+  const supportsWebGL = useCallback(() => {
+    if (typeof window === 'undefined') return false;
+
+    try {
+      const canvas = document.createElement('canvas');
+      return Boolean(canvas.getContext('webgl') || canvas.getContext('webgl2'));
+    } catch {
+      return false;
+    }
+  }, []);
+
   const triggerVisualRoll = useCallback(async (diceType: string, isSecret: boolean, values: number[]) => {
     if (!diceBoxRef.current || !values || values.length === 0) return null;
 
@@ -103,11 +114,94 @@ export default function DiceRoller({ campaignId, onReady, isDM, currentUserId }:
     // Declaração do canal fora da função async para o useEffect ter acesso a ele
     let channel: ReturnType<typeof supabase.channel> | null = null;
 
+    const rollWithoutVisual = async (formula: string, isSecret: boolean, mode: RollMode = 'normal') => {
+      const cleanFormula = formula.toLowerCase().replace(/\s+/g, '');
+      const regex = /^(\d*)d(\d+)([+-]\d+)?$/;
+      const match = cleanFormula.match(regex);
+
+      let diceType = cleanFormula.startsWith('d') ? cleanFormula : `d${cleanFormula}`;
+      let finalRollValue = 0;
+      let generatedValues: number[] = [];
+
+      if (match) {
+        const qtd = match[1] ? parseInt(match[1]) : 1;
+        const faces = parseInt(match[2]);
+        const mod = match[3] ? parseInt(match[3]) : 0;
+        diceType = `d${faces}`;
+
+        const rollSet = () => {
+          const values: number[] = [];
+          for (let i = 0; i < qtd; i++) {
+            values.push(Math.floor(Math.random() * faces) + 1);
+          }
+          return values;
+        };
+
+        const set1 = rollSet();
+        const set2 = mode !== 'normal' ? rollSet() : set1;
+        const val1 = set1.reduce((acc, value) => acc + value, 0);
+        const val2 = set2.reduce((acc, value) => acc + value, 0);
+
+        generatedValues = mode === 'normal' ? set1 : [val1, val2];
+
+        let rawChosen = val1;
+        if (mode === 'advantage') rawChosen = Math.max(val1, val2);
+        if (mode === 'disadvantage') rawChosen = Math.min(val1, val2);
+
+        finalRollValue = rawChosen + mod;
+      } else {
+        const sides = parseInt(diceType.replace('d', '')) || 20;
+        const v1 = Math.floor(Math.random() * sides) + 1;
+        const v2 = Math.floor(Math.random() * sides) + 1;
+
+        generatedValues = mode === 'normal' ? [v1] : [v1, v2];
+
+        if (mode === 'advantage') finalRollValue = Math.max(v1, v2);
+        else if (mode === 'disadvantage') finalRollValue = Math.min(v1, v2);
+        else finalRollValue = v1;
+      }
+
+      const result: RollResult = {
+        finalValue: finalRollValue,
+        values: generatedValues,
+        rollMode: mode,
+        diceType,
+      };
+
+      channel?.send({
+        type: 'broadcast',
+        event: 'roll',
+        payload: { diceType, isSecret, senderId: currentUserIdRef.current, values: generatedValues },
+      });
+
+      return result;
+    };
+
+    onReady(rollWithoutVisual);
+
+    channel = supabase.channel(`dice_rolls_${campaignId}`, {
+      config: { broadcast: { ack: false } }
+    });
+
+    channel
+      .on('broadcast', { event: 'roll' }, (payload: any) => {
+        const { diceType, isSecret, senderId, values } = payload.payload;
+        if (senderId === currentUserIdRef.current) return;
+        if (isSecret && !isDMRef.current) return;
+        triggerVisualRoll(diceType, isSecret, values).catch(console.error);
+      })
+      .subscribe();
+
     const initDice = async () => {
       try {
         // Garante que o elemento #dice-box existe antes de inicializar
         const diceBoxEl = document.getElementById('dice-box');
-        if (!diceBoxEl) return;
+        if (!diceBoxEl || !supportsWebGL()) {
+          if (!supportsWebGL()) {
+            console.warn('[DiceRoller] WebGL indisponível. Usando rolagem sem animação 3D.');
+          }
+          return;
+        }
 
         const { default: DiceBox } = await import('@3d-dice/dice-box-threejs');
         
@@ -128,88 +222,6 @@ export default function DiceRoller({ campaignId, onReady, isDM, currentUserId }:
         await box.initialize();
         diceBoxRef.current = box;
 
-        channel = supabase.channel(`dice_rolls_${campaignId}`, {
-          config: { broadcast: { ack: false } }
-        });
-
-        channel
-          .on('broadcast', { event: 'roll' }, (payload: any) => {
-            const { diceType, isSecret, senderId, values } = payload.payload;
-            if (senderId === currentUserIdRef.current) return;
-            if (isSecret && !isDMRef.current) return;
-            triggerVisualRoll(diceType, isSecret, values).catch(console.error);
-          })
-          .subscribe();
-
-        onReady(async (formula: string, isSecret: boolean, mode: RollMode = 'normal') => {
-          const cleanFormula = formula.toLowerCase().replace(/\s+/g, '');
-          const regex = /^(\d*)d(\d+)([+-]\d+)?$/;
-          const match = cleanFormula.match(regex);
-
-          let diceType = cleanFormula.startsWith('d') ? cleanFormula : `d${cleanFormula}`;
-          let finalRollValue = 0;
-          let generatedValues: number[] = [];
-
-          if (match) {
-            const qtd = match[1] ? parseInt(match[1]) : 1;
-            const faces = parseInt(match[2]);
-            const mod = match[3] ? parseInt(match[3]) : 0;
-            diceType = `d${faces}`;
-
-            const rollSet = () => {
-              const values: number[] = [];
-              for (let i = 0; i < qtd; i++) {
-                values.push(Math.floor(Math.random() * faces) + 1);
-              }
-              return values;
-            };
-
-            const set1 = rollSet();
-            const set2 = mode !== 'normal' ? rollSet() : set1;
-            const val1 = set1.reduce((acc, value) => acc + value, 0);
-            const val2 = set2.reduce((acc, value) => acc + value, 0);
-
-            generatedValues = mode === 'normal' ? set1 : [val1, val2];
-
-            let rawChosen = val1;
-            if (mode === 'advantage') rawChosen = Math.max(val1, val2);
-            if (mode === 'disadvantage') rawChosen = Math.min(val1, val2);
-
-            finalRollValue = rawChosen + mod;
-          } else {
-            const sides = parseInt(diceType.replace('d', '')) || 20;
-            const v1 = Math.floor(Math.random() * sides) + 1;
-            const v2 = Math.floor(Math.random() * sides) + 1;
-            
-            generatedValues = mode === 'normal' ? [v1] : [v1, v2];
-            
-            if (mode === 'advantage') finalRollValue = Math.max(v1, v2);
-            else if (mode === 'disadvantage') finalRollValue = Math.min(v1, v2);
-            else finalRollValue = v1;
-          }
-
-          const result: RollResult = {
-            finalValue: finalRollValue,
-            values: generatedValues,
-            rollMode: mode,
-            diceType
-          };
-
-          channel?.send({
-                type: 'broadcast',
-                event: 'roll',
-                payload: { diceType, isSecret, senderId: currentUserIdRef.current, values: generatedValues },
-          });
-
-          try {
-            await triggerVisualRoll(diceType, isSecret, generatedValues);
-          } catch (err) {
-            console.error('[DiceRoller] Erro na animação. Enviando resultado para o chat mesmo assim.', err);
-          }
-          
-          return result;
-        });
-
       } catch (e) {
         console.error('[DiceRoller] Falha na inicialização:', e);
       }
@@ -221,6 +233,7 @@ export default function DiceRoller({ campaignId, onReady, isDM, currentUserId }:
       if (channel) {
         supabase.removeChannel(channel); 
       }
+      if (clearTimerRef.current) clearTimeout(clearTimerRef.current);
     };
   }, [campaignId, onReady, triggerVisualRoll, supabase]);
 

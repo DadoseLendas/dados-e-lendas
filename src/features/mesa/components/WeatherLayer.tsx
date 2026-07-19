@@ -135,12 +135,31 @@ export default function WeatherLayer({ config, width, height }: WeatherLayerProp
     clock: THREE.Clock;
   }>({ clock: new THREE.Clock() });
 
+  const supportsWebGL = () => {
+    if (typeof window === 'undefined') return false;
+
+    try {
+      const canvas = document.createElement('canvas');
+      return Boolean(canvas.getContext('webgl') || canvas.getContext('webgl2'));
+    } catch {
+      return false;
+    }
+  };
+
   // ── Setup do renderer (uma vez) ──────────────────────────────────────────────
   useEffect(() => {
     const container = containerRef.current;
-    if (!container) return;
+    if (!container || !supportsWebGL()) return;
 
-    const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+    let renderer: THREE.WebGLRenderer | null = null;
+
+    try {
+      renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+    } catch (error) {
+      console.warn('[WeatherLayer] WebGL indisponível. Efeito de clima desativado.', error);
+      return;
+    }
+
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     Object.assign(renderer.domElement.style, {
       position: 'absolute', top: '0', left: '0', width: '100%', height: '100%',
@@ -168,8 +187,8 @@ export default function WeatherLayer({ config, width, height }: WeatherLayerProp
 
     return () => {
       if (stateRef.current.raf) cancelAnimationFrame(stateRef.current.raf);
-      renderer.dispose();
-      if (container.contains(renderer.domElement)) container.removeChild(renderer.domElement);
+      renderer?.dispose();
+      if (renderer && container.contains(renderer.domElement)) container.removeChild(renderer.domElement);
     };
   }, []);
 
