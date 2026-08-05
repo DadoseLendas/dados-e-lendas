@@ -48,6 +48,13 @@ const weaponAttributeLabels: Record<WeaponAttribute, string> = {
   dex: 'Destreza',
 };
 
+const isFichaAbility = (spell: { tipo?: string; level?: string; desc?: string }) => {
+  const level = String(spell.level ?? '').trim();
+  if (level.length > 0) return false;
+  if (spell.tipo === 'Magia') return false;
+  return true;
+};
+
 type Character = {
   id: string | number;
   name: string;
@@ -858,7 +865,7 @@ export default function PersonagensPage() {
                     </div>
                   ))}
 
-                  {activeCharacter.spells?.filter((s: any) => s.tipo !== 'Magia').map((ability: any) => {
+                  {activeCharacter.spells?.filter((s: any) => isFichaAbility(s)).map((ability: any) => {
                     const isExpanded = expandedSpellId === ability.id;
                     return (
                       <div key={ability.id} className="bg-black/60 p-2 rounded border border-[#1a2a1a] flex justify-between items-center group">

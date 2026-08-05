@@ -8,6 +8,7 @@ type CharacterSpell = {
   id: number;
   name: string;
   level?: string;
+  tipo?: string;
 };
 
 type SpellCatalogItem = {
@@ -197,7 +198,7 @@ export default function CharacterGrimorioPanel({ characterId, campaignId = null,
 
     setKnownSpells((prev) => [
       ...prev,
-      { id: Date.now() + Math.floor(Math.random() * 1000), name: spell.nome, level: `${spell.nivel_magia}` },
+      { id: Date.now() + Math.floor(Math.random() * 1000), name: spell.nome, level: `${spell.nivel_magia}`, tipo: 'Magia' },
     ]);
   };
 

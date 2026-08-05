@@ -105,6 +105,13 @@ const SPELL_ATTR_BY_CLASS: Record<string, 'int' | 'wis' | 'cha'> = {
     'Mago': 'int',
 };
 
+const isFichaAbility = (spell: { tipo?: string; level?: string; desc?: string }) => {
+    const level = String(spell.level ?? '').trim();
+    if (level.length > 0) return false;
+    if (spell.tipo === 'Magia') return false;
+    return true;
+};
+
 const rollDie = (sides: number) => Math.floor(Math.random() * sides) + 1;
 
 const localD20Roll = (mode: 'normal' | 'advantage' | 'disadvantage') => {
@@ -1143,7 +1150,7 @@ return (
                                                         {RACE_DATA[draft.race]?.traits && draft.spells?.length > 0 && <div className="border-t border-[#1a2a1a] my-1" />}
                                                         
                                                         {/* FILTRO: ESCONDE TUDO QUE É MAGIA OU VEM DO GRIMÓRIO */}
-                                                        {draft.spells?.filter((s: any) => s.tipo !== 'Magia').map((spell: any) => {
+                                                        {draft.spells?.filter((s: any) => isFichaAbility(s)).map((spell: any) => {
                                                             const isSpellExpanded = expandedSpellId === spell.id;
                                                             return (
                                                                 <div key={spell.id} className="bg-black/60 rounded border border-[#1a2a1a] overflow-hidden">
