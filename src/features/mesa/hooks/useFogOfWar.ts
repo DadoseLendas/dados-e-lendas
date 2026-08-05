@@ -20,6 +20,10 @@ const DEFAULT_CONFIG: FowConfig = {
   desaturated_blur_radius: 15,
 };
 
+function mergeFowConfig(config: Partial<FowConfig> | null | undefined): FowConfig {
+  return { ...DEFAULT_CONFIG, ...(config ?? {}) };
+}
+
 // Serializa Set<"x,y"> → array de {x,y} para o banco
 function cellsToArray(cells: Set<string>): { x: number; y: number }[] {
   return Array.from(cells).map(k => {
@@ -68,7 +72,7 @@ export function useFogOfWar(
 
         if (data) {
           if (data.cells) setHiddenCells(arrayToCells(data.cells));
-          if (data.config) setFowConfigState(data.config as FowConfig);
+          if (data.config) setFowConfigState(mergeFowConfig(data.config as Partial<FowConfig>));
         }
       } catch (e) {
         console.error('[FoW] Erro ao carregar névoa:', e);
@@ -190,10 +194,10 @@ export function useFogOfWar(
 
   const applyRemoteFogConfig = useCallback((payload: Record<string, unknown>) => {
     if (payload.config) {
-      setFowConfigState(payload.config as FowConfig);
+      setFowConfigState(mergeFowConfig(payload.config as Partial<FowConfig>));
     } else {
       // legado campo-a-campo
-      setFowConfigState(prev => ({ ...prev, ...(payload as Partial<FowConfig>) }));
+      setFowConfigState(prev => mergeFowConfig({ ...prev, ...(payload as Partial<FowConfig>) }));
     }
   }, []);
 
