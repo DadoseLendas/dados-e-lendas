@@ -33,7 +33,27 @@ export default function DiceRoller({ campaignId, onReady, isDM, currentUserId }:
   const diceBoxRef     = useRef<any>(null);
   const clearTimerRef  = useRef<NodeJS.Timeout | null>(null);
   const rollCounterRef = useRef(0);
-  const supabase = useMemo(() => createClient(), []);
+  const hasSupabaseConfig = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+
+  const supabase = useMemo<any>(() => {
+    if (hasSupabaseConfig) {
+      return createClient();
+    }
+
+    return {
+      channel() {
+        return {
+          on() { return this; },
+          subscribe() { return this; },
+          unsubscribe() { return this; },
+          send() { return Promise.resolve({ error: null }); },
+        };
+      },
+      removeChannel() {
+        return Promise.resolve();
+      },
+    };
+  }, [hasSupabaseConfig]);
 
   const isDMRef = useRef(isDM);
   const currentUserIdRef = useRef(currentUserId);
@@ -112,7 +132,7 @@ export default function DiceRoller({ campaignId, onReady, isDM, currentUserId }:
     initializedRef.current = true;
 
     // Declaração do canal fora da função async para o useEffect ter acesso a ele
-    let channel: ReturnType<typeof supabase.channel> | null = null;
+    let channel: any = null;
 
     const rollWithoutVisual = async (formula: string, isSecret: boolean, mode: RollMode = 'normal') => {
       const cleanFormula = formula.toLowerCase().replace(/\s+/g, '');
@@ -179,18 +199,20 @@ export default function DiceRoller({ campaignId, onReady, isDM, currentUserId }:
 
     onReady(rollWithoutVisual);
 
-    channel = supabase.channel(`dice_rolls_${campaignId}`, {
-      config: { broadcast: { ack: false } }
-    });
+    if (hasSupabaseConfig) {
+      channel = supabase.channel(`dice_rolls_${campaignId}`, {
+        config: { broadcast: { ack: false } }
+      });
 
-    channel
-      .on('broadcast', { event: 'roll' }, (payload: any) => {
-        const { diceType, isSecret, senderId, values } = payload.payload;
-        if (senderId === currentUserIdRef.current) return;
-        if (isSecret && !isDMRef.current) return;
-        triggerVisualRoll(diceType, isSecret, values).catch(console.error);
-      })
-      .subscribe();
+      channel
+        .on('broadcast', { event: 'roll' }, (payload: any) => {
+          const { diceType, isSecret, senderId, values } = payload.payload;
+          if (senderId === currentUserIdRef.current) return;
+          if (isSecret && !isDMRef.current) return;
+          triggerVisualRoll(diceType, isSecret, values).catch(console.error);
+        })
+        .subscribe();
+    }
 
     const initDice = async () => {
       try {
@@ -230,12 +252,12 @@ export default function DiceRoller({ campaignId, onReady, isDM, currentUserId }:
     initDice();
   // O cleanup agora pertence ao useEffect, não à função async
     return () => { 
-      if (channel) {
-        supabase.removeChannel(channel); 
+      if (channel && hasSupabaseConfig) {
+        supabase.removeChannel(channel as never); 
       }
       if (clearTimerRef.current) clearTimeout(clearTimerRef.current);
     };
-  }, [campaignId, onReady, triggerVisualRoll, supabase]);
+  }, [campaignId, hasSupabaseConfig, onReady, triggerVisualRoll, supabase]);
 
   return (
     <>
