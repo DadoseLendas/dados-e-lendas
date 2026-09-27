@@ -647,7 +647,7 @@ export default function FichaModal({ isOpen, onClose, characterId, onUpdate, cam
             .on(
                 'postgres_changes',
                 { event: 'UPDATE', schema: 'public', table: 'characters', filter: `id=eq.${characterId}` },
-                ({ new: row }) => {
+                ({ new: row }: { new: any }) => {
                     const r = row as { hp_current?: number; hp_max?: number; active_effects?: ActiveEffect[] };
                     setDraft(prev => prev ? { ...prev, hp_current: r.hp_current ?? prev.hp_current, hp_max: r.hp_max ?? prev.hp_max, active_effects: r.active_effects ?? prev.active_effects } : prev);
                     setInitialChar(prev => prev ? { ...prev, hp_current: r.hp_current ?? prev.hp_current, hp_max: r.hp_max ?? prev.hp_max, active_effects: r.active_effects ?? prev.active_effects } : prev);
