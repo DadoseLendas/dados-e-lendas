@@ -163,15 +163,14 @@ export default function PlayerStatusWidget({
 
     // Snapshot completo ao sincronizar
     channel.on('presence', { event: 'sync' }, () => {
-      const state = channel.presenceState<{
-        displayName: string;
-        characterName: string | null;
-        characterImg: string | null;
-        avatarUrl: string | null;
-        status: StatusType;
-        joinedAt: string;
-      }>();
-
+      const state = channel.presenceState() as Record<string, Array<{
+    displayName: string;
+    characterName: string | null;
+    characterImg: string | null;
+    avatarUrl: string | null;
+    status: StatusType;
+    joinedAt: string;
+      }>>;
       // Atualiza apenas os que estão presentes no Presence (online)
       // Os ausentes permanecem do mapa inicial
       setPlayers(prev => {
@@ -202,7 +201,7 @@ export default function PlayerStatusWidget({
     });
 
     // Alguém entrou — atualiza status para online, preserva dados estáticos do init
-    channel.on('presence', { event: 'join' }, ({ key, newPresences }) => {
+   channel.on('presence', { event: 'join' }, ({ key, newPresences }: any) => {
       const p = (newPresences as any[])[0];
       if (!p) return;
       setPlayers(prev => {
@@ -222,7 +221,7 @@ export default function PlayerStatusWidget({
     });
 
     // Alguém saiu — marca como ausente em vez de remover imediatamente
-    channel.on('presence', { event: 'leave' }, ({ key }) => {
+    channel.on('presence', { event: 'leave' }, ({ key }: any) => {
       setPlayers(prev => {
         const next = new Map(prev);
         const existing = next.get(key);
@@ -231,7 +230,7 @@ export default function PlayerStatusWidget({
       });
     });
 
-    channel.subscribe(async (status) => {
+    channel.subscribe(async (status: any) => {
       if (status === 'SUBSCRIBED') {
         await channel.track({
           displayName:   myDisplayName,
