@@ -22,7 +22,7 @@ export function useChatRealtime(campaignId: string) {
       const chatSub = createRealtimeChannel(campaignId);
       channelRef.current = chatSub;
 
-      chatSub.on('broadcast', { event: 'new_message' }, (payload) => {
+      chatSub.on('broadcast', { event: 'new_message' }, (payload:any) => {
         const newMsg = payload.payload as Message;
         setMessages((prev) => {
           if (prev.find((m) => m.id === newMsg.id)) return prev;
@@ -32,7 +32,7 @@ export function useChatRealtime(campaignId: string) {
       chatSub.on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `campaign_id=eq.${campaignId}` },
-        (payload) => {
+        (payload:any) => {
           const newMsg = payload.new as Message;
           setMessages((prev) => {
             if (prev.find((m) => m.id === newMsg.id)) return prev;
