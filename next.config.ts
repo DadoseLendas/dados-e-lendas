@@ -1,10 +1,20 @@
 import type { NextConfig } from "next";
+import path from 'path';
 
 const supabaseProjectRef = process.env.NEXT_PUBLIC_SUPABASE_URL
   ? new URL(process.env.NEXT_PUBLIC_SUPABASE_URL).hostname
   : '*.supabase.co';
 
 const nextConfig: NextConfig = {
+  webpack: (config) => {
+    config.resolve = config.resolve ?? {};
+    config.resolve.alias = {
+      ...(config.resolve.alias ?? {}),
+      three: path.resolve(process.cwd(), 'node_modules/three'),
+    };
+
+    return config;
+  },
   images: {
     remotePatterns: [
       {
