@@ -278,7 +278,7 @@ export default function ChatWidget({ campaignId, isDiceReady, onRollDice }: Chat
     channelRef.current = chatSub;
 
     chatSub
-      .on('broadcast', { event: 'new_message' }, (payload) => {
+      .on('broadcast', { event: 'new_message' }, (payload: any) => {
         const newMsg = payload.payload as Message;
         if (!newMsg?.id || receivedIds.has(newMsg.id)) return;
         receivedIds.add(newMsg.id);
@@ -294,7 +294,7 @@ export default function ChatWidget({ campaignId, isDiceReady, onRollDice }: Chat
       .on('postgres_changes', {
         event: 'INSERT', schema: 'public', table: 'chat_messages',
         filter: `campaign_id=eq.${campaignId}`,
-      }, (payload) => {
+      }, (payload: any) => {
         const newMsg = payload.new as Message;
         if (!newMsg?.id || receivedIds.has(newMsg.id)) return;
         receivedIds.add(newMsg.id);
@@ -308,7 +308,7 @@ export default function ChatWidget({ campaignId, isDiceReady, onRollDice }: Chat
         });
         if (!isOpenRef.current) setUnreadCount((prev) => prev + 1);
       })
-      .subscribe(async (status) => {
+      .subscribe(async (status: any) => {
         // Quando (re)conectar, busca mensagens recentes para preencher o que foi perdido
         if (status === 'SUBSCRIBED') {
           const { data } = await supabase
@@ -322,9 +322,9 @@ export default function ChatWidget({ campaignId, isDiceReady, onRollDice }: Chat
             setMessages((prev) => {
               // Merge: adiciona mensagens do banco que não estejam no estado local
               const existingIds = new Set(prev.map((m) => m.id));
-              const missing = data.filter((m) => !existingIds.has(m.id));
+              const missing = data.filter((m: any) => !existingIds.has(m.id));
               if (missing.length === 0) return prev;
-              missing.forEach((m) => receivedIdsRef.current.add(m.id));
+              missing.forEach((m:any) => receivedIdsRef.current.add(m.id));
               return [...prev, ...missing].sort(
                 (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
               );
