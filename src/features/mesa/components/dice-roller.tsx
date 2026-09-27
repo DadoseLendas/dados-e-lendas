@@ -197,7 +197,17 @@ export default function DiceRoller({ campaignId, onReady, isDM, currentUserId }:
       return result;
     };
 
-    onReady(rollWithoutVisual);
+    // ALTERAÇÃO NECESSÁRIA 1: Unifica o resultado matemático com o disparo da animação visual local
+    const rollWithVisual = async (formula: string, isSecret: boolean, mode: RollMode = 'normal') => {
+      const result = await rollWithoutVisual(formula, isSecret, mode);
+      if (result) {
+        triggerVisualRoll(result.diceType, isSecret, result.values).catch(console.error);
+      }
+      return result;
+    };
+
+    // ALTERAÇÃO NECESSÁRIA 2: Expõe para o pai a função com animação visual em vez de apenas a matemática
+    onReady(rollWithVisual);
 
     if (hasSupabaseConfig) {
       channel = supabase.channel(`dice_rolls_${campaignId}`, {
@@ -228,7 +238,8 @@ export default function DiceRoller({ campaignId, onReady, isDM, currentUserId }:
         const { default: DiceBox } = await import('@3d-dice/dice-box-threejs');
         
         const box = new DiceBox("#dice-box", {
-          assetPath: '/',
+          // ALTERAÇÃO NECESSÁRIA 3: Aponta para /assets/ onde o Next.js serve os arquivos de public/assets/
+          assetPath: '/assets/',
           framerate: (1/60),
           sounds: true,
           volume: 50,
@@ -244,6 +255,11 @@ export default function DiceRoller({ campaignId, onReady, isDM, currentUserId }:
         await box.initialize();
         diceBoxRef.current = box;
 
+        // ALTERAÇÃO NECESSÁRIA 4: Ajusta o tamanho do Canvas 3D para evitar renderização zerada (0x0)
+        if (typeof window !== 'undefined' && box.resizeWorld) {
+          box.resizeWorld({ width: window.innerWidth, height: window.innerHeight });
+        }
+
       } catch (e) {
         console.error('[DiceRoller] Falha na inicialização:', e);
       }
@@ -257,21 +273,24 @@ export default function DiceRoller({ campaignId, onReady, isDM, currentUserId }:
       }
       if (clearTimerRef.current) clearTimeout(clearTimerRef.current);
     };
-  }, [campaignId, hasSupabaseConfig, onReady, triggerVisualRoll, supabase]);
+  }, [campaignId, hasSupabaseConfig, onReady, triggerVisualRoll, supportsWebGL, supabase]);
 
   return (
     <>
+      {/* ALTERAÇÃO NECESSÁRIA 5: Garante z-index alto e layout fixo para sobrepor a mesa do jogo */}
       <style jsx global>{`
         #dice-box {
-          position: absolute !important;
+          position: fixed !important;
           top: 0 !important; 
           left: 0 !important;
           width: 100vw !important; 
           height: 100vh !important;
           pointer-events: none !important; 
-          z-index: 9999;
+          z-index: 999999 !important;
         }
         #dice-box canvas {
+          width: 100% !important;
+          height: 100% !important;
           outline: none;
         }
       `}</style>
