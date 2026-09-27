@@ -56,7 +56,7 @@ export async function updateUserPassword(password: string) {
 
 export function onAuthStateChange(callback: (session: any) => void) {
   const supabase = createClient();
-  const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+  const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: any, session: any) => {
     callback(session);
   });
   return subscription;
