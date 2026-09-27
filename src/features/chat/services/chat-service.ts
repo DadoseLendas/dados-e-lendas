@@ -38,7 +38,7 @@ export function subscribeToChannel(
   channel.on(
     'broadcast',
     { event: 'message' },
-    (payload) => onMessage(payload)
+    (payload:any) => onMessage(payload)
   );
   channel.subscribe();
   return channel;
@@ -63,7 +63,7 @@ export async function fetchCharacterNames(ids: string[]): Promise<Record<string,
   const supabase = createClient();
   if (ids.length === 0) return {};
   const { data } = await supabase.from('characters').select('id, name').in('id', ids);
-  return (data ?? []).reduce((acc, c) => ({ ...acc, [c.id]: c.name }), {} as Record<string, string>);
+  return (data ?? []).reduce((acc: Record<string, string>, c: any) => ({ ...acc, [c.id]: c.name }), {} as Record<string, string>);
 }
 
 export async function getProfileDisplayName(userId: string) {
